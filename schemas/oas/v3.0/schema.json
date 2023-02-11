@@ -1,6 +1,5 @@
 {
-  "id": "https://spec.openapis.org/oas/3.0/schema/2021-09-28",
-  "$schema": "http://json-schema.org/draft-04/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "description": "The description of OpenAPI v3.0.x documents, as defined by https://spec.openapis.org/oas/v3.0.3",
   "type": "object",
   "required": [
@@ -14,43 +13,43 @@
       "pattern": "^3\\.0\\.\\d(-.+)?$"
     },
     "info": {
-      "$ref": "#/definitions/Info"
+      "$ref": "#/$defs/Info"
     },
     "externalDocs": {
-      "$ref": "#/definitions/ExternalDocumentation"
+      "$ref": "#/$defs/ExternalDocumentation"
     },
     "servers": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/Server"
+        "$ref": "#/$defs/Server"
       }
     },
     "security": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/SecurityRequirement"
+        "$ref": "#/$defs/SecurityRequirement"
       }
     },
     "tags": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/Tag"
+        "$ref": "#/$defs/Tag"
       },
       "uniqueItems": true
     },
     "paths": {
-      "$ref": "#/definitions/Paths"
+      "$ref": "#/$defs/Paths"
     },
     "components": {
-      "$ref": "#/definitions/Components"
+      "$ref": "#/$defs/Components"
     }
   },
   "patternProperties": {
-    "^x-": {
-    }
+    "^x-": true
   },
   "additionalProperties": false,
-  "definitions": {
+  "$id": "https://spec.openapis.org/oas/3.0/schema/2021-09-28",
+  "$defs": {
     "Reference": {
       "type": "object",
       "required": [
@@ -81,18 +80,17 @@
           "format": "uri-reference"
         },
         "contact": {
-          "$ref": "#/definitions/Contact"
+          "$ref": "#/$defs/Contact"
         },
         "license": {
-          "$ref": "#/definitions/License"
+          "$ref": "#/$defs/License"
         },
         "version": {
           "type": "string"
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -112,8 +110,7 @@
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -132,8 +129,7 @@
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -152,13 +148,12 @@
         "variables": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/ServerVariable"
+            "$ref": "#/$defs/ServerVariable"
           }
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -182,8 +177,7 @@
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -196,10 +190,10 @@
             "^[a-zA-Z0-9\\.\\-_]+$": {
               "oneOf": [
                 {
-                  "$ref": "#/definitions/Schema"
+                  "$ref": "#/$defs/Schema"
                 },
                 {
-                  "$ref": "#/definitions/Reference"
+                  "$ref": "#/$defs/Reference"
                 }
               ]
             }
@@ -211,10 +205,10 @@
             "^[a-zA-Z0-9\\.\\-_]+$": {
               "oneOf": [
                 {
-                  "$ref": "#/definitions/Reference"
+                  "$ref": "#/$defs/Reference"
                 },
                 {
-                  "$ref": "#/definitions/Response"
+                  "$ref": "#/$defs/Response"
                 }
               ]
             }
@@ -226,10 +220,10 @@
             "^[a-zA-Z0-9\\.\\-_]+$": {
               "oneOf": [
                 {
-                  "$ref": "#/definitions/Reference"
+                  "$ref": "#/$defs/Reference"
                 },
                 {
-                  "$ref": "#/definitions/Parameter"
+                  "$ref": "#/$defs/Parameter"
                 }
               ]
             }
@@ -241,10 +235,10 @@
             "^[a-zA-Z0-9\\.\\-_]+$": {
               "oneOf": [
                 {
-                  "$ref": "#/definitions/Reference"
+                  "$ref": "#/$defs/Reference"
                 },
                 {
-                  "$ref": "#/definitions/Example"
+                  "$ref": "#/$defs/Example"
                 }
               ]
             }
@@ -256,10 +250,10 @@
             "^[a-zA-Z0-9\\.\\-_]+$": {
               "oneOf": [
                 {
-                  "$ref": "#/definitions/Reference"
+                  "$ref": "#/$defs/Reference"
                 },
                 {
-                  "$ref": "#/definitions/RequestBody"
+                  "$ref": "#/$defs/RequestBody"
                 }
               ]
             }
@@ -271,10 +265,10 @@
             "^[a-zA-Z0-9\\.\\-_]+$": {
               "oneOf": [
                 {
-                  "$ref": "#/definitions/Reference"
+                  "$ref": "#/$defs/Reference"
                 },
                 {
-                  "$ref": "#/definitions/Header"
+                  "$ref": "#/$defs/Header"
                 }
               ]
             }
@@ -286,10 +280,10 @@
             "^[a-zA-Z0-9\\.\\-_]+$": {
               "oneOf": [
                 {
-                  "$ref": "#/definitions/Reference"
+                  "$ref": "#/$defs/Reference"
                 },
                 {
-                  "$ref": "#/definitions/SecurityScheme"
+                  "$ref": "#/$defs/SecurityScheme"
                 }
               ]
             }
@@ -301,10 +295,10 @@
             "^[a-zA-Z0-9\\.\\-_]+$": {
               "oneOf": [
                 {
-                  "$ref": "#/definitions/Reference"
+                  "$ref": "#/$defs/Reference"
                 },
                 {
-                  "$ref": "#/definitions/Link"
+                  "$ref": "#/$defs/Link"
                 }
               ]
             }
@@ -316,10 +310,10 @@
             "^[a-zA-Z0-9\\.\\-_]+$": {
               "oneOf": [
                 {
-                  "$ref": "#/definitions/Reference"
+                  "$ref": "#/$defs/Reference"
                 },
                 {
-                  "$ref": "#/definitions/Callback"
+                  "$ref": "#/$defs/Callback"
                 }
               ]
             }
@@ -327,8 +321,7 @@
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -340,8 +333,7 @@
         },
         "multipleOf": {
           "type": "number",
-          "minimum": 0,
-          "exclusiveMinimum": true
+          "exclusiveMinimum": 0
         },
         "maximum": {
           "type": "number"
@@ -402,8 +394,7 @@
         },
         "enum": {
           "type": "array",
-          "items": {
-          },
+          "items": true,
           "minItems": 1,
           "uniqueItems": false
         },
@@ -421,10 +412,10 @@
         "not": {
           "oneOf": [
             {
-              "$ref": "#/definitions/Schema"
+              "$ref": "#/$defs/Schema"
             },
             {
-              "$ref": "#/definitions/Reference"
+              "$ref": "#/$defs/Reference"
             }
           ]
         },
@@ -433,10 +424,10 @@
           "items": {
             "oneOf": [
               {
-                "$ref": "#/definitions/Schema"
+                "$ref": "#/$defs/Schema"
               },
               {
-                "$ref": "#/definitions/Reference"
+                "$ref": "#/$defs/Reference"
               }
             ]
           }
@@ -446,10 +437,10 @@
           "items": {
             "oneOf": [
               {
-                "$ref": "#/definitions/Schema"
+                "$ref": "#/$defs/Schema"
               },
               {
-                "$ref": "#/definitions/Reference"
+                "$ref": "#/$defs/Reference"
               }
             ]
           }
@@ -459,10 +450,10 @@
           "items": {
             "oneOf": [
               {
-                "$ref": "#/definitions/Schema"
+                "$ref": "#/$defs/Schema"
               },
               {
-                "$ref": "#/definitions/Reference"
+                "$ref": "#/$defs/Reference"
               }
             ]
           }
@@ -470,10 +461,10 @@
         "items": {
           "oneOf": [
             {
-              "$ref": "#/definitions/Schema"
+              "$ref": "#/$defs/Schema"
             },
             {
-              "$ref": "#/definitions/Reference"
+              "$ref": "#/$defs/Reference"
             }
           ]
         },
@@ -482,10 +473,10 @@
           "additionalProperties": {
             "oneOf": [
               {
-                "$ref": "#/definitions/Schema"
+                "$ref": "#/$defs/Schema"
               },
               {
-                "$ref": "#/definitions/Reference"
+                "$ref": "#/$defs/Reference"
               }
             ]
           }
@@ -493,10 +484,10 @@
         "additionalProperties": {
           "oneOf": [
             {
-              "$ref": "#/definitions/Schema"
+              "$ref": "#/$defs/Schema"
             },
             {
-              "$ref": "#/definitions/Reference"
+              "$ref": "#/$defs/Reference"
             },
             {
               "type": "boolean"
@@ -510,14 +501,13 @@
         "format": {
           "type": "string"
         },
-        "default": {
-        },
+        "default": true,
         "nullable": {
           "type": "boolean",
           "default": false
         },
         "discriminator": {
-          "$ref": "#/definitions/Discriminator"
+          "$ref": "#/$defs/Discriminator"
         },
         "readOnly": {
           "type": "boolean",
@@ -527,22 +517,20 @@
           "type": "boolean",
           "default": false
         },
-        "example": {
-        },
+        "example": true,
         "externalDocs": {
-          "$ref": "#/definitions/ExternalDocumentation"
+          "$ref": "#/$defs/ExternalDocumentation"
         },
         "deprecated": {
           "type": "boolean",
           "default": false
         },
         "xml": {
-          "$ref": "#/definitions/XML"
+          "$ref": "#/$defs/XML"
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -586,8 +574,7 @@
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -605,10 +592,10 @@
           "additionalProperties": {
             "oneOf": [
               {
-                "$ref": "#/definitions/Header"
+                "$ref": "#/$defs/Header"
               },
               {
-                "$ref": "#/definitions/Reference"
+                "$ref": "#/$defs/Reference"
               }
             ]
           }
@@ -616,7 +603,7 @@
         "content": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/MediaType"
+            "$ref": "#/$defs/MediaType"
           }
         },
         "links": {
@@ -624,18 +611,17 @@
           "additionalProperties": {
             "oneOf": [
               {
-                "$ref": "#/definitions/Link"
+                "$ref": "#/$defs/Link"
               },
               {
-                "$ref": "#/definitions/Reference"
+                "$ref": "#/$defs/Reference"
               }
             ]
           }
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -645,24 +631,23 @@
         "schema": {
           "oneOf": [
             {
-              "$ref": "#/definitions/Schema"
+              "$ref": "#/$defs/Schema"
             },
             {
-              "$ref": "#/definitions/Reference"
+              "$ref": "#/$defs/Reference"
             }
           ]
         },
-        "example": {
-        },
+        "example": true,
         "examples": {
           "type": "object",
           "additionalProperties": {
             "oneOf": [
               {
-                "$ref": "#/definitions/Example"
+                "$ref": "#/$defs/Example"
               },
               {
-                "$ref": "#/definitions/Reference"
+                "$ref": "#/$defs/Reference"
               }
             ]
           }
@@ -670,18 +655,17 @@
         "encoding": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/Encoding"
+            "$ref": "#/$defs/Encoding"
           }
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "#/definitions/ExampleXORExamples"
+          "$ref": "#/$defs/ExampleXORExamples"
         }
       ]
     },
@@ -694,16 +678,14 @@
         "description": {
           "type": "string"
         },
-        "value": {
-        },
+        "value": true,
         "externalValue": {
           "type": "string",
           "format": "uri-reference"
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -727,10 +709,8 @@
         },
         "style": {
           "type": "string",
-          "enum": [
-            "simple"
-          ],
-          "default": "simple"
+          "default": "simple",
+          "const": "simple"
         },
         "explode": {
           "type": "boolean"
@@ -742,48 +722,46 @@
         "schema": {
           "oneOf": [
             {
-              "$ref": "#/definitions/Schema"
+              "$ref": "#/$defs/Schema"
             },
             {
-              "$ref": "#/definitions/Reference"
+              "$ref": "#/$defs/Reference"
             }
           ]
         },
         "content": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/MediaType"
+            "$ref": "#/$defs/MediaType"
           },
           "minProperties": 1,
           "maxProperties": 1
         },
-        "example": {
-        },
+        "example": true,
         "examples": {
           "type": "object",
           "additionalProperties": {
             "oneOf": [
               {
-                "$ref": "#/definitions/Example"
+                "$ref": "#/$defs/Example"
               },
               {
-                "$ref": "#/definitions/Reference"
+                "$ref": "#/$defs/Reference"
               }
             ]
           }
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "#/definitions/ExampleXORExamples"
+          "$ref": "#/$defs/ExampleXORExamples"
         },
         {
-          "$ref": "#/definitions/SchemaXORContent"
+          "$ref": "#/$defs/SchemaXORContent"
         }
       ]
     },
@@ -791,10 +769,9 @@
       "type": "object",
       "patternProperties": {
         "^\\/": {
-          "$ref": "#/definitions/PathItem"
+          "$ref": "#/$defs/PathItem"
         },
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -813,7 +790,7 @@
         "servers": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/Server"
+            "$ref": "#/$defs/Server"
           }
         },
         "parameters": {
@@ -821,10 +798,10 @@
           "items": {
             "oneOf": [
               {
-                "$ref": "#/definitions/Parameter"
+                "$ref": "#/$defs/Parameter"
               },
               {
-                "$ref": "#/definitions/Reference"
+                "$ref": "#/$defs/Reference"
               }
             ]
           },
@@ -833,10 +810,9 @@
       },
       "patternProperties": {
         "^(get|put|post|delete|options|head|patch|trace)$": {
-          "$ref": "#/definitions/Operation"
+          "$ref": "#/$defs/Operation"
         },
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -859,7 +835,7 @@
           "type": "string"
         },
         "externalDocs": {
-          "$ref": "#/definitions/ExternalDocumentation"
+          "$ref": "#/$defs/ExternalDocumentation"
         },
         "operationId": {
           "type": "string"
@@ -869,10 +845,10 @@
           "items": {
             "oneOf": [
               {
-                "$ref": "#/definitions/Parameter"
+                "$ref": "#/$defs/Parameter"
               },
               {
-                "$ref": "#/definitions/Reference"
+                "$ref": "#/$defs/Reference"
               }
             ]
           },
@@ -881,25 +857,25 @@
         "requestBody": {
           "oneOf": [
             {
-              "$ref": "#/definitions/RequestBody"
+              "$ref": "#/$defs/RequestBody"
             },
             {
-              "$ref": "#/definitions/Reference"
+              "$ref": "#/$defs/Reference"
             }
           ]
         },
         "responses": {
-          "$ref": "#/definitions/Responses"
+          "$ref": "#/$defs/Responses"
         },
         "callbacks": {
           "type": "object",
           "additionalProperties": {
             "oneOf": [
               {
-                "$ref": "#/definitions/Callback"
+                "$ref": "#/$defs/Callback"
               },
               {
-                "$ref": "#/definitions/Reference"
+                "$ref": "#/$defs/Reference"
               }
             ]
           }
@@ -911,19 +887,18 @@
         "security": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/SecurityRequirement"
+            "$ref": "#/$defs/SecurityRequirement"
           }
         },
         "servers": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/Server"
+            "$ref": "#/$defs/Server"
           }
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -933,10 +908,10 @@
         "default": {
           "oneOf": [
             {
-              "$ref": "#/definitions/Response"
+              "$ref": "#/$defs/Response"
             },
             {
-              "$ref": "#/definitions/Reference"
+              "$ref": "#/$defs/Reference"
             }
           ]
         }
@@ -945,15 +920,14 @@
         "^[1-5](?:\\d{2}|XX)$": {
           "oneOf": [
             {
-              "$ref": "#/definitions/Response"
+              "$ref": "#/$defs/Response"
             },
             {
-              "$ref": "#/definitions/Reference"
+              "$ref": "#/$defs/Reference"
             }
           ]
         },
-        "^x-": {
-        }
+        "^x-": true
       },
       "minProperties": 1,
       "additionalProperties": false
@@ -980,12 +954,11 @@
           "type": "string"
         },
         "externalDocs": {
-          "$ref": "#/definitions/ExternalDocumentation"
+          "$ref": "#/$defs/ExternalDocumentation"
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -1004,8 +977,7 @@
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -1114,40 +1086,38 @@
         "schema": {
           "oneOf": [
             {
-              "$ref": "#/definitions/Schema"
+              "$ref": "#/$defs/Schema"
             },
             {
-              "$ref": "#/definitions/Reference"
+              "$ref": "#/$defs/Reference"
             }
           ]
         },
         "content": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/MediaType"
+            "$ref": "#/$defs/MediaType"
           },
           "minProperties": 1,
           "maxProperties": 1
         },
-        "example": {
-        },
+        "example": true,
         "examples": {
           "type": "object",
           "additionalProperties": {
             "oneOf": [
               {
-                "$ref": "#/definitions/Example"
+                "$ref": "#/$defs/Example"
               },
               {
-                "$ref": "#/definitions/Reference"
+                "$ref": "#/$defs/Reference"
               }
             ]
           }
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false,
       "required": [
@@ -1156,13 +1126,13 @@
       ],
       "allOf": [
         {
-          "$ref": "#/definitions/ExampleXORExamples"
+          "$ref": "#/$defs/ExampleXORExamples"
         },
         {
-          "$ref": "#/definitions/SchemaXORContent"
+          "$ref": "#/$defs/SchemaXORContent"
         },
         {
-          "$ref": "#/definitions/ParameterLocation"
+          "$ref": "#/$defs/ParameterLocation"
         }
       ]
     },
@@ -1176,9 +1146,7 @@
           ],
           "properties": {
             "in": {
-              "enum": [
-                "path"
-              ]
+              "const": "path"
             },
             "style": {
               "enum": [
@@ -1189,9 +1157,7 @@
               "default": "simple"
             },
             "required": {
-              "enum": [
-                true
-              ]
+              "const": true
             }
           }
         },
@@ -1199,9 +1165,7 @@
           "description": "Parameter in query",
           "properties": {
             "in": {
-              "enum": [
-                "query"
-              ]
+              "const": "query"
             },
             "style": {
               "enum": [
@@ -1218,15 +1182,11 @@
           "description": "Parameter in header",
           "properties": {
             "in": {
-              "enum": [
-                "header"
-              ]
+              "const": "header"
             },
             "style": {
-              "enum": [
-                "simple"
-              ],
-              "default": "simple"
+              "default": "simple",
+              "const": "simple"
             }
           }
         },
@@ -1234,15 +1194,11 @@
           "description": "Parameter in cookie",
           "properties": {
             "in": {
-              "enum": [
-                "cookie"
-              ]
+              "const": "cookie"
             },
             "style": {
-              "enum": [
-                "form"
-              ],
-              "default": "form"
+              "default": "form",
+              "const": "form"
             }
           }
         }
@@ -1260,7 +1216,7 @@
         "content": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/MediaType"
+            "$ref": "#/$defs/MediaType"
           }
         },
         "required": {
@@ -1269,24 +1225,23 @@
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
     "SecurityScheme": {
       "oneOf": [
         {
-          "$ref": "#/definitions/APIKeySecurityScheme"
+          "$ref": "#/$defs/APIKeySecurityScheme"
         },
         {
-          "$ref": "#/definitions/HTTPSecurityScheme"
+          "$ref": "#/$defs/HTTPSecurityScheme"
         },
         {
-          "$ref": "#/definitions/OAuth2SecurityScheme"
+          "$ref": "#/$defs/OAuth2SecurityScheme"
         },
         {
-          "$ref": "#/definitions/OpenIdConnectSecurityScheme"
+          "$ref": "#/$defs/OpenIdConnectSecurityScheme"
         }
       ]
     },
@@ -1300,9 +1255,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": [
-            "apiKey"
-          ]
+          "const": "apiKey"
         },
         "name": {
           "type": "string"
@@ -1320,8 +1273,7 @@
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -1343,14 +1295,11 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "http"
-          ]
+          "const": "http"
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false,
       "oneOf": [
@@ -1390,20 +1339,17 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": [
-            "oauth2"
-          ]
+          "const": "oauth2"
         },
         "flows": {
-          "$ref": "#/definitions/OAuthFlows"
+          "$ref": "#/$defs/OAuthFlows"
         },
         "description": {
           "type": "string"
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -1416,9 +1362,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": [
-            "openIdConnect"
-          ]
+          "const": "openIdConnect"
         },
         "openIdConnectUrl": {
           "type": "string",
@@ -1429,8 +1373,7 @@
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -1438,21 +1381,20 @@
       "type": "object",
       "properties": {
         "implicit": {
-          "$ref": "#/definitions/ImplicitOAuthFlow"
+          "$ref": "#/$defs/ImplicitOAuthFlow"
         },
         "password": {
-          "$ref": "#/definitions/PasswordOAuthFlow"
+          "$ref": "#/$defs/PasswordOAuthFlow"
         },
         "clientCredentials": {
-          "$ref": "#/definitions/ClientCredentialsFlow"
+          "$ref": "#/$defs/ClientCredentialsFlow"
         },
         "authorizationCode": {
-          "$ref": "#/definitions/AuthorizationCodeOAuthFlow"
+          "$ref": "#/$defs/AuthorizationCodeOAuthFlow"
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -1479,8 +1421,7 @@
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -1507,8 +1448,7 @@
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -1535,8 +1475,7 @@
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -1568,8 +1507,7 @@
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false
     },
@@ -1585,21 +1523,18 @@
         },
         "parameters": {
           "type": "object",
-          "additionalProperties": {
-          }
+          "additionalProperties": true
         },
-        "requestBody": {
-        },
+        "requestBody": true,
         "description": {
           "type": "string"
         },
         "server": {
-          "$ref": "#/definitions/Server"
+          "$ref": "#/$defs/Server"
         }
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       },
       "additionalProperties": false,
       "not": {
@@ -1613,11 +1548,10 @@
     "Callback": {
       "type": "object",
       "additionalProperties": {
-        "$ref": "#/definitions/PathItem"
+        "$ref": "#/$defs/PathItem"
       },
       "patternProperties": {
-        "^x-": {
-        }
+        "^x-": true
       }
     },
     "Encoding": {
@@ -1631,10 +1565,10 @@
           "additionalProperties": {
             "oneOf": [
               {
-                "$ref": "#/definitions/Header"
+                "$ref": "#/$defs/Header"
               },
               {
-                "$ref": "#/definitions/Reference"
+                "$ref": "#/$defs/Reference"
               }
             ]
           }
