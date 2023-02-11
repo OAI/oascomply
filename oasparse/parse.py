@@ -1,20 +1,22 @@
-import sys, json, yaml, os.path
-from pprint import pprint
+import json, yaml, sys, os.path, logging
 
 import rfc3986
-from rfc3986.builder import URIBuilder
-from jschon import create_catalog, JSON, JSONSchema, URI
-from jschon.catalog import Source
+
+import jschon, jschon.catalog
 from jschon.jsonpointer import JSONPointer
+
 import rdflib
 from rdflib.namespace import RDF
 
-from gremlin_python.process.anonymous_traversal import traversal
-from gremlin_python.driver.aiohttp.transport import AiohttpTransport
+from gremlin_python.process.anonymous_traversal \
+    import traversal as gremlin_traversal
 from gremlin_python.driver.driver_remote_connection import \
-    DriverRemoteConnection
+    DriverRemoteConnection as GremlinRemoteConnection
 
 from oastype4jschon import OasType, OasSubType
+
+log = logging.getLogger('oasparse')
+log.setLevel(logging.DEBUG)
 
 # Note that you need 3.0.3 in the URI to get it to resolve.
 # The analogous URI with just 3.0 does not redirect.
@@ -25,25 +27,10 @@ OAS_30_SPEC_BASE_URI = \
 DOCUMENT_BASE_URI = rfc3986.uri_reference('https://example.com/oad')
 
 LOCAL_DIR = os.path.dirname(os.path.abspath(__file__))
+SCHEMA_DIR = os.path.join(LOCAL_DIR, '..', 'schemas')
+DESC_DIR = os.path.join(LOCAL_DIR, '..', 'descriptions')
 
-OASTYPE_METASCHEMA = json.load(open(
-    os.path.join(LOCAL_DIR, '..', 'schemas', 'meta', 'oastype.json')
-))
-OASTYPE_DIALECT = json.load(open(
-    os.path.join(LOCAL_DIR, '..', 'schemas', 'dialect', 'oastype.json')
-))
-
-OAS_30_SCHEMA = yaml.safe_load(open(
-    os.path.join(LOCAL_DIR, '..', 'schemas', 'oas', 'v3.0', 'schema.yaml')
-))
-
-OAS_DOC = yaml.safe_load(open(
-    os.path.join(LOCAL_DIR, '..', 'descriptions', 'petstore.yaml')
-    # os.path.join(LOCAL_DIR, '..', 'descriptions', 'api.github.com.yaml')
-    # os.path.join(LOCAL_DIR, '..', 'descriptions', 'cloudflare.yaml')
-))
-
-class InMemorySource(Source):
+class InMemorySource(jschon.catalog.Source):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._registry = {}
@@ -54,60 +41,119 @@ class InMemorySource(Source):
     def __call__(self, relative_path):
         return self._registry[relative_path]
 
-gremlin_conn = DriverRemoteConnection(
-    "ws://localhost:8182/gremlin",
-    "g",
-    # transport_factory=lambda: AiohttpTransport(
-    #     call_from_event_loop=True
-    # )
-)
-gremlin_g = traversal().withRemote(gremlin_conn)
-gremlin_g.V().drop().iterate()
+def init_jschon():
+    catalog = jschon.create_catalog('2020-12')
 
+    in_memory_source = InMemorySource()
+    with \
+        open(os.path.join(SCHEMA_DIR, 'meta', 'oastype.json')) as mfd, \
+        open(os.path.join(SCHEMA_DIR, 'dialect', 'oastype.json')) as dfd \
+    :
+        in_memory_source.register('meta/2020-12/oastype', json.load(mfd))
+        in_memory_source.register('dialect/2020-12/oastype', json.load(dfd))
 
-catalog = create_catalog('2020-12')
+    catalog.add_uri_source(
+        jschon.URI('https://spec.openapis.org/reference/'),
+        in_memory_source,
+    )
+    catalog.create_vocabulary(
+        jschon.URI('https://spec.openapis.org/reference/vocab/2020-12/oastype'),
+        OasType,
+        OasSubType,
+    )
+    catalog.create_metaschema(
+        jschon.URI(
+            'https://spec.openapis.org/reference/dialect/2020-12/oastype'
+        ),
+        jschon.URI("https://json-schema.org/draft/2020-12/vocab/core"),
+        jschon.URI("https://json-schema.org/draft/2020-12/vocab/applicator"),
+        jschon.URI("https://json-schema.org/draft/2020-12/vocab/unevaluated"),
+        jschon.URI("https://json-schema.org/draft/2020-12/vocab/validation"),
+        jschon.URI(
+            "https://json-schema.org/draft/2020-12/vocab/format-annotation"
+        ),
+        jschon.URI("https://json-schema.org/draft/2020-12/vocab/meta-data"),
+        jschon.URI("https://json-schema.org/draft/2020-12/vocab/content"),
+        jschon.URI('https://spec.openapis.org/reference/vocab/2020-12/oastype'),
+    )
 
-in_memory_source = InMemorySource()
-in_memory_source.register('meta/2020-12/oastype', OASTYPE_METASCHEMA)
-in_memory_source.register('dialect/2020-12/oastype', OASTYPE_DIALECT)
-catalog.add_uri_source(
-    URI('https://spec.openapis.org/reference/'),
-    in_memory_source,
-)
-catalog.create_vocabulary(
-    URI('https://spec.openapis.org/reference/vocab/2020-12/oastype'),
-    OasType,
-    OasSubType,
-)
-catalog.create_metaschema(
-    URI('https://spec.openapis.org/reference/dialect/2020-12/oastype'),
-    URI("https://json-schema.org/draft/2020-12/vocab/core"),
-    URI("https://json-schema.org/draft/2020-12/vocab/applicator"),
-    URI("https://json-schema.org/draft/2020-12/vocab/unevaluated"),
-    URI("https://json-schema.org/draft/2020-12/vocab/validation"),
-    URI(
-        "https://json-schema.org/draft/2020-12/" +
-        "vocab/format-annotation"
-    ),
-    URI("https://json-schema.org/draft/2020-12/vocab/meta-data"),
-    URI("https://json-schema.org/draft/2020-12/vocab/content"),
-    URI('https://spec.openapis.org/reference/vocab/2020-12/oastype'),
-)
+def init_gremlin(drop_all=True):
+    gremlin_conn = GremlinRemoteConnection(
+        "ws://localhost:8182/gremlin",
+        "g",
+    )
+    gremlin_g = gremlin_traversal().withRemote(gremlin_conn)
+    if drop_all:
+        gremlin_g.V().drop().iterate()
+    return gremlin_g
 
-oas303_schema = JSONSchema(OAS_30_SCHEMA)
-result = oas303_schema.evaluate(JSON(OAS_DOC))
+def get_api_desc(api_desc_name):
+    api_desc_file = os.path.join(DESC_DIR, f'{api_desc_name}.yaml')
+    try:
+        with open(api_desc_file) as desc_fd:
+            return yaml.safe_load(desc_fd)
+
+    except FileNotFoundError:
+        log.debug(f'File "{api_desc_file}" does not exist')
+        log.error(f'API description "{api_desc_name}" not found')
+        sys.exit(-1)
+
+def evaluate_api_desc(api_desc):
+    try:
+        version = api_desc['openapi'][0:3]
+
+        # TODO: Add 3.1 support.  And maybe 2.0?
+        if version not in ('3.0',):
+            log.error(f'OAS v{version} not supported')
+            sys.exit(-1)
+
+        schema_file = os.path.join(
+            SCHEMA_DIR, 'oas', f'v{version}', 'schema.yaml'
+        )
+        with open(schema_file) as schema_fd:
+            oas_schema_data = yaml.safe_load(schema_fd)
+
+        init_jschon()
+        oas_schema = jschon.JSONSchema(oas_schema_data)
+        result = oas_schema.evaluate(jschon.JSON(api_desc))
+
+        if not result.valid:
+            log.error(f'API description not valid')
+            if log.isEnabledFor(logging.DEBUG):
+                # TODO: I don't understand/remember the logging config,
+                #       as log.debug won't work here for some reason.
+                schema_errors = yaml.dump(result.output('detailed'))
+                log.error('\n' + schema_errors)
+            sys.exit(-1)
+
+        return result.output('basic')
+
+    except KeyError as ke:
+        if ke.args[0] == 'openapi':
+            log.error('Malformed API description: missing "openapi" field')
+            sys.exit(-1)
+        raise
+
+    except FileNotFoundError:
+        log.debug(f'File "{schema_file}" does not exist')
+        log.error(f'Schema for OAS v{version} not not found')
+        sys.exit(-1)
+
+api_desc = get_api_desc('petstore')
+schema_output = evaluate_api_desc(api_desc)
 
 # Initialize the stack with the root pointer, which is never popped.
 stack = [JSONPointer('')]
 oas_objects = {}
 nodes = {}
 rdf_g = rdflib.Graph()
+gremlin_g = init_gremlin()
 gremlin_nodes = {}
 refs = {}
 
 ann = []
 for r in sorted(
-    result.output('basic')['annotations'],
+    schema_output['annotations'],
     key=lambda a: a['instanceLocation']
 ):
     akl = r['absoluteKeywordLocation']
@@ -148,7 +194,7 @@ for r in sorted(
     gremlin_nodes[il] = gremlin_obj
 
     if frag == 'reference-object':
-        ref_string = il.evaluate(OAS_DOC)['$ref']
+        ref_string = il.evaluate(api_desc)['$ref']
         assert ref_string.startswith('#') # for now
         target_uri = rfc3986.uri_reference(ref_string)
         target_ptr = JSONPointer.parse_uri_fragment(target_uri.fragment)
@@ -210,4 +256,7 @@ for v in gremlin_g.V():#.properties('loc'):
 for g in sorted(gremlins, key=lambda x: x[2]):
     pass
     # print(f'{g[0]}:{g[1]}"{g[2]}"')
-gremlin_conn.close()
+
+# TODO: Does not seem to be a problem not to close in this case, but
+#       it definitely is in some others.  Needs investigation.
+# gremlin_conn.close()
