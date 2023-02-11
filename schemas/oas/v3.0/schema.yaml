@@ -1,9 +1,13 @@
 ---
-$schema: https://json-schema.org/draft/2020-12/schema
-$id: https://spec.openapis.org/oas/3.0/schema/2021-09-28
-description: The description of OpenAPI v3.0.x documents, as defined by https://spec.openapis.org/oas/v3.0.3
+$schema: https://spec.openapis.org/reference/dialect/2020-12/oastype
+$id: https://spec.openapis.org/reference/3.0/schema/2021-09-28
+description: |
+  The description of OpenAPI v3.0.x documents,
+  as defined by https://spec.openapis.org/oas/v3.0.3,
+  enhanced with annotations for parsing and testing.
 
 type: object
+oasType: https://spec.openapis.org/oas/v3.0.3#openapi-object
 required:
 - openapi
 - info
@@ -39,6 +43,7 @@ additionalProperties: false
 
 $defs:
   Reference:
+    oasType: https://spec.openapis.org/oas/v3.0.3#reference-object
     type: object
     required:
     - $ref
@@ -48,6 +53,7 @@ $defs:
         format: uri-reference
 
   Info:
+    oasType: https://spec.openapis.org/oas/v3.0.3#info-object
     type: object
     required:
     - title
@@ -71,6 +77,7 @@ $defs:
     additionalProperties: false
 
   Contact:
+    oasType: https://spec.openapis.org/oas/v3.0.3#contact-object
     type: object
     properties:
       name:
@@ -86,6 +93,7 @@ $defs:
     additionalProperties: false
 
   License:
+    oasType: https://spec.openapis.org/oas/v3.0.3#license-object
     type: object
     required:
     - name
@@ -100,6 +108,7 @@ $defs:
     additionalProperties: false
 
   Server:
+    oasType: https://spec.openapis.org/oas/v3.0.3#server-object
     type: object
     required:
     - url
@@ -117,6 +126,7 @@ $defs:
     additionalProperties: false
 
   ServerVariable:
+    oasType: https://spec.openapis.org/oas/v3.0.3#server-variable-object
     type: object
     required:
     - default
@@ -134,6 +144,7 @@ $defs:
     additionalProperties: false
 
   Components:
+    oasType: https://spec.openapis.org/oas/v3.0.3#components-object
     type: object
     properties:
       schemas:
@@ -204,6 +215,7 @@ $defs:
     additionalProperties: false
 
   Schema:
+    oasType: https://spec.openapis.org/oas/v3.0.3#schema-object
     type: object
     properties:
       title:
@@ -335,6 +347,7 @@ $defs:
     additionalProperties: false
 
   Discriminator:
+    oasType: https://spec.openapis.org/oas/v3.0.3#discriminator-object
     type: object
     required:
     - propertyName
@@ -347,6 +360,7 @@ $defs:
           type: string
 
   XML:
+    oasType: https://spec.openapis.org/oas/v3.0.3#xml-object
     type: object
     properties:
       name:
@@ -367,6 +381,7 @@ $defs:
     additionalProperties: false
 
   Response:
+    oasType: https://spec.openapis.org/oas/v3.0.3#response-object
     type: object
     required:
     - description
@@ -394,6 +409,7 @@ $defs:
     additionalProperties: false
 
   MediaType:
+    oasType: https://spec.openapis.org/oas/v3.0.3#media-type-object
     type: object
     properties:
       schema:
@@ -418,6 +434,7 @@ $defs:
     - $ref: "#/$defs/ExampleXORExamples"
 
   Example:
+    oasType: https://spec.openapis.org/oas/v3.0.3#example-object
     type: object
     properties:
       summary:
@@ -433,6 +450,7 @@ $defs:
     additionalProperties: false
 
   Header:
+    oasType: https://spec.openapis.org/oas/v3.0.3#header-object
     type: object
     properties:
       description:
@@ -480,6 +498,7 @@ $defs:
     - $ref: "#/$defs/SchemaXORContent"
 
   Paths:
+    oasType: https://spec.openapis.org/oas/v3.0.3#paths-object
     type: object
     patternProperties:
       "^\\/":
@@ -488,6 +507,7 @@ $defs:
     additionalProperties: false
 
   PathItem:
+    oasType: https://spec.openapis.org/oas/v3.0.3#path-item-object
     type: object
     properties:
       $ref:
@@ -514,6 +534,7 @@ $defs:
     additionalProperties: false
 
   Operation:
+    oasType: https://spec.openapis.org/oas/v3.0.3#operation-object
     type: object
     required:
     - responses
@@ -565,6 +586,7 @@ $defs:
     additionalProperties: false
 
   Responses:
+    oasType: https://spec.openapis.org/oas/v3.0.3#responses-object
     type: object
     properties:
       default:
@@ -581,6 +603,7 @@ $defs:
     additionalProperties: false
 
   SecurityRequirement:
+    oasType: https://spec.openapis.org/oas/v3.0.3#security-requirement-object
     type: object
     additionalProperties:
       type: array
@@ -588,6 +611,7 @@ $defs:
         type: string
 
   Tag:
+    oasType: https://spec.openapis.org/oas/v3.0.3#tag-object
     type: object
     required:
     - name
@@ -603,6 +627,7 @@ $defs:
     additionalProperties: false
 
   ExternalDocumentation:
+    oasType: https://spec.openapis.org/oas/v3.0.3#external-documentation-object
     type: object
     required:
     - url
@@ -653,6 +678,7 @@ $defs:
           - examples
 
   Parameter:
+    oasType: https://spec.openapis.org/oas/v3.0.3#parameter-object
     type: object
     properties:
       name:
@@ -709,6 +735,7 @@ $defs:
     description: Parameter location
     oneOf:
     - description: Parameter in path
+      oasSubType: https://spec.openapis.org/oas/v3.0.3#parameter-locations.path
       required:
       - required
       properties:
@@ -723,6 +750,7 @@ $defs:
         required:
           const: true
     - description: Parameter in query
+      oasSubType: https://spec.openapis.org/oas/v3.0.3#parameter-locations.query
       properties:
         in:
           const: query
@@ -734,6 +762,7 @@ $defs:
           - deepObject
           default: form
     - description: Parameter in header
+      oasSubType: https://spec.openapis.org/oas/v3.0.3#parameter-locations.header
       properties:
         in:
           const: header
@@ -741,6 +770,7 @@ $defs:
           default: simple
           const: simple
     - description: Parameter in cookie
+      oasSubType: https://spec.openapis.org/oas/v3.0.3#parameter-locations.cookie
       properties:
         in:
           const: cookie
@@ -749,6 +779,7 @@ $defs:
           const: form
 
   RequestBody:
+    oasType: https://spec.openapis.org/oas/v3.0.3#request-body-object
     type: object
     required:
     - content
@@ -767,6 +798,7 @@ $defs:
     additionalProperties: false
 
   SecurityScheme:
+    oasType: https://spec.openapis.org/oas/v3.0.3#security-scheme-object
     oneOf:
     - $ref: "#/$defs/APIKeySecurityScheme"
     - $ref: "#/$defs/HTTPSecurityScheme"
@@ -774,6 +806,7 @@ $defs:
     - $ref: "#/$defs/OpenIdConnectSecurityScheme"
 
   APIKeySecurityScheme:
+    oasSubType: https://spec.openapis.org/oas/v3.0.3#security-scheme-object.apiKey
     type: object
     required:
     - type
@@ -798,6 +831,7 @@ $defs:
     additionalProperties: false
 
   HTTPSecurityScheme:
+    oasSubType: https://spec.openapis.org/oas/v3.0.3#security-scheme-object.http
     type: object
     required:
     - scheme
@@ -832,6 +866,7 @@ $defs:
             pattern: "^[Bb][Ee][Aa][Rr][Ee][Rr]$"
 
   OAuth2SecurityScheme:
+    oasSubType: https://spec.openapis.org/oas/v3.0.3#security-scheme-object.oauth2
     type: object
     required:
     - type
@@ -849,6 +884,7 @@ $defs:
     additionalProperties: false
 
   OpenIdConnectSecurityScheme:
+    oasSubType: https://spec.openapis.org/oas/v3.0.3#security-scheme-object.openIdConnect
     type: object
     required:
     - type
@@ -867,21 +903,28 @@ $defs:
     additionalProperties: false
 
   OAuthFlows:
+    oasType: https://spec.openapis.org/oas/v3.0.3#oauth-flows-object
     type: object
     properties:
       implicit:
+        oasType: https://spec.openapis.org/oas/v3.0.3#oauth-flow-object
         $ref: "#/$defs/ImplicitOAuthFlow"
       password:
+        oasType: https://spec.openapis.org/oas/v3.0.3#oauth-flow-object
         $ref: "#/$defs/PasswordOAuthFlow"
       clientCredentials:
+        oasType: https://spec.openapis.org/oas/v3.0.3#oauth-flow-object
         $ref: "#/$defs/ClientCredentialsFlow"
       authorizationCode:
+        oasType: https://spec.openapis.org/oas/v3.0.3#oauth-flow-object
         $ref: "#/$defs/AuthorizationCodeOAuthFlow"
     patternProperties:
-      ^x-: true
+      ^x-:
+         oasType: https://spec.openapis.org/oas/v3.0.3#oauth-flow-object
     additionalProperties: false
 
   ImplicitOAuthFlow:
+    oasSubType: https://spec.openapis.org/oas/v3.0.3#oauth-flows-object.implicit
     type: object
     required:
     - authorizationUrl
@@ -902,6 +945,7 @@ $defs:
     additionalProperties: false
 
   PasswordOAuthFlow:
+    oasSubType: https://spec.openapis.org/oas/v3.0.3#oauth-flows-object.password
     type: object
     required:
     - tokenUrl
@@ -922,6 +966,7 @@ $defs:
     additionalProperties: false
 
   ClientCredentialsFlow:
+    oasSubType: https://spec.openapis.org/oas/v3.0.3#oauth-flows-object.clientCredentials
     type: object
     required:
     - tokenUrl
@@ -942,6 +987,7 @@ $defs:
     additionalProperties: false
 
   AuthorizationCodeOAuthFlow:
+    oasSubType: https://spec.openapis.org/oas/v3.0.3#oauth-flows-object.authorizationCode
     type: object
     required:
     - authorizationUrl
@@ -966,6 +1012,7 @@ $defs:
     additionalProperties: false
 
   Link:
+    oasType: https://spec.openapis.org/oas/v3.0.3#link-object
     type: object
     properties:
       operationId:
@@ -991,6 +1038,7 @@ $defs:
       - operationRef
 
   Callback:
+    oasType: https://spec.openapis.org/oas/v3.0.3#callback-object
     type: object
     additionalProperties:
       $ref: "#/$defs/PathItem"
@@ -998,6 +1046,7 @@ $defs:
       ^x-: true
 
   Encoding:
+    oasType: https://spec.openapis.org/oas/v3.0.3#encoding-object
     type: object
     properties:
       contentType:
