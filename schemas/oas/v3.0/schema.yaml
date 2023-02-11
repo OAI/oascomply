@@ -1,6 +1,8 @@
 ---
 $schema: https://json-schema.org/draft/2020-12/schema
+$id: https://spec.openapis.org/oas/3.0/schema/2021-09-28
 description: The description of OpenAPI v3.0.x documents, as defined by https://spec.openapis.org/oas/v3.0.3
+
 type: object
 required:
 - openapi
@@ -34,16 +36,17 @@ properties:
 patternProperties:
   ^x-: true
 additionalProperties: false
-$id: https://spec.openapis.org/oas/3.0/schema/2021-09-28
+
 $defs:
   Reference:
     type: object
     required:
     - $ref
-    patternProperties:
-      "^\\$ref$":
+    properties:
+      $ref:
         type: string
         format: uri-reference
+
   Info:
     type: object
     required:
@@ -66,6 +69,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   Contact:
     type: object
     properties:
@@ -80,6 +84,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   License:
     type: object
     required:
@@ -93,6 +98,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   Server:
     type: object
     required:
@@ -109,6 +115,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   ServerVariable:
     type: object
     required:
@@ -125,6 +132,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   Components:
     type: object
     properties:
@@ -194,6 +202,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   Schema:
     type: object
     properties:
@@ -324,6 +333,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   Discriminator:
     type: object
     required:
@@ -335,6 +345,7 @@ $defs:
         type: object
         additionalProperties:
           type: string
+
   XML:
     type: object
     properties:
@@ -354,6 +365,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   Response:
     type: object
     required:
@@ -380,6 +392,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   MediaType:
     type: object
     properties:
@@ -403,6 +416,7 @@ $defs:
     additionalProperties: false
     allOf:
     - $ref: "#/$defs/ExampleXORExamples"
+
   Example:
     type: object
     properties:
@@ -417,6 +431,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   Header:
     type: object
     properties:
@@ -463,6 +478,7 @@ $defs:
     allOf:
     - $ref: "#/$defs/ExampleXORExamples"
     - $ref: "#/$defs/SchemaXORContent"
+
   Paths:
     type: object
     patternProperties:
@@ -470,6 +486,7 @@ $defs:
         $ref: "#/$defs/PathItem"
       ^x-: true
     additionalProperties: false
+
   PathItem:
     type: object
     properties:
@@ -495,6 +512,7 @@ $defs:
         $ref: "#/$defs/Operation"
       ^x-: true
     additionalProperties: false
+
   Operation:
     type: object
     required:
@@ -545,6 +563,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   Responses:
     type: object
     properties:
@@ -560,12 +579,14 @@ $defs:
       ^x-: true
     minProperties: 1
     additionalProperties: false
+
   SecurityRequirement:
     type: object
     additionalProperties:
       type: array
       items:
         type: string
+
   Tag:
     type: object
     required:
@@ -580,6 +601,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   ExternalDocumentation:
     type: object
     required:
@@ -593,12 +615,14 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   ExampleXORExamples:
     description: Example and examples are mutually exclusive
     not:
       required:
       - example
       - examples
+
   SchemaXORContent:
     description: Schema and content are mutually exclusive, at least one is required
     not:
@@ -627,6 +651,7 @@ $defs:
       - not:
           required:
           - examples
+
   Parameter:
     type: object
     properties:
@@ -679,6 +704,7 @@ $defs:
     - $ref: "#/$defs/ExampleXORExamples"
     - $ref: "#/$defs/SchemaXORContent"
     - $ref: "#/$defs/ParameterLocation"
+
   ParameterLocation:
     description: Parameter location
     oneOf:
@@ -721,6 +747,7 @@ $defs:
         style:
           default: form
           const: form
+
   RequestBody:
     type: object
     required:
@@ -738,12 +765,14 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   SecurityScheme:
     oneOf:
     - $ref: "#/$defs/APIKeySecurityScheme"
     - $ref: "#/$defs/HTTPSecurityScheme"
     - $ref: "#/$defs/OAuth2SecurityScheme"
     - $ref: "#/$defs/OpenIdConnectSecurityScheme"
+
   APIKeySecurityScheme:
     type: object
     required:
@@ -767,6 +796,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   HTTPSecurityScheme:
     type: object
     required:
@@ -800,6 +830,7 @@ $defs:
           not:
             type: string
             pattern: "^[Bb][Ee][Aa][Rr][Ee][Rr]$"
+
   OAuth2SecurityScheme:
     type: object
     required:
@@ -816,6 +847,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   OpenIdConnectSecurityScheme:
     type: object
     required:
@@ -833,6 +865,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   OAuthFlows:
     type: object
     properties:
@@ -847,6 +880,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   ImplicitOAuthFlow:
     type: object
     required:
@@ -866,6 +900,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   PasswordOAuthFlow:
     type: object
     required:
@@ -885,6 +920,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   ClientCredentialsFlow:
     type: object
     required:
@@ -904,6 +940,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   AuthorizationCodeOAuthFlow:
     type: object
     required:
@@ -927,6 +964,7 @@ $defs:
     patternProperties:
       ^x-: true
     additionalProperties: false
+
   Link:
     type: object
     properties:
@@ -951,12 +989,14 @@ $defs:
       required:
       - operationId
       - operationRef
+
   Callback:
     type: object
     additionalProperties:
       $ref: "#/$defs/PathItem"
     patternProperties:
       ^x-: true
+
   Encoding:
     type: object
     properties:
