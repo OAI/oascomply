@@ -29,7 +29,7 @@ OAS_30_SPEC_BASE_URI = \
     rfc3986.uri_reference('https://spec.openapis.org/oas/v3.0.3')
 
 # This is totaly arbitrary.
-DOCUMENT_BASE_URI = rfc3986.uri_reference('https://example.com/oad')
+DOCUMENT_BASE_URI = rfc3986.uri_reference('https://example.com/oad/')
 
 LOCAL_DIR = os.path.dirname(os.path.abspath(__file__))
 SCHEMA_DIR = os.path.join(LOCAL_DIR, '..', 'schemas')
@@ -97,6 +97,7 @@ class Parser:
     def __init__(
         self,
         api_desc_name,
+        api_desc_base_uri=DOCUMENT_BASE_URI,
         use_rdf=False,
         use_gremlin=False,
         rdf_format='turtle',
@@ -105,6 +106,14 @@ class Parser:
     ):
         self._api_desc_name = api_desc_name
         self._api_desc = None
+
+        if api_desc_base_uri == DOCUMENT_BASE_URI:
+            # We're using the default base URI, so at least customize
+            # it with the name we have for this API description.
+            self._api_desc_base_uri = rfc3986.uri_reference(api_desc_name) \
+                .resolve_with(api_desc_base_uri)
+        else:
+            self._api_desc_base_uri = api_desc_base_uri
 
         # We don't use the catalog directly, but its presence
         # lets us know that jschon has been set up properly.
@@ -265,7 +274,7 @@ class Parser:
                 self._rdf_nodes[oastype] = rdflib.URIRef(oastype.unsplit())
 
         if oad_loc_ptr not in self._seen:
-            oad_loc_uri = DOCUMENT_BASE_URI.copy_with(
+            oad_loc_uri = self._api_desc_base_uri.copy_with(
                 fragment=oad_loc_ptr.uri_fragment()
             )
             # XXX: Is this right?
