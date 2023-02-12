@@ -3,6 +3,8 @@ from collections import defaultdict
 
 from ruamel.yaml import YAML
 yaml=YAML(typ='safe')
+yaml.default_flow_style = False
+yaml.indent(offset=2)
 
 import rfc3986
 
@@ -161,10 +163,10 @@ class Parser:
         if not self._jschon_catalog:
             self._jschon_catalog = init_jschon()
 
-        schema_output = self._evaluate_api_desc()
+        self._schema_output = self._evaluate_api_desc()
 
         for r in sorted(
-            schema_output['annotations'],
+            self._schema_output['annotations'],
             key=lambda a: a['instanceLocation']
         ):
             akl = r['absoluteKeywordLocation']
@@ -212,7 +214,6 @@ class Parser:
                     yaml.dump(result.output('detailed'), schema_errors)
                     log.error('\n' + schema_errors.getvalue())
                 sys.exit(-1)
-
             return result.output('basic')
 
         except KeyError as ke:
@@ -351,6 +352,29 @@ class Parser:
                     .to(self._gremlin_nodes[dest])
                 )
 
+    def serialize_annotations(self, include=(), exclude=()):
+        output = {
+            'valid': self._schema_output['valid'],
+            'annotations': [],
+        }
+
+        for a in self._schema_output['annotations']:
+            if not a['absoluteKeywordLocation'].endswith('/oasType'):
+                continue
+
+            short_type = rfc3986.uri_reference(a['annotation'])
+            if (
+                (not include and not exclude) or (
+                    include and short_type in include
+                    and short_type not in exclude
+                ) or (exclude and short_type not in exclude)
+            ):
+                output['annotations'].append(a)
+
+        # TODO: Sort out pyyaml vs ruamel.yaml
+        import yaml as pyyaml
+        pyyaml.dump(output, sys.stdout, indent=2)
+
     def serialize_gremlin(self, include=None, exclude=None, sort_by='location'):
         gremlins = []
         trav = self._gremlin_g.V()
@@ -411,3 +435,6 @@ if __name__ == '__main__':
             )
         elif graph_type == 'rdf':
             parser.serialize_rdf()
+
+        elif graph_type =='annotations':
+            parser.serialize_annotations()
