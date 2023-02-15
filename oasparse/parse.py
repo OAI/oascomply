@@ -134,7 +134,7 @@ class Parser:
         self._clear_storage = clear_storage
 
         self._use_rdf = use_rdf
-        self._rdf_g = rdflib.Graph() if use_rdf else None
+        self._rdf_g = None
         self._rdf_nodes = {}
 
         self._use_gremlin = use_gremlin
@@ -143,6 +143,15 @@ class Parser:
         self._gremlin_nodes = {}
 
     def __enter__(self):
+        if self._use_rdf:
+            self._rdf_g = rdflib.Graph()
+            self._rdf_g.bind('oas3.0',
+                rfc3986.uri_reference('#')
+                    .resolve_with(OAS_30_SPEC_BASE_URI)
+                    .unsplit()
+            )
+            self._rdf_g.bind('apidesc', self._api_desc_base_uri.unsplit())
+
         if self._use_gremlin:
             self._gremlin_g, self._gremlin_conn = \
                 init_gremlin(drop_all=self._clear_storage)
@@ -292,9 +301,15 @@ class Parser:
                 ))
 
             if self._use_gremlin:
+                # Quote the location because it might be the empty string.
+                otype = ' '.join(oastype.fragment.split('-')[:-1]).title()
+                if otype == 'Openapi':
+                    otype = 'OpenAPI'
+
                 gremlin_obj = next(
                     self._gremlin_g.addV(oastype.fragment)
-                    .property('loc', str(oad_loc_ptr))
+                    .property('location', f'"{oad_loc_ptr}"')
+                    .property('oastype', otype)
                 )
                 self._gremlin_nodes[oad_loc_ptr] = gremlin_obj
 
@@ -312,12 +327,16 @@ class Parser:
         parent_loc_uri = self._seen[parent_loc_ptr]
         parent_type = self._oastypes[parent_loc_uri.fragment]
 
-        delta = '.'.join([p for p in oad_loc_ptr[len(parent_loc_ptr):]])
+        if parent_type.fragment == 'paths-object':
+            delta = 'pathItem'
+        else:
+            delta = oad_loc_ptr[len(parent_loc_ptr):][0]
+
         if self._use_rdf:
             if delta not in self._rdf_nodes:
-                delta_uri = parent_loc_uri.copy_with(
+                delta_uri = parent_type.copy_with(
                     fragment=rfc3986.uri_reference(
-                        '#' + parent_loc_uri.fragment + f'.{delta}'
+                        '#' + parent_type.fragment + f'.{delta}'
                     ).fragment,
                 ).unsplit()
                 self._rdf_nodes[delta] = rdflib.URIRef(delta_uri)
@@ -384,16 +403,14 @@ class Parser:
             trav = trav.not_(__.hasLabel(*exclude))
 
         for v in trav:
-            location = next(self._gremlin_g.V(v).properties('loc').value())
-            otype = ' '.join(v.label.split('-')[:-1]).title()
-            if otype == 'Openapi':
-                otype = 'OpenAPI'
-            l = len(otype)
+            props = next(self._gremlin_g.V(v).valueMap('location', 'oastype'))
+            oastype = props['oastype'][0]
+            l = len(oastype)
             tabs = '\t'
             if l < 7:
                 tabs = '\t\t'
 
-            gremlins.append((otype, tabs, location))
+            gremlins.append((oastype, tabs, props['location'][0]))
             # print(f'{v.label}:{tabs}"{location}"')
 
         sort_by_index = {
@@ -402,7 +419,7 @@ class Parser:
         }[sort_by]
 
         for g in sorted(gremlins, key=lambda x: x[sort_by_index]):
-            print(f'{g[0]}:{g[1]}"{g[2]}"')
+            print(f'{g[0]}:{g[1]}{g[2]}')
 
     def serialize_rdf(self, fmt='turtle'):
         print(self._rdf_g.serialize(format=fmt))
