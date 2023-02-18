@@ -42,8 +42,8 @@ class InMemorySource(jschon.catalog.Source):
         super().__init__(**kwargs)
         self._registry = {}
 
-    def register(self, relative_path, schema):
-        self._registry[relative_path] = schema
+    def register(self, relative_path, schema_doc):
+        self._registry[relative_path] = schema_doc
 
     def __call__(self, relative_path):
         return self._registry[relative_path]
@@ -73,15 +73,6 @@ def init_jschon():
             'https://spec.openapis.org/reference/dialect/2020-12/oastype'
         ),
         jschon.URI("https://json-schema.org/draft/2020-12/vocab/core"),
-        jschon.URI("https://json-schema.org/draft/2020-12/vocab/applicator"),
-        jschon.URI("https://json-schema.org/draft/2020-12/vocab/unevaluated"),
-        jschon.URI("https://json-schema.org/draft/2020-12/vocab/validation"),
-        jschon.URI(
-            "https://json-schema.org/draft/2020-12/vocab/format-annotation"
-        ),
-        jschon.URI("https://json-schema.org/draft/2020-12/vocab/meta-data"),
-        jschon.URI("https://json-schema.org/draft/2020-12/vocab/content"),
-        jschon.URI('https://spec.openapis.org/reference/vocab/2020-12/oastype'),
     )
     return catalog
 
