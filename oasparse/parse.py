@@ -91,7 +91,7 @@ class Parser:
         self,
         api_desc_name,
         api_desc_base_uri=DOCUMENT_BASE_URI,
-        use_rdf=False,
+        use_rdf=True,
         use_gremlin=False,
         rdf_format='turtle',
         type_filter=(),
@@ -141,7 +141,15 @@ class Parser:
                     .resolve_with(OAS_30_SPEC_BASE_URI)
                     .unsplit()
             )
-            self._rdf_g.bind('apidesc', self._api_desc_base_uri.unsplit())
+            # Note that this does not really work as intended
+            # in Turtle serialization # because "/" and "~" cannot
+            # appear in prefixed names.  All but the root pointer
+            # fragment in descriptions include "/".
+            self._rdf_g.bind('apidesc',
+                rfc3986.uri_reference('#')
+                    .resolve_with(self._api_desc_base_uri)
+                    .unsplit()
+            )
 
         if self._use_gremlin:
             self._gremlin_g, self._gremlin_conn = \
@@ -425,7 +433,7 @@ FILTER = ('openapi-object', 'info-object', 'reference-object')
 if __name__ == '__main__':
     argc = len(sys.argv) - 1
     api_desc_name = sys.argv[1] if argc > 0 else 'petstore'
-    graph_type = sys.argv[2] if argc > 1 else 'gremlin'
+    graph_type = sys.argv[2] if argc > 1 else 'rdf'
     serialize_only = argc > 2
 
     with Parser(
