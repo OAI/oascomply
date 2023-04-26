@@ -1,0 +1,430 @@
+---
+oasType: OpenAPI
+oasChildren:
+  - 0/info
+  - 0/externalDocs
+  - 0/servers/{index}
+  - 0/security/{index}
+  - 0/tags/{index}
+  - 0/paths
+  - 0/components
+oasLiterals:
+  - 0/openapi
+oasExtensible: true
+
+$defs:
+  RuntimeExpression:
+    oasType: RuntimeExpression
+    type: string
+    pattern: \\$(url$|method$|statusCode$|request\.|response\.)
+
+  Callback:
+    oasType: Callback
+    oasLiterals:
+      - 0/openapi
+    oasExtensible: true
+
+  Components:
+    oasType: Components
+    oasExtensible: true
+
+  Contact:
+    oasType: Contact
+    oasLiterals:
+      - 0/name
+      - 0/url
+      - 0/email
+    oasExtensible: true
+
+  Discriminator:
+    oasType: Discriminator
+    oasImplicitReferences:
+      - 0/propertyName      # TODO: WTF?
+    properties:
+      mapping:
+        additionalProperties:
+          oasValues:
+            mappingName: '0#'
+            mappingTarget: '0'
+
+  Encoding:
+    oasType: Encoding
+    oasLiterals:
+      - 0/style
+      - 0/explode
+      - 0/allowReserved
+    properties:
+      contentType:
+        oasLiteralType: ContentType
+
+  Example:
+    oasType: Example
+    oasLiterals:
+      - 0/summary
+      - 0/description
+      - 0/value
+    oasDescriptionLinks:
+      - 0/externalValue
+    oasExtensible: true
+
+  ExternalDocumentation:
+    oasType: ExternalDocumentation
+    oasLiterals:
+      - 0/description
+    oasDescriptionLinks:
+      - 0/url
+    oasExtensible: true
+
+  Header:
+    oasType: Header
+    oasChildren:
+      - 0/schema
+      - 0/{contentType}
+    oasReferences:
+        0/schema/$ref: Schema
+        0/examples/{name}/$ref: Example
+    oasLiterals:
+      - 0/description
+      - 0/required
+      - 0/deprecated
+      - 0/allowEmptyValue
+      - 0/style
+      - 0/explode
+      - 0/allowReserved
+    oasExamples:
+      - 0/example
+      - 0/examples/{name}/value
+
+  Info:
+    oasType: Info
+    oasChildren:
+      - 0/contact
+      - 0/license
+    oasLiterals:
+      - 0/title
+      - 0/description
+      - 0/version
+    oasDescriptionLinks:
+      - 0/termsOfService
+    oasExtensible: true
+
+  License:
+    oasType: License
+    oasLiterals:
+      - 0/name
+    oasDescriptionLinks:
+      - 0/url
+    oasExtensible: true
+
+  Link:
+    oasType: Link
+    oasImplicitReferences:
+      0/operationId:
+        oasTargetType: Operation
+        oasTargetField: 0/operationId
+    oasReferences:
+        0/operationRef: Operation
+    parameters:
+      propertyNames:
+        oasType: QualifiedTemplateParameter
+      additionalProperties:
+    oneOf:                      # TODO: Not sure if this is right at all
+      - oasChildren:
+          0/parameters/{parameterSpecification}
+        parameters:
+          additionalProperties:
+            $ref: '#/$defs/RuntimeExpression'
+      - oasLiterals:
+          0/parameters/{parameterSpecification}
+        parameters:
+          additionalProperties:
+            not: {$ref: '#/$defs/RuntimeExpression'}
+
+  MediaType:
+    oasType: MediaType
+    oasChildren:
+      - 0/schema
+      - 0/encoding/{property}
+    oasReferences:
+        0/schema/$ref: Schema
+        0/examples/{name}/$ref: Example
+    oasExamples:
+      - 0/example
+      - 0/examples/{name}
+
+  OAuthFlows:
+    oasLiterals:
+      - 0/scopes/{scopeName}
+    oasApiLinks:
+      - 0/authorizationUrl
+      - 0/tokenUrl
+      - 0/refreshUrl
+    oasExtensible: true
+    patternProperties:
+      ^x-:
+        oasType: XCustomOAuthFlow
+  ImplicitOAuthFlow:
+    oasType: ImplicitOAuthFlow
+  PasswordOAuthFlow:
+    oasType: PasswordOAuthFlow
+  ClientCredentialsFlow:
+    oasType: ClientCredentialsFlow
+  AuthorizationCodeOAuthFlow:
+    oasType: AuthorizationCodeOAuthFlow
+
+  Operation:
+    # for oasType, see /$defs/PathItem/properties/(get|put|...)
+    oasChildren:
+      - 0/externalDocs
+      - 0/parameters/{index}
+      - 0/requestBody
+      - 0/responses
+      - 0/callbacks/{name}
+      - 0/security/{index}
+      - 0/servers/{index}
+    oasReferences:
+        0/externalDocs/$ref: ExternalDocumentation
+        0/parameters/{index}/$ref: Parameter
+        0/requestBody/$ref: RequestBody
+        0/responses/$ref: Responses
+        0/callbacks/{name}/$ref: Callback
+        0/security/{index}/$ref: SecurityRequirement
+        0/servers/{index}/$ref: Server
+    oasLiterals:
+      - 0/summary
+      - 0/description
+      - 0/externalDocs
+      - 0/operationId
+      - 0/deprecated
+    properties:
+      tags:
+        items:
+          oasType: TagName
+
+  Parameter:
+    oasChildren:
+      - 0/schema
+      - 0/content/{contentType}
+      - 0/examples/{name}
+    oasReferences:
+        0/schema/$ref: Schema
+        0/examples/{name}/$ref: Example
+    oasLiterals:
+      - 0/name
+      - 0/in
+      - 0/description
+      - 0/required
+      - 0/deprecated
+      - 0/allowEmptyValue
+      - 0/style
+      - 0/explode
+      - 0/allowReserved
+      - 0/example
+    oasUniqueKey:
+      - 0/name
+      - 0/in
+    oasExamples:
+      - 0/example
+      - 0/examples/{name}
+    oasExtensible: true
+  PathParameter:
+    oasType: PathParameter
+  QueryParameter:
+    oasType: QueryParameter
+  HeaderParameter:
+    oasType: HeaderParameter
+  CookieParameter:
+    oasType: CookieParameter
+
+  PathItem:
+    oasType: PathItem
+    oasChildren:
+      - 0/delete
+      - 0/get
+      - 0/head
+      - 0/options
+      - 0/patch
+      - 0/post
+      - 0/put
+      - 0/trace
+    oasReferences:
+        0/$ref: PathItem
+    oasReferenceConflict:
+        0/$ref: undefined
+    oasLiterals:
+      - 0/summary
+      - 0/description
+    properties:
+      delete:
+        oasType: DeleteOperation
+      get:
+        oasType: GetOperation
+      head:
+        oasType: HeadOperation
+      options:
+        oasType: OptionsOperation
+      patch:
+        oasType: PatchOperation
+      post:
+        oasType: PostOperation
+      put:
+        oasType: PutOperation
+      trace:
+        oasType: TraceOperation
+
+  Paths:
+    oasType: Paths
+    oasChildren:
+      - 0/{pathTemplate}
+    oasExtensible: true
+    propertyNames:
+        anyOf:
+          - pattern: '^\\/'
+            oasType: PathOnlyTemplatedUrl
+          - true
+
+  Reference:
+    oasType: Reference
+
+  RequestBody:
+    oasType: RequestBody
+    oasChildren:
+      - 0/content/{contentType}
+    oasLiterals:
+      - 0/description
+      - 0/required
+    oasExtensible:
+
+  Response:
+    oasType: Response
+    oasChildren:
+      - 0/headers/{header}
+      - 0/content/{contentType}
+      - 0/links/{linkRel}  # TODO: I think?
+    oasLiterals:
+      - 0/description
+    oasExtensible: true
+
+  Responses:
+    oasType: Responses
+    oasChildren:
+      - 0/{statusSpecification}
+    oasExtensible: true
+    propertyNames:
+      anyOf:
+        - const: default
+          oasType: StatusDefault
+        - pattern: '^[1-5]\\d{2}$'
+          oasType: StatusCode
+        - pattern: '^[1-5]XX$'
+          oasType: StatusCodeRange
+        - true
+
+  Schema:
+    oasType: Schema
+    oasChildren:
+      - 0/allOf/{index}
+      - 0/anyOf/{index}
+      - 0/oneOf/{index}
+      - 0/not
+      - 0/properties/{name}
+      - 0/additionalProperties
+      - 0/items
+      - 0/xml
+      - 0/discriminator
+      - 0/externalDocs
+    oasReferences:
+      0/$ref: Schema
+    oasLiterals:
+      - 0/type
+      - 0/enum
+      - 0/maximum
+      - 0/minimum
+      - 0/exclusiveMaximum
+      - 0/exclusiveMinimum
+      - 0/multipleOf
+      - 0/maxLength
+      - 0/minLength
+      - 0/pattern
+      - 0/maxItems
+      - 0/minItems
+      - 0/uniqueItems
+      - 0/maxProperties
+      - 0/minProperties
+      - 0/required
+      - 0/title
+      - 0/description
+      - 0/format
+      - 0/default
+      - 0/readOnly
+      - 0/writeOnly
+      - 0/deprecated
+      - 0/example
+      - 0/nullable
+    oasExtensible: True
+
+  SecurityRequirement:
+    oasType: SecurityRequirement
+    additionalProperties:
+    oasImplicitReferences:
+      0/{scheme}:
+        oasSourceModifier: '0#'
+        oasTargetType: SecurityScheme
+        oasTargetField: 0/scheme
+  Server:
+    oasType: Server
+    oasChildren:
+      - 0/variables/{name}
+    oasLiterals:
+      - 0/description
+    oasApiLinks:
+      - 0/url
+    oasExtensible: true
+
+  ServerVariable:
+    oasType: ServerVariable
+    oasImplicitReferences:
+      '0#':
+        oasTargetType: Server
+        oasTargetField: 0/url
+        oasTargetIsTemplateVariable: true
+    oasLiterals:
+      - 0/enum/{index}
+      - 0/default
+      - 0/description
+    oasExtensible: true
+
+  XML:
+    oasType: Xml
+    oasLiterals:
+      - 0/name
+      - 0/namespace
+      - 0/prefix
+      - 0/attribute
+      - 0/wrapped
+    oasExtensible: true
+
+  Tag:
+    oasType: Tag
+    oasChildren:
+      - 0/externalDocs
+    oasLiterals:
+      - 0/name
+      - 0/description
+
+  SecurityScheme:
+    oasLiterals:
+      - 0/type
+      - 0/name
+      - 0/in
+      - 0/description
+    oasExtensible: true
+  APIKeySecurityScheme:
+    oasType: APIKeySecurityScheme
+  HTTPSecurityScheme:
+    oasType: HTTPSecurityScheme
+  OAuth2SecurityScheme:
+    oasType: OAuth2SecurityScheme
+  OpenIdConnectSecurityScheme:
+    oasType: OpenIdConnectSecurityScheme
+

@@ -1,0 +1,65 @@
+[
+  {
+    "op": "test",
+    "path": "/$defs/ParameterLocation/oneOf/0/description",
+    "value": "Parameter in path"
+  }, {
+    "op": "copy",
+    "from": "/$defs/ParameterLocation/oneOf/0",
+    "path": "/$defs/PathParameter"
+  }, {
+    "op": "replace",
+    "path": "/$defs/ParameterLocation/oneOf/0",
+    "value": {"$ref": "#/$defs/PathParameter"}
+  }, {
+    "op": "test",
+    "path": "/$defs/ParameterLocation/oneOf/1/description",
+    "value": "Parameter in query"
+  }, {
+    "op": "copy",
+    "from": "/$defs/ParameterLocation/oneOf/1",
+    "path": "/$defs/QueryParameter"
+  }, {
+    "op": "replace",
+    "path": "/$defs/ParameterLocation/oneOf/1",
+    "value": {"$ref": "#/$defs/QueryParameter"}
+  }, {
+    "op": "test",
+    "path": "/$defs/ParameterLocation/oneOf/2/description",
+    "value": "Parameter in header"
+  }, {
+    "op": "copy",
+    "from": "/$defs/ParameterLocation/oneOf/2",
+    "path": "/$defs/HeaderParameter"
+  }, {
+    "op": "replace",
+    "path": "/$defs/ParameterLocation/oneOf/2",
+    "value": {"$ref": "#/$defs/HeaderParameter"}
+  }, {
+    "op": "test",
+    "path": "/$defs/ParameterLocation/oneOf/3/description",
+    "value": "Parameter in cookie"
+  }, {
+    "op": "copy",
+    "from": "/$defs/ParameterLocation/oneOf/3",
+    "path": "/$defs/CookieParameter"
+  }, {
+    "op": "replace",
+    "path": "/$defs/ParameterLocation/oneOf/3",
+    "value": {"$ref": "#/$defs/CookieParameter"}
+  }, {
+    "op": "move",
+    "from": "/$defs/ParameterLocation/oneOf",
+    "path": "/$defs/Parameter/oneOf"
+  }, {
+    "op": "test",
+    "path": "/$defs/Parameter/allOf/2",
+    "value": {"$ref": "#/$defs/ParameterLocation"}
+  }, {
+    "op": "remove",
+    "path": "/$defs/Parameter/allOf/2"
+  }, {
+    "op": "remove",
+    "path": "/$defs/ParameterLocation"
+  }
+]
