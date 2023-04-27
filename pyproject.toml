@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "oasparse"
+version = "0.1.0"
+description = "OpenAPI Specification Compliance Parser"
+authors = ["Henry H. Andrews <andrews_henry@yahoo.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
