@@ -7979,7 +7979,7 @@ components:
           type: string
           format: date-time
           description: When the deployment was last modified.
-          example: 2021-03-09T00:58:59.045655
+          example: "2021-03-09T00:58:59.045655"
           readOnly: true
         project_id:
           type: string
@@ -22958,7 +22958,7 @@ components:
           type: string
           format: date-time
           description: When the stage ended.
-          example: 2021-03-09T00:58:59.045655
+          example: "2021-03-09T00:58:59.045655"
           nullable: true
           readOnly: true
         name:
