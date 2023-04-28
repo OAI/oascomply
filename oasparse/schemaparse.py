@@ -34,16 +34,17 @@ class OasParser:
 
 
 class OasGraph:
-    def __init__(self, version):
+    def __init__(self, version, base=None):
         if version not in ('3.0', '3.1'):
             raise ValueError(f'OAS v{version} is not supported.')
         if version == '3.1':
             raise ValueError(f'OAS v3.1 support TBD.')
 
-        self._g = rdflib.Graph()
+        self._g = rdflib.Graph(base=base)
         self._oas = rdflib.Namespace(
             f'https://spec.openapis.org/oas/v{version}/ontology#'
         )
+        self._g.bind('oas3.0', self._oas)
 
     def serialize(self, *args, **kwargs):
         return self._g.serialize(*args, **kwargs)
@@ -325,7 +326,7 @@ if __name__ == '__main__':
         sys.stderr.write('\n')
         sys.exit(-1)
 
-    g = OasGraph('3.0')
+    g = OasGraph('3.0', base=str(Location.default_instance_base_uri()))
     for unit in result.output(
         'basic',
         annotations=(
