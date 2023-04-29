@@ -50,15 +50,12 @@ class OasGraph:
         return self._g.serialize(*args, **kwargs)
 
     def add_oastype(self, annotation, instance):
-        instance_loc = str(annotation.instance_uri)
-        instance_uri = rdflib.URIRef(instance_loc)
-        # print(f'Adding "{instance_loc} a {self._oas[annotation.value]}')
+        instance_uri = rdflib.URIRef(str(annotation.location.instance_uri))
         self._g.add((
             instance_uri,
             RDF.type,
             self._oas[annotation.value],
         ))
-        # print(f'Adding "{instance_loc} a {self._oas["ParsedStructure"]}')
         self._g.add((
             instance_uri,
             RDF.type,
@@ -66,18 +63,19 @@ class OasGraph:
         ))
 
     def add_oaschildren(self, annotation, instance):
-        parent_uri = rdflib.URIRef(str(annotation.instance_uri))
+        location = annotation.location
+        parent_uri = rdflib.URIRef(str(location.instance_uri))
         for child in annotation.value:
             child = child.value
             if '{' not in child:
                 child_ptr = RelativeJSONPointer(child)
-                parent_obj = annotation.instance_ptr.evaluate(instance)
+                parent_obj = location.instance_ptr.evaluate(instance)
                 try:
                     child_obj = child_ptr.evaluate(parent_obj)
                 except RelativeJSONPointerError:
                     continue
                 child_path = child_obj.path
-                iu = annotation.instance_uri
+                iu = location.instance_uri
                 child_uri = rdflib.URIRef(str(iu.copy(
                     fragment=child_path.uri_fragment(),
                 )))
@@ -94,7 +92,27 @@ class OasGraph:
 
 
 
+class Annotation:
+    def __init__(self, unit, instance_base=None):
+        self._location, self._keyword = Location.get(unit, instance_base)
+        self._value = unit['annotation']
+
+    @property
+    def location(self):
+        return self._location
+
+    @property
+    def keyword(self):
+        return self._keyword
+
+    @property
+    def value(self):
+        return self._value
+
+
 class Location:
+    _cache = {}
+
     @classmethod
     def default_instance_base_uri(cls):
         try:
@@ -103,73 +121,75 @@ class Location:
             cls._dibu = URI(f'urn:uuid:{uuid4()}') 
         return cls._dibu
 
-    def __init__(
-        self,
-        *,
-        basic_unit=None,
-        list_unit=None,
-        instance_base=None,
-    ):
-        # TODO: "list" output unit support
-        if basic_unit is None:
-            if list_unit is None:
-                raise ValueError(
-                    "Must supply either 'basic_unit' or 'list_unit'"
-                )
-            else:
-                raise NotImplementedError("'list' output not yet supported")
-            
-        unit = basic_unit
-
-        self._instance_resource_uri = (
+    @classmethod
+    def get(cls, unit, instance_base=None):
+        instance_resource_uri = (
             self.default_instance_base_uri() if instance_base is None else
             URI(instance_base)
         )
 
         # We can use jschon's JSONPointer with any schema implementation
-        self._instance_ptr = JSONPointer(unit['instanceLocation'])
-        self._instance_uri = self._instance_resource_uri.copy(
-            fragment=self._instance_ptr.uri_fragment()
+        instance_ptr = JSONPointer(unit['instanceLocation'])
+        instance_uri = instance_resource_uri.copy(
+            fragment=instance_ptr.uri_fragment()
         )
         # To find the evaluation path and schema location, we need
         # to strip off the last JSON Pointer segment of keywordLocation
         # and absoluteKeywordLocation, respectively.
-        self._keyword_eval_ptr = JSONPointer(unit['keywordLocation'])
-        self._eval_ptr = self._keyword_eval_ptr[:-1]
-        self._keyword = self._keyword_eval_ptr[-1]
+        keyword_eval_ptr = JSONPointer(unit['keywordLocation'])
+        eval_ptr = keyword_eval_ptr[:-1]
+        keyword = keyword_eval_ptr[-1]
+        try:
+            return cls._cache[(instance_uri, eval_ptr)], keyword
+        except KeyError:
+            l = Location(unit,
+                eval_ptr=eval_ptr,
+                instance_ptr=instance_ptr,
+                instance_uri=instance_uri,
+                instance_resource_uri=instance_resource_uri,
+            )
+            cls._cache[l] = l
+            return l, keyword
 
-        self._keyword_uri = URI(unit['absoluteKeywordLocation'])
-        self._schema_keyword_ptr = JSONPointer.parse_uri_fragment(
-            self._keyword_uri.fragment,
+    def __init__(
+        self,
+        unit,
+        *,
+        eval_ptr,
+        instance_ptr,
+        instance_uri,
+        instance_resource_uri,
+        instance_base=None
+    ):
+        self._instance_resource_uri = instance_resource_uri
+        self._instance_ptr = instance_ptr
+        self._instance_uri = instance_uri
+        self._eval_ptr = eval_ptr
+
+
+        keyword_uri = URI(unit['absoluteKeywordLocation'])
+        schema_keyword_ptr = JSONPointer.parse_uri_fragment(
+            keyword_uri.fragment,
         )
-        self._schema_uri = self._keyword_uri.copy(
-            fragment=self._schema_keyword_ptr[:-1].uri_fragment(),
+        self._schema_uri = keyword_uri.copy(
+            fragment=schema_keyword_ptr[:-1].uri_fragment(),
         )
-        self._schema_resource_uri = self.keyword_uri.copy(fragment=None)
-        self._value = unit['annotation']
+        self._schema_resource_uri = keyword_uri.copy(fragment=None)
 
     def __hash__(self):
-        return (self._instance_uri, self._keyword_eval_ptr)
+        return hash((self._instance_uri, self._eval_ptr))
 
     @property
-    def instance_ptr(self):
-        return self._instance_ptr
+    def instance_resource_uri(self):
+        return self._instance_resource_uri
 
     @property
     def instance_uri(self):
         return self._instance_uri
 
     @property
-    def keyword(self):
-        return self._keyword
-
-    @property
-    def keyword_uri(self):
-        return self._keyword_uri
-
-    @property
-    def keyword_evaluation_ptr(self):
-        return self._keyword_eval_ptr
+    def instance_ptr(self):
+        return self._instance_ptr
 
     @property
     def evaluation_path_ptr(self):
@@ -187,9 +207,6 @@ class Location:
     def schema_keyword_ptr(self):
         return self._schema_keyword_ptr
 
-    @property
-    def value(self):
-        return self._value
 
 class SchemaParser:
     """
@@ -265,14 +282,8 @@ class SchemaParser:
                 if keyword not in self.annotations:
                     continue
 
-            loc = Location(basic_unit=unit)
-
-            entry = new_output
-            for segment in instance_ptr:
-                entry = entry.setdefault(segment, {})
-
-            entry['instanceLocation'] = unit['instanceLocation']
-            entry['schemaLocation'] = str(schema_uri)
+            ann = Annotation(unit)
+            # TODO: TBD
 
 
 class JschonSchemaParser(SchemaParser):
@@ -345,13 +356,13 @@ if __name__ == '__main__':
             # 'oasValues',
         )
     )['annotations']:
-        loc = Location(
-            basic_unit=unit,
+        ann = Annotation(
+            unit,
             instance_base='https://example.com/oad/petstore'
         )
-        method = f'add_{loc.keyword.lower()}'
+        method = f'add_{ann.keyword.lower()}'
         if hasattr(g, method):
-            getattr(g, method)(loc, desc)
+            getattr(g, method)(ann, desc)
         else:
             import sys
             sys.stderr.write(method + '\n')
