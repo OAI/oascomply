@@ -345,7 +345,10 @@ if __name__ == '__main__':
             # 'oasValues',
         )
     )['annotations']:
-        loc = Location(basic_unit=unit)
+        loc = Location(
+            basic_unit=unit,
+            instance_base='https://example.com/oad/petstore'
+        )
         method = f'add_{loc.keyword.lower()}'
         if hasattr(g, method):
             getattr(g, method)(loc, desc)
