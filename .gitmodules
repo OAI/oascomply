@@ -1,0 +1,4 @@
+[submodule "submodules/OpenAPI-Specification"]
+	path = submodules/OpenAPI-Specification
+	url = https://github.com/OAI/OpenAPI-Specification.git
+	branch = main
