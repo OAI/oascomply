@@ -18,8 +18,10 @@ log.setLevel(logging.DEBUG)
 
 # Note that you need 3.0.3 in the URI to get it to resolve.
 # The analogous URI with just 3.0 does not redirect.
-OAS_30_SPEC_BASE_URI = \
-    rfc3986.uri_reference('https://spec.openapis.org/oas/v3.0.3')
+OAS_ONTOLOGY_PREFIXES = {
+    '3.0': 'https://spec.openapis.org/oas/v3.0/ontology#',
+    '3.1': 'https://spec.openapis.org/oas/v3.1/ontology#',
+}
 
 # This is totaly arbitrary.
 DOCUMENT_BASE_URI = rfc3986.uri_reference('https://example.com/oad/')
@@ -124,6 +126,7 @@ class Parser:
         self._use_rdf = use_rdf
         self._rdf_g = None
         self._rdf_nodes = {}
+        self._rdf_oas_ns = {}
 
         self._use_gremlin = use_gremlin
         self._gremlin_g = None
@@ -133,11 +136,10 @@ class Parser:
     def __enter__(self):
         if self._use_rdf:
             self._rdf_g = rdflib.Graph()
-            self._rdf_g.bind('oas3.0',
-                rfc3986.uri_reference('#')
-                    .resolve_with(OAS_30_SPEC_BASE_URI)
-                    .unsplit()
-            )
+            for v in ('3.0', '3.1'):
+                self._rdf_oas_ns[v] = rdflib.Namespace(OAS_ONTOLOGY_PREFIXES[v])
+                self._rdf_g.bind(f'oas{v}', self._rdf_oas_ns[v])
+
             # Note that this does not really work as intended
             # in Turtle serialization # because "/" and "~" cannot
             # appear in prefixed names.  All but the root pointer
@@ -201,7 +203,7 @@ class Parser:
                 sys.exit(-1)
 
             schema_file = os.path.join(
-                SCHEMA_DIR, 'oas', f'v{version}', 'schema.yaml'
+                SCHEMA_DIR, 'oas', f'v{version}', 'schema.json'
             )
             with open(schema_file) as schema_fd:
                 oas_schema_data = yaml.safe_load(schema_fd)
@@ -252,7 +254,8 @@ class Parser:
             self._filtered.append(entry)
 
     def _handle_oastype(self, r):
-        oastype = rfc3986.uri_reference(r["annotation"])
+        # TODO: Handle multiple OAS version namespaces.
+        oastype = self._rdf_oas_ns['3.0'][r["annotation"]]
 
         short_type = oastype.fragment
         if self._filtered:
@@ -274,10 +277,9 @@ class Parser:
             self._handle_parent(oad_loc_ptr, parent_loc_ptr)
 
     def _graph_type(self, oastype, oad_loc_ptr):
-        # oastypes are nodes in RDF, but labels in Gremlin
         if self._use_rdf:
             if oastype not in self._rdf_nodes:
-                self._rdf_nodes[oastype] = rdflib.URIRef(oastype.unsplit())
+                self._rdf_nodes[oastype] = oastype
 
         if oad_loc_ptr not in self._seen:
             oad_loc_uri = self._api_desc_base_uri.copy_with(
@@ -330,7 +332,7 @@ class Parser:
 
         if self._use_rdf:
             if delta not in self._rdf_nodes:
-                delta_uri = parent_type.copy_with(
+                delta_uri = rfc3986.uri_reference(parent_type).copy_with(
                     fragment=rfc3986.uri_reference(
                         '#' + parent_type.fragment + f'.{delta}'
                     ).fragment,
@@ -353,11 +355,8 @@ class Parser:
             if self._use_rdf:
                 self._rdf_g.add((
                     self._rdf_nodes[src],
-                    rdflib.URIRef(
-                        OAS_30_SPEC_BASE_URI.copy_with(
-                            fragment='reference-object.target',
-                        ).unsplit()
-                    ),
+                    # TODO: Multiple version support
+                    self._rdf_30['referenceTarget'],
                     self._rdf_nodes[dest],
                 ))
             if self._use_gremlin:
