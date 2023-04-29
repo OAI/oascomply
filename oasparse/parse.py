@@ -135,20 +135,10 @@ class Parser:
 
     def __enter__(self):
         if self._use_rdf:
-            self._rdf_g = rdflib.Graph()
+            self._rdf_g = rdflib.Graph(base=self._api_desc_base_uri.unsplit())
             for v in ('3.0', '3.1'):
                 self._rdf_oas_ns[v] = rdflib.Namespace(OAS_ONTOLOGY_PREFIXES[v])
                 self._rdf_g.bind(f'oas{v}', self._rdf_oas_ns[v])
-
-            # Note that this does not really work as intended
-            # in Turtle serialization # because "/" and "~" cannot
-            # appear in prefixed names.  All but the root pointer
-            # fragment in descriptions include "/".
-            self._rdf_g.bind('apidesc',
-                rfc3986.uri_reference('#')
-                    .resolve_with(self._api_desc_base_uri)
-                    .unsplit()
-            )
 
         if self._use_gremlin:
             self._gremlin_g, self._gremlin_conn = \
@@ -296,6 +286,11 @@ class Parser:
                     self._rdf_nodes[oad_loc_ptr],
                     RDF.type,
                     self._rdf_nodes[oastype],
+                ))
+                self._rdf_g.add((
+                    self._rdf_nodes[oad_loc_ptr],
+                    RDF.type,
+                    self._rdf_oas_ns['3.0']['ParsedStructure'],
                 ))
 
             if self._use_gremlin:
