@@ -1,8 +1,16 @@
-from jschon.vocabulary.annotation import AnnotationKeyword
+from jschon.vocabulary import Keyword
 
-class OasType(AnnotationKeyword):
+
+class _AnnotationKeyword(Keyword):
+    def evaluate(self, instance, result):
+        result.annotate(self.json.data)
+        result.noassert()
+
+
+class OasType(_AnnotationKeyword):
     key = 'oasType'
 
-class OasSubType(AnnotationKeyword):
+
+class OasSubType(_AnnotationKeyword):
     key = 'oasSubType'
 
