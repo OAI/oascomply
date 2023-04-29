@@ -11,12 +11,6 @@ from jschon.jsonpointer import JSONPointer
 import rdflib
 from rdflib.namespace import RDF
 
-from gremlin_python.process.graph_traversal import __
-from gremlin_python.process.anonymous_traversal \
-    import traversal as gremlin_traversal
-from gremlin_python.driver.driver_remote_connection import \
-    DriverRemoteConnection as GremlinRemoteConnection
-
 from oastype4jschon import OasType, OasSubType
 
 log = logging.getLogger('oasparse')
@@ -74,6 +68,12 @@ def init_jschon():
     return catalog
 
 def init_gremlin(drop_all=True):
+    from gremlin_python.process.graph_traversal import __
+    from gremlin_python.process.anonymous_traversal \
+        import traversal as gremlin_traversal
+    from gremlin_python.driver.driver_remote_connection import \
+        DriverRemoteConnection as GremlinRemoteConnection
+
     gremlin_conn = GremlinRemoteConnection(
         "ws://localhost:8182/gremlin",
         "g",
