@@ -1,10 +1,7 @@
 import sys, os.path, io, logging, json
 from collections import defaultdict
 
-from ruamel.yaml import YAML
-yaml=YAML(typ='safe')
-yaml.default_flow_style = False
-yaml.indent(offset=2)
+import yaml
 
 import rfc3986
 
@@ -187,7 +184,7 @@ class Parser:
         api_desc_file = os.path.join(DESC_DIR, f'{self._api_desc_name}.yaml')
         try:
             with open(api_desc_file) as desc_fd:
-                return yaml.load(desc_fd)
+                return yaml.safe_load(desc_fd)
 
         except FileNotFoundError:
             log.debug(f'File "{api_desc_file}" does not exist')
@@ -207,7 +204,7 @@ class Parser:
                 SCHEMA_DIR, 'oas', f'v{version}', 'schema.yaml'
             )
             with open(schema_file) as schema_fd:
-                oas_schema_data = yaml.load(schema_fd)
+                oas_schema_data = yaml.safe_load(schema_fd)
 
             init_jschon()
             oas_schema = jschon.JSONSchema(oas_schema_data)
@@ -389,9 +386,7 @@ class Parser:
             ):
                 output['annotations'].append(a)
 
-        # TODO: Sort out pyyaml vs ruamel.yaml
-        import yaml as pyyaml
-        pyyaml.dump(output, sys.stdout, indent=2)
+        yaml.dump(output, sys.stdout, indent=2)
 
     def serialize_gremlin(self, include=None, exclude=None, sort_by='location'):
         gremlins = []
