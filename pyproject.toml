@@ -5,6 +5,9 @@ description = "OpenAPI Specification Compliance Parser"
 authors = ["Henry H. Andrews <andrews_henry@yahoo.com>"]
 readme = "README.md"
 
+[tool.poetry.scripts]
+load-desc = 'oasparse.apidescription:load'
+
 [tool.poetry.dependencies]
 python = "^3.8"
 jschon = "^0.10.2"

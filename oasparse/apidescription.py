@@ -2,6 +2,7 @@ import argparse
 import json
 from pathlib import Path
 from uuid import uuid4
+from collections import namedtuple
 from typing import Any, Optional, Tuple
 
 from jschon import (
@@ -11,7 +12,10 @@ from jschon import (
 )
 import rdflib
 from rdflib.namespace import RDF
+import rfc3987
 import yaml
+import json_source_map as jmap
+import yaml_source_map as ymap
 
 __all__ = [
     'ApiDescription',
@@ -191,54 +195,122 @@ class ApiDescription:
                 return None
 
 
-def _process_resource_arg(r):
+def _process_resource_arg(r, prefixes):
     if isinstance(r, str):
         path = Path(r)
-        uri = path.as_uri()
+        full_path = path.resolve()
+        uri = full_path.as_uri()
+        for p in prefixes:
+            try:
+                rel = full_path.relative_to(p.dir)
+                uri = p.prefix + str(rel.with_suffix(''))
+            except ValueError:
+                pass
     else:
         path = Path(r[0])
         uri = r[1]
-    filetype = path.suffix or 'yaml'
+    filetype = path.suffix[1:] or 'yaml'
     if filetype == 'yml':
         filetype = 'yaml'
 
-    # TODO: Use content string to build source line map. Unclear whether
-    #       we will always need the line map or only on errors.
     content = path.read_text()
     if filetype == 'json':
         data = json.loads(content)
+        sourcemap = jmap.calculate(content)
     elif filetype == 'yaml':
         data = yaml.safe_load(content)
+        sourcemap = ymap.calculate(content)
     else:
         raise ValueError(f"Unsupported file type {filetype!r}")
 
     return {
-        'content': content,
         'data': data,
+        'sourcemap': sourcemap,
         'path': str(path),
         'uri': uri,
     }
 
 
+UriPrefix = namedtuple('UriPrefix', ['prefix', 'dir'])
+
+
+def _process_prefix(p):
+    try:
+        parsed = rfc3987.parse(p[0], rule='IRI')
+        if parsed['scheme'] == 'file':
+            raise ValueError(
+                f"'file:' URIs cannot be used as URI prefixes: <{p[0]}>"
+            )
+        if parsed['query'] or parsed['fragment']:
+            raise ValueError(
+                f"URI prefixes cannot contain a query or fragment: <{p[0]}>"
+            )
+        if not parsed['path'].endswith('/'):
+            raise ValueError(
+                "URI prefixes must include a path that ends with '/': "
+                f"<{p[p]}>"
+            )
+
+        path = Path(p[1]).resolve()
+        if not path.is_dir():
+            raise ValueError(
+                "Path mapped to URI prefix must be an existing directory: " +
+                repr(p[1])
+            )
+        return UriPrefix(p[0], path)
+
+    except ValueError:
+        try:
+            rfc3987.parse(p[0], rule='IRI_reference')
+            raise ValueError(f'URI prefixes cannot be relative: <{p[0]}>')
+        except ValueError:
+            raise ValueError(
+                f'URI prefix <{p[0]}> does not appear to be a URI'
+            )
+
+
 def load():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-f',
-        '--file',
+        '-o',
+        '--oas-file',
         action='append',
         dest='resources',
         help="An API description file as a local file path, which will"
              "appear in output as the corresponding 'file:' URL",
     )
     parser.add_argument(
-        '-F',
-        '--identified-file',
+        '-O',
+        '--aliased-oas-file',
         nargs=2,
         action='append',
         dest='resources',
         help="An API description file path followed by the URI used "
-             "to identify it in references and output.",
+             "to identify it in references and output",
+    )
+    parser.add_argument(
+        '-p',
+        '--uri-prefix',
+        nargs=2,
+        action='append',
+        dest='prefixes',
+        help="A URI prefix, ending in a '/', followed by a filesystem "
+             "directory; all paths passed that are not already aliased "
+             "to a URI that are within the given directory will be assigned "
+             "a URI constructed by replacing the directory with the prefix "
+             "and removing any file extension (e.g. '.yaml' or '.json'); "
+             "Note that 'file:' URIs are not allowed as prefixes as the "
+             "default behavior is to use the appropriate 'file:' URI"
     )
 
     args = parser.parse_args()
-    resources = [_process_resource_arg(r) for r in args.resources]
+
+    prefixes = [_process_prefix(p) for p in args.prefixes] \
+        if args.prefixes \
+        else []
+    # Reverse sort so that the first matching prefix is the longest
+    prefixes.sort(reverse=True)
+
+    resources = [_process_resource_arg(r, prefixes) for r in args.resources]
+    import pprint
+    pprint.pprint(resources)
