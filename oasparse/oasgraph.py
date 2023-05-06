@@ -58,7 +58,7 @@ class OasGraph:
                 rdflib.Literal(filename),
             ))
 
-    def add_oastype(self, annotation, instance):
+    def add_oastype(self, annotation, instance, sourcemap):
         # to_rdf()
         instance_uri = rdflib.URIRef(str(annotation.location.instance_uri))
         self._g.add((
@@ -71,8 +71,31 @@ class OasGraph:
             RDF.type,
             self._oas['ParsedStructure'],
         ))
+        if sourcemap:
+            self.add_sourcemap(
+                instance_uri,
+                annotation.location.instance_ptr,
+                sourcemap,
+            )
 
-    def add_oaschildren(self, annotation, instance):
+    def add_sourcemap(self, instance_rdf_uri, instance_ptr, sourcemap):
+            if len(instance_ptr):
+                map_key = '/' + '/'.join(instance_ptr)
+            else:
+                map_key = ''
+            entry = sourcemap[map_key]
+            self._g.add((
+                instance_rdf_uri,
+                self._oas['line'],
+                rdflib.Literal(entry.value_start.line),
+            ))
+            self._g.add((
+                instance_rdf_uri,
+                self._oas['column'],
+                rdflib.Literal(entry.value_start.column),
+            ))
+
+    def add_oaschildren(self, annotation, instance, sourcemap):
         location = annotation.location
         # to_rdf()
         parent_uri = rdflib.URIRef(str(location.instance_uri))
@@ -101,10 +124,16 @@ class OasGraph:
                     self._oas['parent'],
                     parent_uri,
                 ))
+                if sourcemap:
+                    self.add_sourcemap(
+                        child_uri,
+                        child_path,
+                        sourcemap,
+                    )
             except jschon.RelativeJSONPointerError as e:
                 logger.error(str(e))
 
-    def add_oasreferences(self, annotation, instance):
+    def add_oasreferences(self, annotation, instance, sourcemap):
         location = annotation.location
         remote_resources = []
         for refloc, reftype in annotation.value.items():
@@ -140,6 +169,12 @@ class OasGraph:
                         #       assume Schema as a test run.
                         reftype = 'Schema'
                     remote_resources.append((str(ref_target_uri), reftype))
+                if sourcemap:
+                    self.add_sourcemap(
+                        ref_src_uri,
+                        ref_source_path,
+                        sourcemap,
+                    )
             except (ValueError, jschon.RelativeJSONPointerError) as e:
                 logger.error(str(e))
         return remote_resources

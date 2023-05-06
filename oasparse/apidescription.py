@@ -98,15 +98,18 @@ class ApiDescription:
 
     def get(self, uri: str) -> Optional[Any]:
         try:
-            return self._contents[uri]
+            return self._contents[uri], self._sources.get(uri)
         except KeyError:
             absolute, fragment = urllib.parse.urldefrag(uri)
             try:
                 data = self._contents[uri]
-                return JSONPointer.parse_uri_fragment(fragment).evaluate(data)
+                return (
+                    JSONPointer.parse_uri_fragment(fragment).evaluate(data),
+                    self._sources.get(uri),
+                )
 
             except (KeyError, JSONPointerError):
-                return None
+                return None, None
 
     def validate(self, resource_uri=None, oastype='OpenAPI'):
         sp = SchemaParser.get_parser(
@@ -117,7 +120,10 @@ class ApiDescription:
             assert oastype == 'OpenAPI'
             resource_uri = self._primary_uri
 
-        data = self.get(resource_uri)
+        data, sourcemap = self.get(resource_uri)
+        logger.error('\n'.join(sourcemap.keys()))
+        assert data is not None
+
         output = sp.parse(data, oastype)
         to_validate = {}
         for unit in output['annotations']:
@@ -127,7 +133,7 @@ class ApiDescription:
             # Using a try/except here can result in confusion if something
             # else produces an AttributeError, so use hasattr()
             if hasattr(self._g, method):
-                if resources := getattr(self._g, method)(ann, data):
+                if resources := getattr(self._g, method)(ann, data, sourcemap):
                     for uri, oastype in resources:
                         to_validate[uri] = oastype
             else:
