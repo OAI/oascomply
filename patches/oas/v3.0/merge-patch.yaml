@@ -285,6 +285,8 @@ $defs:
 
   Reference:
     oasType: Reference
+    oasReferences:
+      0/$ref: true
 
   RequestBody:
     oasType: RequestBody

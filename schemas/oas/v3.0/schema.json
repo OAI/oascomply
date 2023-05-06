@@ -75,7 +75,10 @@
           "format": "uri-reference"
         }
       },
-      "oasType": "Reference"
+      "oasType": "Reference",
+      "oasReferences": {
+        "0/$ref": true
+      }
     },
     "Info": {
       "type": "object",
