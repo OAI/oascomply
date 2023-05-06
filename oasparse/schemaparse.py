@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from uuid import uuid4
 from typing import Any, Optional
+import logging
 
 from jschon import (
     create_catalog, JSON, JSONSchema, URI,
@@ -11,89 +12,14 @@ import rdflib
 from rdflib.namespace import RDF
 import yaml
 
+from oasparse.oasgraph import OasGraph
+
 __all__ = [
+    'Annotation',
     'SchemaParser',
 ]
 
-
-class OasParser:
-    def __init__(self, *documents):
-        # load documents
-        # determine or assign URIs
-        # load schema
-        # set everything up to be referenced w/URIs and/or JSON Pointers
-
-        self._documents = {}
-        for d in documents:
-            with open(d, encoding='utf-8') as d_fp:
-                self._documents[f'urn:uuid:{uuid4()}'] = \
-                    json.load(d_fp) if d.endswith('.json') else \
-                    yaml.safe_load(d_fp)
-
-    def parse(self):
-        pass
-
-
-class OasGraph:
-    def __init__(self, version, base=None):
-        if version not in ('3.0', '3.1'):
-            raise ValueError(f'OAS v{version} is not supported.')
-        if version == '3.1':
-            raise ValueError(f'OAS v3.1 support TBD.')
-
-        self._g = rdflib.Graph(base=base)
-        self._oas = rdflib.Namespace(
-            f'https://spec.openapis.org/oas/v{version}/ontology#'
-        )
-        self._g.bind('oas3.0', self._oas)
-
-    def serialize(self, *args, **kwargs):
-        return self._g.serialize(*args, **kwargs)
-
-    def add_oastype(self, annotation, instance):
-        # to_rdf()
-        instance_uri = rdflib.URIRef(str(annotation.location.instance_uri))
-        self._g.add((
-            instance_uri,
-            RDF.type,
-            self._oas[annotation.value],
-        ))
-        self._g.add((
-            instance_uri,
-            RDF.type,
-            self._oas['ParsedStructure'],
-        ))
-
-    def add_oaschildren(self, annotation, instance):
-        location = annotation.location
-        # to_rdf()
-        parent_uri = rdflib.URIRef(str(location.instance_uri))
-        for child in annotation.value:
-            child = child.value
-            if '{' not in child:
-                child_ptr = RelativeJSONPointer(child)
-                parent_obj = location.instance_ptr.evaluate(instance)
-                try:
-                    child_obj = child_ptr.evaluate(parent_obj)
-                except RelativeJSONPointerError:
-                    continue
-                child_path = child_obj.path
-                iu = location.instance_uri
-                # replace fragment; to_rdf
-                child_uri = rdflib.URIRef(str(iu.copy(
-                    fragment=child_path.uri_fragment(),
-                )))
-                self._g.add((
-                    parent_uri,
-                    self._oas[child_ptr.path[0]],
-                    child_uri,
-                ))
-                self._g.add((
-                    child_uri,
-                    self._oas['parent'],
-                    parent_uri,
-                ))
-
+logger = logging.getLogger(__name__)
 
 
 class Annotation:
@@ -222,7 +148,7 @@ class SchemaParser:
     """
 
     @classmethod
-    def get_parser(config, annotations=()):
+    def get_parser(cls, config, *args, annotations=(), **kwargs):
         """
         Instantiate a parser based on the ``json schema`` config entry.
 
@@ -238,7 +164,9 @@ class SchemaParser:
                 f'Unsupported JSON Schema implementation: {impl!r}'
             )
 
-        return JschonSchemaParser(*args, **kwargs)
+        return JschonSchemaParser(
+            config, *args, annotations=annotations, **kwargs,
+        )
 
     def __init__(self, config, annotations=()):
         self._config = config
@@ -247,7 +175,7 @@ class SchemaParser:
         # Used to indicate if the implementation pre-filtered annotations.
         self._filtered = False
 
-    def parse(self, schema_uri, desc_data, output_format='basic'):
+    def parse(self, data, oastype, output_format='basic'):
         raise NotImplementedError
 
     def _process_output(output, output_format):
@@ -301,7 +229,7 @@ class JschonSchemaParser(SchemaParser):
         if not self._catalog:
             self._catalog = create_catalog('2020-12')
 
-        super.__init__(config, annotations)
+        super().__init__(config, annotations)
         self._filtered = True
         with open(
             Path(__file__).parent /
@@ -314,66 +242,27 @@ class JschonSchemaParser(SchemaParser):
         ) as schema_fp:
             self._v30_schema = JSONSchema(json.load(schema_fp))
 
-    def parse(self, schema_uri, desc_data, output_format='basic'):
-        # schema = self._catalog.get_schema(URI(schema_uri))
-        instance = JSON(desc_data)
-        result = self._v30_schema.evaluate(instance)
-        return result.output(output_format, self._annotations)
+    def parse(self, data, oastype, output_format='basic'):
+        schema = self._v30_schema
+        if oastype != 'OpenAPI':
+            try:
+                # TODO: This probably won't work for 3.1
+                schema = schema['$defs'][oastype]
+            except KeyError:
+                logger.error("Can't find schema for oastype {oastype!r}")
+                # TODO: Better error handling
+                raise
 
-def resolve_rjp_template(instance, rjpt):
-    for index, segment in enumerate(rjpt.path):
-        pass
+        result = schema.evaluate(data)
+        if not result.valid:
+            logger.critical(
+                "Schema validation failed!\n\n" +
+                json.dumps(result.output('detailed'), indent=2)
+            )
+            # TODO: better exit strategy
+            raise Exception("Schema vaidation failed!")
 
-if __name__ == '__main__':
-    create_catalog('2020-12')
-    repo_root = (Path(__file__).parent / '..').resolve()
-    with open(
-        repo_root / 'schemas' / 'oas' / 'v3.0' / 'schema.json',
-        encoding='utf-8',
-    ) as schema_fp:
-        v30_schema = JSONSchema(json.load(schema_fp))
-    with open(
-        repo_root / 'descriptions' / 'petstore.yaml',
-        encoding='utf-8',
-    ) as desc_fp:
-        desc = JSON(yaml.safe_load(desc_fp))
-
-    result = v30_schema.evaluate(desc)
-    if not result.valid:
-        import sys
-        json.dump(result.output('detailed'), sys.stderr)
-        sys.stderr.write('\n')
-        sys.exit(-1)
-
-    g = OasGraph('3.0', base=str(Location._instance_base_uri()))
-    for unit in result.output(
-        'basic',
-        annotations=(
-            # 'oasApiLinks',
-            'oasChildren',
-            # 'oasDescriptionLinks',
-            # 'oasExamples',
-            # 'oasExtensible',
-            # 'oasImplicitReferences',
-            # 'oasLiteralType',
-            # 'oasLiterals',
-            # 'oasReferenceConflict',
-            # 'oasReferences',
-            'oasType',
-            # 'oasUniqueKey',
-            # 'oasValues',
+        return result.output(
+            output_format,
+            annotations=self._annotations,
         )
-    )['annotations']:
-        ann = Annotation(
-            unit,
-            instance_base='https://example.com/oad/petstore',
-        )
-        method = f'add_{ann.keyword.lower()}'
-        if hasattr(g, method):
-            getattr(g, method)(ann, desc)
-        else:
-            import sys
-            sys.stderr.write(method + '\n')
-            pass
-
-    print(g.serialize(format='turtle'))
