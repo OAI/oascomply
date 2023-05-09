@@ -6,7 +6,8 @@ authors = ["Henry H. Andrews <andrews_henry@yahoo.com>"]
 readme = "README.md"
 
 [tool.poetry.scripts]
-load-desc = 'oasparse.apidescription:ApiDescription.load'
+oascomply = 'oasparse.apidescription:ApiDescription.load'
+patch-schemas = 'oasparse.patch:patch'
 
 [tool.poetry.dependencies]
 python = "^3.8"

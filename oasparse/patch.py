@@ -9,7 +9,7 @@ import yaml
 import json_merge_patch
 from jschon.jsonpatch import JSONPatch
 
-argparse.ArgumentParser(description="""
+DESCRIPTION = """
 Load the standard OAS 3.x schemas from submodules/OpenAPI-Specification,
 migrate older schemas to 2020-12 using alterschema, apply the appropriate
 patches from patches/oas/..., and write the patched schemas to schemas/oas/...
@@ -18,10 +18,15 @@ patched schemas should be checked in, matching the current state of the
 submodule.  See CONTRIBUTING.md for more detail on when and how to update.
 
 Note that currently only OAS v3.0 is supported.
-""").parse_args()
+"""
 
 
-def main():
+def patch():
+    argparse.ArgumentParser(
+        description=DESCRIPTION,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    ).parse_args()
+
     repo_root = (Path(__file__).parent / '..' ).resolve() 
     oas_schema_dir = (
         repo_root / 'submodules' / 'OpenAPI-Specification' / 'schemas'
@@ -82,7 +87,3 @@ def main():
         patched_fp.write('\n')
     print("Done!")
     print()
-
-
-if __name__ == '__main__':
-    main()
