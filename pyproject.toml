@@ -7,7 +7,7 @@ readme = "README.md"
 
 [tool.poetry.scripts]
 oascomply = 'oasparse.apidescription:ApiDescription.load'
-patch-schemas = 'oasparse.patch:patch'
+patch-oas-schemas = 'oasparse.patch:patch'
 
 [tool.poetry.dependencies]
 python = "^3.8"
