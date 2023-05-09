@@ -18,20 +18,27 @@ logger = logging.getLogger(__name__)
 
 
 class OasGraph:
-    def __init__(self, version, base=None):
+    def __init__(self, version, base=None, output_format='nt11'):
         if version not in ('3.0', '3.1'):
             raise ValueError(f'OAS v{version} is not supported.')
         if version == '3.1':
             raise ValueError(f'OAS v3.1 support TBD.')
 
+        self._output_format = output_format
         self._g = rdflib.Graph(base=rdflib.URIRef(base))
         self._oas = rdflib.Namespace(
             f'https://spec.openapis.org/oas/v{version}/ontology#'
         )
         self._g.bind('oas3.0', self._oas)
 
-    def serialize(self, *args, **kwargs):
-        return self._g.serialize(*args, **kwargs)
+    def serialize(self, *args, output_format=None, **kwargs):
+        logger.critical(f'Self: {self._output_format}')
+        logger.critical(output_format or self._output_format)
+        return self._g.serialize(
+            *args,
+            format=output_format or self._output_format,
+            **kwargs,
+        )
 
     def add_resource(self, location, iri):
         rdf_node = rdflib.URIRef(iri)
@@ -131,7 +138,7 @@ class OasGraph:
                         sourcemap,
                     )
             except jschon.RelativeJSONPointerError as e:
-                logger.error(str(e))
+                pass
 
     def add_oasreferences(self, annotation, instance, sourcemap):
         location = annotation.location
@@ -161,9 +168,7 @@ class OasGraph:
                 # TODO: elide the reference with a new edge
 
                 # compare absolute forms
-                logger.error(f'{ref_src_uri.defrag()} != {ref_target_uri.defrag()}')
                 if ref_src_uri.defrag() != ref_target_uri.defrag():
-                    logger.error(f'Pushing {ref_target_uri}')
                     if reftype is True:
                         # TODO: Handle this correctly, for now just
                         #       assume Schema as a test run.
@@ -176,5 +181,5 @@ class OasGraph:
                         sourcemap,
                     )
             except (ValueError, jschon.RelativeJSONPointerError) as e:
-                logger.error(str(e))
+                pass
         return remote_resources

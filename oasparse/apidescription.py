@@ -86,6 +86,7 @@ class ApiDescription:
         path: Optional[Path] = None,
         url: Optional[str] = None,
         sourcemap: Optional[Mapping] = None,
+        output_format: str = 'nt11',
     ) -> None:
         if 'openapi' not in data:
             raise ValueError(
@@ -111,6 +112,7 @@ class ApiDescription:
         self._g = OasGraph(
             self._version[:self._version.rindex('.')],
             base=rfc3987.compose(**base_uri),
+            output_format=output_format,
         )
         self._primary_uri = uri
 
@@ -193,6 +195,9 @@ class ApiDescription:
         for uri, oastype in to_validate.items():
             if uri not in self._validated:
                 self.validate(uri, oastype)
+
+    def serialize(self, *args, output_format=None, **kwargs):
+        return self._g.serialize(*args, output_format=output_format, **kwargs)
 
     @classmethod
     def _process_resource_arg(cls, r, prefixes, create_source_map):
@@ -374,8 +379,14 @@ class ApiDescription:
             '--output-format',
             default='nt11',
             choices=(
-                'none',                     # Do not write to stdout
-                'hext',                     # Hextuples in NDJSON
+                {
+                    'none', # Do not write to stdout
+                    'hext', # Hextuples in NDJSON
+                }.union(
+                    OUTPUT_FORMATS_LINE
+                ).union(
+                    OUTPUT_FORMATS_STRUCTURED
+                )
             ),
             help="Set the format, if any, for writing the graph to stdout. "
                  "This is passed through to the rdflib python library, but "
@@ -390,9 +401,7 @@ class ApiDescription:
             choices=(('none',)),
             help="TODO: Support storing to various kinds of databases."
         )
-
         args = parser.parse_args()
-
         prefixes = [cls._process_prefix(p) for p in args.prefixes] \
             if args.prefixes \
             else []
@@ -416,11 +425,13 @@ class ApiDescription:
             )
             return -1
         primary = candidates[0]
+        logger.critical(args.output_format)
         desc = ApiDescription(
             primary['data'],
             primary['uri'],
             path=primary['path'],
             sourcemap=primary['sourcemap'],
+            output_format=args.output_format,
         )
         for r in resources:
             if r['uri'] != primary['uri']:
@@ -433,4 +444,4 @@ class ApiDescription:
             logger.info(f"Adding document {r['path']!r} <{r['uri']}>")
 
         desc.validate()
-        print(desc._g.serialize())
+        print(desc.serialize())
