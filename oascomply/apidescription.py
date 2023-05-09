@@ -1,4 +1,5 @@
 import argparse
+import re
 import json
 from pathlib import Path
 import urllib
@@ -17,7 +18,9 @@ import json_source_map as jmap
 import yaml_source_map as ymap
 from yaml_source_map.errors import InvalidYamlError
 
-from oascomply.oasgraph import OasGraph
+from oascomply.oasgraph import (
+    OasGraph, OUTPUT_FORMATS_LINE, OUTPUT_FORMATS_STRUCTURED,
+)
 from oascomply.schemaparse import Annotation, SchemaParser
 
 __all__ = [
@@ -25,34 +28,6 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
-
-
-OUTPUT_FORMATS_LINE = frozenset({
-    'nt11',                     # N-Triples UTF-8 encoded (default)
-    'nt',                       # N-Triples
-    'ntriples',                 # N-Triples
-    'application/n-triples',    # N-Triples
-    'nquads',                   # N-Quads
-    'applicaation/n-quads',     # N-Quads
-})
-OUTPUT_FORMATS_STRUCTURED = frozenset({
-    'ttl',                      # Turtle
-    'turtle',                   # Turtle
-    'text/turtle',              # Turtle
-    'longturtle',               # Turtle with more space
-    'ttl2',                     # Turtle with more space
-    'n3',                       # Notation-3
-    'text/n3',                  # Notation-3
-    'json-ld',                  # JSON-LD
-    'application/ld+json',      # JSON-LD
-    'xml',                      # RDF/XML
-    'application/rdf+xml',      # RDF/XML
-    'pretty-xml',               # RDF/XML (prettier)
-    'trig',                     # Trig (Turtle for quads)
-    'application/trig',         # Trig (Turtle for quads)
-    'trix',                     # Trix (RDF/XML for quads)
-    'application/trix',         # Trix (RDF/XML for quads)
-})
 
 HELP_EPILOG = """
 See the README for further information on:
@@ -86,7 +61,6 @@ class ApiDescription:
         path: Optional[Path] = None,
         url: Optional[str] = None,
         sourcemap: Optional[Mapping] = None,
-        output_format: str = 'nt11',
     ) -> None:
         if 'openapi' not in data:
             raise ValueError(
@@ -99,20 +73,20 @@ class ApiDescription:
                 raise NotImplementedError("OAS v3.1 support stil in progress")
             raise ValueError(f"OAS v{self._version} not supported!")
 
-        base_uri = rfc3987.parse(uri, rule='IRI')
-        if base_uri['path'] and not base_uri['path'].endswith('/'):
+        parsed_base = rfc3987.parse(uri, rule='IRI')
+        if parsed_base['path'] and not parsed_base['path'].endswith('/'):
             # RDF serialization works better with a directory
             # as a base IRI, particularly for multi-document
             # API descriptions within a single directory.
             # Otherwise it fails to notice many opportunities to
             # shorten IRI-references.
-            base_uri['path'] = (
-                base_uri['path'][:base_uri['path'].rindex('/') + 1]
+            parsed_base['path'] = (
+                parsed_base['path'][:parsed_base['path'].rindex('/') + 1]
             )
+        self._base_uri=rfc3987.compose(**parsed_base)
+
         self._g = OasGraph(
             self._version[:self._version.rindex('.')],
-            base=rfc3987.compose(**base_uri),
-            output_format=output_format,
         )
         self._primary_uri = uri
 
@@ -196,8 +170,8 @@ class ApiDescription:
             if uri not in self._validated:
                 self.validate(uri, oastype)
 
-    def serialize(self, *args, output_format=None, **kwargs):
-        return self._g.serialize(*args, output_format=output_format, **kwargs)
+    def serialize(self, *args, output_format='nt11', **kwargs):
+        return self._g.serialize(*args, output_format=output_format, base=self._base_uri, **kwargs)
 
     @classmethod
     def _process_resource_arg(cls, r, prefixes, create_source_map):
@@ -286,12 +260,16 @@ class ApiDescription:
     def load(cls):
         class CustomArgumentParser(argparse.ArgumentParser):
             def _fix_message(self, message):
-                return message.replace(
-                    'FILES [FILES ...]',
-                    'FILE [URI] [TYPE]',
-                ).replace(
-                    'DIRECTORIES [DIRECTORIES ...]',
-                    'DIRECTORY [URI_PREFIX]',
+                return re.sub(
+                    r'{[^}]*ttl[^}]*}',
+                    '{nt, ttl, n3, trig, json-ld, xml, nquads, trix, hext, ...}',
+                    message.replace(
+                        'FILES [FILES ...]',
+                        'FILE [URI] [TYPE]',
+                    ).replace(
+                        'DIRECTORIES [DIRECTORIES ...]',
+                        'DIRECTORY [URI_PREFIX]',
+                    ),
                 )
 
             def format_usage(self):
@@ -376,22 +354,22 @@ class ApiDescription:
         parser.add_argument(
             '-o',
             '--output-format',
-            default='nt11',
+            nargs='?',
+            const='nt11',
             choices=(
                 {
                     'none', # Do not write to stdout
-                    'hext', # Hextuples in NDJSON
                 }.union(
                     OUTPUT_FORMATS_LINE
                 ).union(
                     OUTPUT_FORMATS_STRUCTURED
                 )
             ),
-            help="Set the format, if any, for writing the graph to stdout. "
-                 "This is passed through to the rdflib python library, but "
-                 "only 'nt11' (N-Triples with UTF-8 encoding) is tested. "
-                 "The default is 'nt11' unless '-t' is passed, in which "
-                 "case the default is 'none' (no output)."
+            help="Serialize the parsed graph to stdout in the given format, "
+                 "or 'nt11' (N-Triples with UTF-8 encoding) if no format name "
+                 "is provided.  Format names are passed through to rdflib, "
+                 "see that library's documentation for the full list of "
+                 "options.",
         )
         parser.add_argument(
             '-t',
@@ -427,13 +405,12 @@ class ApiDescription:
             )
             return -1
         primary = candidates[0]
-        logger.critical(args.output_format)
+
         desc = ApiDescription(
             primary['data'],
             primary['uri'],
             path=primary['path'],
             sourcemap=primary['sourcemap'],
-            output_format=args.output_format,
         )
         for r in resources:
             if r['uri'] != primary['uri']:
@@ -446,4 +423,7 @@ class ApiDescription:
             logger.info(f"Adding document {r['path']!r} <{r['uri']}>")
 
         desc.validate()
-        print(desc.serialize())
+        if args.output_format is not None:
+            print(desc.serialize(output_format=args.output_format))
+        else:
+            print('Your API description is valid!')

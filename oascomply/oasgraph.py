@@ -17,26 +17,59 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 
+OUTPUT_FORMATS_LINE = frozenset({
+    'nt11',                     # N-Triples UTF-8 encoded (default)
+    'nt',                       # N-Triples
+    'ntriples',                 # N-Triples
+    'application/n-triples',    # N-Triples
+    'nquads',                   # N-Quads
+    'application/n-quads',      # N-Quads
+    'hext',                     # Hextuples in NDJSON
+})
+
+
+OUTPUT_FORMATS_STRUCTURED = frozenset({
+    'ttl',                      # Turtle
+    'turtle',                   # Turtle
+    'text/turtle',              # Turtle
+    'longturtle',               # Turtle with more space
+    'ttl2',                     # Turtle with more space
+    'n3',                       # Notation-3
+    'text/n3',                  # Notation-3
+    'json-ld',                  # JSON-LD
+    'application/ld+json',      # JSON-LD
+    'xml',                      # RDF/XML
+    'application/rdf+xml',      # RDF/XML
+    'pretty-xml',               # RDF/XML (prettier)
+    'trig',                     # Trig (Turtle for quads)
+    'application/trig',         # Trig (Turtle for quads)
+    'trix',                     # Trix (RDF/XML for quads)
+    'application/trix',         # Trix (RDF/XML for quads)
+})
+
+
 class OasGraph:
-    def __init__(self, version, base=None, output_format='nt11'):
+    def __init__(self, version):
         if version not in ('3.0', '3.1'):
             raise ValueError(f'OAS v{version} is not supported.')
         if version == '3.1':
             raise ValueError(f'OAS v3.1 support TBD.')
 
-        self._output_format = output_format
-        self._g = rdflib.Graph(base=rdflib.URIRef(base))
+        self._g = rdflib.Graph()
         self._oas = rdflib.Namespace(
             f'https://spec.openapis.org/oas/v{version}/ontology#'
         )
         self._g.bind('oas3.0', self._oas)
 
-    def serialize(self, *args, output_format=None, **kwargs):
-        logger.critical(f'Self: {self._output_format}')
-        logger.critical(output_format or self._output_format)
+    def serialize(self, *args, base=None, output_format=None, **kwargs):
+        """Serialize the graph if and only if an output format is requested."""
+        kw = kwargs.copy()
+        if output_format not in OUTPUT_FORMATS_LINE and base is not None:
+            kw['base'] = base
+
         return self._g.serialize(
             *args,
-            format=output_format or self._output_format,
+            format=output_format,
             **kwargs,
         )
 
