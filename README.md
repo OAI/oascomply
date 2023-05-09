@@ -5,12 +5,22 @@ piece of which is the OpenAPI Specification Compliance Parser.
 
 The OAS Compliance Parser is expected to reach 1.0 status by
 late 2023.  The current status of the project is
-[pre-Milestone 1](https://tinyurl.com/4kth84k8)
+[pre-Milestone 1](https://tinyurl.com/4kth84k8).
+
+Currently, only OAS 3.0 is supported, although OAS 3.1 support is planned.
+
+_**WARNING**: At this stage, this repository changes frequently
+and is not expected to be usable by anyone other than the author._
 
 ## Requirements and Installation
 
-`oascomply` is a Python package with several command-line interfaces,
-most notably the `oascomply` command.
+`oascomply` is a Python package with several command-line interfaces:
+
+* `oascomply` parses and validates OAS 3.x API descriptions
+* `yaml-to-json` does what it says, as converting a YAML API description
+  to JSON will result in substantial performance improvements with `oascomply`
+* `patch-oas-schemas` is used by package maintainers to update the modified
+  OAS 3.x JSON Schemas used by `oascomply`
 
 ### Terminology and typographical conventions
 
@@ -43,11 +53,7 @@ but with full unicode support) are explained as needed in various sections
 below, with examples to clarify whether and why it matters in each case.
 
 Please note that URLs are assumed to comply with RFC 3986, and not
-WHATWG's URL "Living Standard", which is a parsing/serialization specification
-for web browsers.  If you don't know what this means, consider yourself lucky.
-If you are curious,
-[Roy Fielding weighed in on the mess](https://lists.w3.org/Archives/Public/ietf-http-wg/2022AprJun/0173.html)
-in 2022.
+WHATWG's URL "Living Standard"[^whatwg]
 
 ### Installing Python
 
@@ -323,14 +329,20 @@ oascomply % oascomply -D . https://example.com/coolapi/ \  # NOT YET SUPPORTED
 -----
 
 [^nonrel]: The choice of "non-relative URL/URI/IRI" is to avoid confusion
-around the terms "URL", "URI", and "IRI", which
-are imprecise in everyday usage, and the term "absolute URL/URI/IRI", which
-probably doesn't mean what you think it means (it is non-relative, but also
-forbids fragments).  This documentation does _not_ use the more technically
+around the terms "URL", "URI", and "IRI" (which are all imprecise in everyday
+usage), and the term "absolute URL/URI/IRI" (which probably doesn't mean what
+you think it means — it is non-relative, but also forbids fragments).
+This documentation does _not_ use the more technically
 correct term "URL/URI/IRI reference" because it is unfamiliar to most people,
 and a bit unwieldy.  For those who know the standards terminology, this
 documentation uses ***relative URL***/***URI***/***IRI*** in place of the
 more technically correct "relative URL/URI/IRI reference".
+
+[^whatwg]: WHATWG's URL standard is a parsing/serialization specification
+for web browsers.  Despite its claims, it does not address everytihng covered
+by RFC 3986, much less "obsolete" it.  If you are curious about the details,
+[Roy Fielding weighed in on the mess](https://lists.w3.org/Archives/Public/ietf-http-wg/2022AprJun/0173.html)
+in 2022.
 
 [^fileurls]: As explained in
 [RFC 8089 Appendix B](https://datatracker.ietf.org/doc/html/rfc8089#appendix-B),
@@ -341,6 +353,8 @@ endeavors to use `file:///` consistently.
 
 [^iriprefix]: The URI prefix can be an IRI prefix as far as `oascomply` is
 concerned, but OAS 3.x and JSON Schema 2020-12 do not allow IRIs to appear
-directly, so depending on how your references are written, you may need to
-encode any IRI down to a URI as described in RFC 3987.  IRIs are accepted
-mostly as future-proofing for presumed eventual IRI support in OAS.
+directly.  If your references incorporate the base URI, then it cannot
+be an IRI and must be encoded down to a URI as described in
+[RFC 3987 §3](https://datatracker.ietf.org/doc/html/rfc3987#section-3).
+IRIs are accepted mostly as future-proofing for presumed eventual IRI
+support in OAS.
