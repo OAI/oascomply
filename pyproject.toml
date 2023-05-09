@@ -1,13 +1,13 @@
 [tool.poetry]
-name = "oasparse"
+name = "oascomply"
 version = "0.1.0"
-description = "OpenAPI Specification Compliance Parser"
+description = "OpenAPI Specification Compliance Tools"
 authors = ["Henry H. Andrews <andrews_henry@yahoo.com>"]
 readme = "README.md"
 
 [tool.poetry.scripts]
-oascomply = 'oasparse.apidescription:ApiDescription.load'
-patch-oas-schemas = 'oasparse.patch:patch'
+oascomply = 'oascomply.apidescription:ApiDescription.load'
+patch-oas-schemas = 'oascomply.patch:patch'
 
 [tool.poetry.dependencies]
 python = "^3.8"

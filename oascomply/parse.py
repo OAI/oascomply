@@ -11,9 +11,9 @@ from jschon.jsonpointer import JSONPointer
 import rdflib
 from rdflib.namespace import RDF
 
-from oastype4jschon import OasType, OasSubType
+from oascomply.oastype4jschon import OasType, OasSubType
 
-log = logging.getLogger('oasparse')
+log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
 # Note that you need 3.0.3 in the URI to get it to resolve.

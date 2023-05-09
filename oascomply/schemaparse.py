@@ -12,7 +12,7 @@ import rdflib
 from rdflib.namespace import RDF
 import yaml
 
-from oasparse.oasgraph import OasGraph
+from oascomply.oasgraph import OasGraph
 
 __all__ = [
     'Annotation',

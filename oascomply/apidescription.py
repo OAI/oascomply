@@ -17,8 +17,8 @@ import json_source_map as jmap
 import yaml_source_map as ymap
 from yaml_source_map.errors import InvalidYamlError
 
-from oasparse.oasgraph import OasGraph
-from oasparse.schemaparse import Annotation, SchemaParser
+from oascomply.oasgraph import OasGraph
+from oascomply.schemaparse import Annotation, SchemaParser
 
 __all__ = [
     'ApiDescription',
