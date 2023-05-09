@@ -323,7 +323,7 @@ class ApiDescription:
                  "See below for scenarios where the semantic type is required."
         )
         parser.add_argument(
-            '-p',
+            '-d',
             '--uri-prefix',
             '--iri-prefix',
             nargs=2,
@@ -337,10 +337,9 @@ class ApiDescription:
                  "removing any file extension suffix (e.g. '.json', '.yaml')"
         )
         parser.add_argument(
-            '-d',
+            '-D',
             '--directory',
             nargs='+',
-            # metavar='(see help text)',
             action='append',
             dest='directories',
             help="A directory containing API description files, optionally "
@@ -352,7 +351,7 @@ class ApiDescription:
                  "to determine each file's URI; otherwise, each file will be "
                  "assigned its corresponding 'file:' URI.\n\n"
                  "See below for scenarios where certain files must be "
-                 "loaded separately with -f and -p.",
+                 "loaded separately with -f and -d.",
         )
         parser.add_argument(
             '-i',
@@ -402,6 +401,9 @@ class ApiDescription:
             help="TODO: Support storing to various kinds of databases."
         )
         args = parser.parse_args()
+        if args.directories:
+            raise NotImplementedError('-D option not yet implemented')
+
         prefixes = [cls._process_prefix(p) for p in args.prefixes] \
             if args.prefixes \
             else []
