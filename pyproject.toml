@@ -2,12 +2,13 @@
 name = "oascomply"
 version = "0.1.0"
 description = "OpenAPI Specification Compliance Tools"
-authors = ["Henry H. Andrews <andrews_henry@yahoo.com>"]
+authors = ["Henry H. Andrews <handews@modern-json-schema.com>"]
 readme = "README.md"
 
 [tool.poetry.scripts]
 oascomply = 'oascomply.apidescription:ApiDescription.load'
 patch-oas-schemas = 'oascomply.patch:patch'
+yaml-to-json = 'oascomply.patch:yaml_to_json'
 
 [tool.poetry.dependencies]
 python = "^3.8"

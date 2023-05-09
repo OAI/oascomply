@@ -1,3 +1,4 @@
+import sys
 import argparse
 import json
 import subprocess
@@ -9,7 +10,7 @@ import yaml
 import json_merge_patch
 from jschon.jsonpatch import JSONPatch
 
-DESCRIPTION = """
+PATCH_SCHEMAS_DESCRIPTION = """
 Load the standard OAS 3.x schemas from submodules/OpenAPI-Specification,
 migrate older schemas to 2020-12 using alterschema, apply the appropriate
 patches from patches/oas/..., and write the patched schemas to schemas/oas/...
@@ -20,10 +21,65 @@ submodule.  See CONTRIBUTING.md for more detail on when and how to update.
 Note that currently only OAS v3.0 is supported.
 """
 
+YAML_TO_JASON_DESCRIPTION = """
+Convert a YAML file to a JSON file, as JSON is much faster to process.
+
+Note that error handling is minimal, and output files are overwritten
+if present.
+"""
+
+def yaml_to_json():
+    parser = argparse.ArgumentParser(
+        description=YAML_TO_JASON_DESCRIPTION,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        'infile',
+        nargs='+',
+        help='YAML files to convert'
+    )
+    parser.add_argument(
+        '-o',
+        '--outfile',
+    )
+    parser.add_argument(
+        '-n',
+        '--indent',
+        type=int,
+        default=2,
+        help='Indentation level: 0 for newlines without indenting, '
+             '-1 for no whitespace of any kind',
+    )
+    args = parser.parse_args()
+
+    infiles = [Path(i) for i in args.infile]
+    if len(infiles) > 1 and args.outfile:
+        sys.stderr.write(
+            'Cannot specify --output-file with multiple input files\n'
+        )
+        sys.exit(-1)
+    elif args.outfile:
+        outfiles = [Path(args.outfile)]
+    else:
+        outfiles = [i.with_suffix('.json') for i in infiles]
+
+    kwargs = {
+        'ensure_ascii': False,
+        'indent': args.indent if args.indent >=0 else None,
+    }
+    if args.indent < 0:
+        kwargs['separators'] = (',', ':')
+
+    for index, infile in enumerate(infiles):
+        with infile.open() as in_fp, outfiles[index].open(
+            'w', encoding='utf-8'
+        ) as out_fp:
+            json.dump(yaml.safe_load(in_fp), out_fp, **kwargs)
+
 
 def patch():
     argparse.ArgumentParser(
-        description=DESCRIPTION,
+        description=PATCH_SCHEMAS_DESCRIPTION,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     ).parse_args()
 
