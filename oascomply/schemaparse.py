@@ -4,10 +4,7 @@ from uuid import uuid4
 from typing import Any, Optional
 import logging
 
-from jschon import (
-    create_catalog, JSON, JSONSchema, URI,
-    JSONPointer, RelativeJSONPointer, RelativeJSONPointerError,
-)
+import jschon
 import rdflib
 from rdflib.namespace import RDF
 import yaml
@@ -86,22 +83,24 @@ class Location:
         self._instance_base = self._instance_base_uri(instance_base)
         self._eval_ptr = eval_ptr
 
-        self._instance_resource_uri = URI(self._instance_base)
-        self._instance_ptr = JSONPointer(unit['instanceLocation'])
+        self._instance_resource_uri = jschon.URI(self._instance_base)
+        self._instance_ptr = jschon.JSONPointer(unit['instanceLocation'])
         self._instance_uri = self._instance_resource_uri.copy(
             fragment=self._instance_ptr.uri_fragment(),
         )
 
         akl = unit['absoluteKeywordLocation']
         # construct, splice off last JSON Pointer
-        self._schema_uri = URI(akl[:akl.rindex('/')])
-        self._schema_resource_uri = URI(akl[:akl.rindex('#')])
+        self._schema_uri = jschon.URI(akl[:akl.rindex('/')])
+        self._schema_resource_uri = jschon.URI(akl[:akl.rindex('#')])
 
         # extract JSON Pointer
-        self._schema_ptr = JSONPointer.parse_uri_fragment(self._schema_uri.fragment)
+        self._schema_ptr = jschon.JSONPointer.parse_uri_fragment(
+            self._schema_uri.fragment
+        )
 
-        keyword_uri = URI(akl)
-        schema_keyword_ptr = JSONPointer.parse_uri_fragment(
+        keyword_uri = jschon.URI(akl)
+        schema_keyword_ptr = jschon.JSONPointer.parse_uri_fragment(
             keyword_uri.fragment,
         )
         self._schema_uri = keyword_uri.copy(
@@ -183,7 +182,7 @@ class JschonSchemaParser(SchemaParser):
 
     def __init__(self, config, annotations=()):
         if not self._catalog:
-            self._catalog = create_catalog('2020-12')
+            self._catalog = jschon.create_catalog('2020-12')
 
         super().__init__(config, annotations)
         self._filtered = True
@@ -196,7 +195,7 @@ class JschonSchemaParser(SchemaParser):
                 'schema.json',
             encoding='utf-8',
         ) as schema_fp:
-            self._v30_schema = JSONSchema(json.load(schema_fp))
+            self._v30_schema = jschon.JSONSchema(json.load(schema_fp))
 
     def parse(self, data, oastype, output_format='basic'):
         schema = self._v30_schema
