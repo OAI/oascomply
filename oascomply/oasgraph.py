@@ -62,7 +62,7 @@ class OasGraph:
         self._g.bind('oas3.0', self._oas)
 
     def serialize(self, *args, base=None, output_format=None, **kwargs):
-        """Serialize the graph if and only if an output format is requested."""
+        """Serialize the graph using the given output format."""
         kw = kwargs.copy()
         if output_format not in OUTPUT_FORMATS_LINE and base is not None:
             kw['base'] = base

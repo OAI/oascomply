@@ -1,45 +1,129 @@
 ---
+$schema: https://spec.openapis.org/compliance/schemas/dialect/2023-06/oas-ontology
+$id: https://spec.openapis.org/compliance/schemas/oas/3.0/2023-06
 oasType: OpenAPI
 oasChildren:
-  - 0/info
-  - 0/externalDocs
-  - 0/servers/{index}
-  - 0/security/{index}
-  - 0/tags/{index}
-  - 0/paths
-  - 0/components
+  0/info: 0#
+  0/externalDocs: 0#
+  0/servers/{index}: server
+  0/security/{index}: 1#
+  0/tags/{index}: tag
+  0/paths: 0#
+  0/components: 0#
 oasLiterals:
-  - 0/openapi
+  0/openapi: oasVersion
 oasExtensible: true
 
 $defs:
   RuntimeExpression:
     oasType: RuntimeExpression
     type: string
-    pattern: \\$(url$|method$|statusCode$|request\.|response\.)
+    pattern: \$(url$|method$|statusCode$|request\.|response\.)
 
   Callback:
+    additionalProperties:
     oasType: Callback
-    oasLiterals:
-      - 0/openapi
+    oasChildren:
+      0/{name}/{pathTemplate}: callback
     oasExtensible: true
 
   Components:
     oasType: Components
     oasExtensible: true
+    oasChildren:
+        0/{type}: componentGroup
+    properties:
+      callbacks:
+        oasType: CallbackComponents
+        oasChildren:
+            0/{name}: namedCallback
+        patternProperties:
+          ^[a-zA-Z0-9\.\-_]+$:
+            oasReferences:
+              0/$ref: Callback
+      examples:
+        oasType: ExampleComponents
+        oasChildren:
+            0/{name}: namedExample
+        patternProperties:
+          ^[a-zA-Z0-9\.\-_]+$:
+            oasReferences:
+              0/$ref: Example
+      headers:
+        oasType: HeaderComponents
+        oasChildren:
+            0/{name}: namedHeader
+        patternProperties:
+          ^[a-zA-Z0-9\.\-_]+$:
+            oasReferences:
+              0/$ref: Header
+      links:
+        oasType: LinkComponents
+        oasChildren:
+            0/{name}: namedLink
+        patternProperties:
+          ^[a-zA-Z0-9\.\-_]+$:
+            oasReferences:
+              0/$ref: Link
+      parameters:
+        oasType: ParameterComponents
+        oasChildren:
+            0/{name}: namedParameter
+        patternProperties:
+          ^[a-zA-Z0-9\.\-_]+$:
+            oasReferences:
+              0/$ref: Parameter
+      requestBodies:
+        oasType: RequestBodyComponents
+        oasChildren:
+            0/{name}: namedRequestBody
+        patternProperties:
+          ^[a-zA-Z0-9\.\-_]+$:
+            oasReferences:
+              0/$ref: RequestBody
+      responses:
+        oasType: ResponseComponents
+        oasChildren:
+            0/{name}: namedResponse
+        patternProperties:
+          ^[a-zA-Z0-9\.\-_]+$:
+            oasReferences:
+              0/$ref: Response
+      schemas:
+        oasType: SchemaComponents
+        oasChildren:
+            0/{name}: namedSchema
+        patternProperties:
+          ^[a-zA-Z0-9\.\-_]+$:
+            oasReferences:
+              0/$ref: Schema
+      securitySchemes:
+        oasType: SecuritySchemeComponents
+        oasChildren:
+            0/{name}: namedSecurityScheme
+        patternProperties:
+          ^[a-zA-Z0-9\.\-_]+$:
+            oasReferences:
+              0/$ref: SecurityScheme
+    patternProperties:
+      ^x-:
+        oasType: ExtensionComponents
+        oasChildren:
+            0/{name}: namedExtensionComponents
 
   Contact:
     oasType: Contact
     oasLiterals:
-      - 0/name
-      - 0/url
-      - 0/email
+      0/name: 0#
+      0/url: 0#
+      0/email: 0#
     oasExtensible: true
 
   Discriminator:
     oasType: Discriminator
     oasImplicitReferences:
-      - 0/propertyName      # TODO: WTF?
+      0/propertyName:
+        oasTargetType: Schema
     properties:
       mapping:
         additionalProperties:
@@ -49,120 +133,148 @@ $defs:
 
   Encoding:
     oasType: Encoding
+    oasChildren:
+      0/headers/{header}: header
+    oasReferences:
+      0/headers/{header}/$ref: Header
     oasLiterals:
-      - 0/style
-      - 0/explode
-      - 0/allowReserved
-    properties:
-      contentType:
-        oasLiteralType: ContentType
+      0/style: 0#
+      0/explode: 0#
+      0/allowReserved: 0#
 
   Example:
     oasType: Example
     oasLiterals:
-      - 0/summary
-      - 0/description
-      - 0/value
+      0/summary: 0#
+      0/description: 0#
+      0/value: 0#
     oasDescriptionLinks:
-      - 0/externalValue
+      0/externalValue: 0#
     oasExtensible: true
+    properties:
+      description:
+        format: markdown-commonmark
 
   ExternalDocumentation:
     oasType: ExternalDocumentation
     oasLiterals:
-      - 0/description
+      0/description: 0#
     oasDescriptionLinks:
-      - 0/url
+      0/url: 0#
     oasExtensible: true
+    properties:
+      description:
+        format: markdown-commonmark
 
   Header:
     oasType: Header
     oasChildren:
-      - 0/schema
-      - 0/{contentType}
+      0/schema: 0#
+      0/{contentType}: content # TODO: Is this the same as "content" elsewhere?
     oasReferences:
-        0/schema/$ref: Schema
-        0/examples/{name}/$ref: Example
+      0/schema/$ref: Schema
+      0/examples/{name}/$ref: Example
     oasLiterals:
-      - 0/description
-      - 0/required
-      - 0/deprecated
-      - 0/allowEmptyValue
-      - 0/style
-      - 0/explode
-      - 0/allowReserved
+      0/description: 0#
+      0/required: 0#
+      0/deprecated: 0#
+      0/allowEmptyValue: 0#
+      0/style: 0#
+      0/explode: 0#
+      0/allowReserved: 0#
     oasExamples:
       - 0/example
       - 0/examples/{name}/value
+    properties:
+      description:
+        format: markdown-commonmark
 
   Info:
     oasType: Info
     oasChildren:
-      - 0/contact
-      - 0/license
+      0/contact: 0#
+      0/license: 0#
     oasLiterals:
-      - 0/title
-      - 0/description
-      - 0/version
+      0/title: 0#
+      0/description: 0#
+      0/version: apiDescriptionVersion
     oasDescriptionLinks:
-      - 0/termsOfService
+      0/termsOfService: 0#
     oasExtensible: true
+    properties:
+      description:
+        format: markdown-commonmark
 
   License:
     oasType: License
     oasLiterals:
-      - 0/name
+      0/name: 0#
     oasDescriptionLinks:
-      - 0/url
+      0/url: 0#
     oasExtensible: true
 
   Link:
     oasType: Link
     oasImplicitReferences:
       0/operationId:
+        oasRelationType: operationIdRef
         oasTargetType: Operation
         oasTargetField: 0/operationId
+      0/parameters/{name}#:
+        # TODO: How much of this is really worth describing?
+        #       oasTargetQualifier is essentially a one-off for
+        #       this field, plus there is the constraint that
+        #       the parameter referenced is connected to the
+        #       Operation referenced by operationId or operationRef
+        #       which is not being captured here.
+        oasTargetType: Parameter
+        oasTargetField: 0/name
+        oasTargetQualifier: 0/in
     oasReferences:
         0/operationRef: Operation
-    parameters:
-      propertyNames:
-        oasType: QualifiedTemplateParameter
-      additionalProperties:
-    oneOf:                      # TODO: Not sure if this is right at all
+    properties:
+      parameters:
+        propertyNames:
+          oasType: QualifiedTemplateParameter
+        additionalProperties:
+          type: string
+    oneOf:
       - oasChildren:
-          0/parameters/{parameterSpecification}
-        parameters:
-          additionalProperties:
-            $ref: '#/$defs/RuntimeExpression'
+          0/parameters/{parameterSpecification}: parameterExpression
+        properties:
+          parameters:
+            additionalProperties:
+              $ref: '#/$defs/RuntimeExpression'
       - oasLiterals:
-          0/parameters/{parameterSpecification}
-        parameters:
-          additionalProperties:
-            not: {$ref: '#/$defs/RuntimeExpression'}
+          0/parameters/{parameterSpecification}: parameterValue
+        properties:
+          parameters:
+            additionalProperties:
+              not: {$ref: '#/$defs/RuntimeExpression'}
 
   MediaType:
     oasType: MediaType
     oasChildren:
-      - 0/schema
-      - 0/encoding/{property}
+      0/schema: 0#
+      0/encoding/{property}: 1#
     oasReferences:
-        0/schema/$ref: Schema
-        0/examples/{name}/$ref: Example
+      0/schema/$ref: Schema
+      0/examples/{name}/$ref: Example
     oasExamples:
       - 0/example
       - 0/examples/{name}
 
   OAuthFlows:
     oasLiterals:
-      - 0/scopes/{scopeName}
+      0/scopes/{scopeName}: scope
     oasApiLinks:
-      - 0/authorizationUrl
-      - 0/tokenUrl
-      - 0/refreshUrl
+      0/authorizationUrl: 0#
+      0/tokenUrl: 0#
+      0/refreshUrl: 0#
     oasExtensible: true
     patternProperties:
       ^x-:
-        oasType: XCustomOAuthFlow
+        oasType: ExtensionOAuthFlow
   ImplicitOAuthFlow:
     oasType: ImplicitOAuthFlow
   PasswordOAuthFlow:
@@ -175,51 +287,53 @@ $defs:
   Operation:
     # for oasType, see /$defs/PathItem/properties/(get|put|...)
     oasChildren:
-      - 0/externalDocs
-      - 0/parameters/{index}
-      - 0/requestBody
-      - 0/responses
-      - 0/callbacks/{name}
-      - 0/security/{index}
-      - 0/servers/{index}
+      0/externalDocs: 0#
+      0/parameters/{index}: parameter
+      0/requestBody: 0#
+      0/responses: 0#
+      0/callbacks: 0#
+      0/security/{index}: security
+      0/servers/{index}: server
+    oasImplicitReferences:
+      0/tags/{index}:
+        oasRelationType: tagRef
+        oasTargetType: Tag
+        oasTargetField: 0/name
+        oasTargetRequired: False
     oasReferences:
-        0/externalDocs/$ref: ExternalDocumentation
-        0/parameters/{index}/$ref: Parameter
-        0/requestBody/$ref: RequestBody
-        0/responses/$ref: Responses
-        0/callbacks/{name}/$ref: Callback
-        0/security/{index}/$ref: SecurityRequirement
-        0/servers/{index}/$ref: Server
+      0/externalDocs/$ref: ExternalDocumentation
+      0/parameters/{index}/$ref: Parameter
+      0/requestBody/$ref: RequestBody
+      0/callbacks/{name}/$ref: Callback
     oasLiterals:
-      - 0/summary
-      - 0/description
-      - 0/externalDocs
-      - 0/operationId
-      - 0/deprecated
+      0/summary: 0#
+      0/description: 0#
+      0/operationId: 0#
+      0/deprecated: 0#
     properties:
+      description:
+        format: markdown-commonmark
       tags:
         items:
           oasType: TagName
 
   Parameter:
     oasChildren:
-      - 0/schema
-      - 0/content/{contentType}
-      - 0/examples/{name}
+      0/schema: 0#
+      0/content/{contentType}: 1#
     oasReferences:
-        0/schema/$ref: Schema
-        0/examples/{name}/$ref: Example
+      0/schema/$ref: Schema
+      0/examples/{name}/$ref: Example
     oasLiterals:
-      - 0/name
-      - 0/in
-      - 0/description
-      - 0/required
-      - 0/deprecated
-      - 0/allowEmptyValue
-      - 0/style
-      - 0/explode
-      - 0/allowReserved
-      - 0/example
+      0/name: 0#
+      0/in: parameterLocation
+      0/description: 0#
+      0/required: 0#
+      0/deprecated: 0#
+      0/allowEmptyValue: 0#
+      0/style: 0#
+      0/explode: 0#
+      0/allowReserved: 0#
     oasUniqueKey:
       - 0/name
       - 0/in
@@ -227,8 +341,14 @@ $defs:
       - 0/example
       - 0/examples/{name}
     oasExtensible: true
+    properties:
+      description:
+        format: markdown-commonmark
   PathParameter:
     oasType: PathParameter
+    properties:
+      name:
+        oasType: TemplateParameter
   QueryParameter:
     oasType: QueryParameter
   HeaderParameter:
@@ -239,22 +359,25 @@ $defs:
   PathItem:
     oasType: PathItem
     oasChildren:
-      - 0/delete
-      - 0/get
-      - 0/head
-      - 0/options
-      - 0/patch
-      - 0/post
-      - 0/put
-      - 0/trace
+      0/delete: operation
+      0/get: operation
+      0/head: operation
+      0/options: operation
+      0/patch: operation
+      0/post: operation
+      0/put: operation
+      0/trace: operation
     oasReferences:
-        0/$ref: PathItem
+      0/$ref: PathItem
+      0/parameters/$ref: Parameter
     oasReferenceConflict:
-        0/$ref: undefined
+      0/$ref: undefined
     oasLiterals:
-      - 0/summary
-      - 0/description
+      0/summary: 0#
+      0/description: 0#
     properties:
+      description:
+        format: markdown-commonmark
       delete:
         oasType: DeleteOperation
       get:
@@ -275,48 +398,60 @@ $defs:
   Paths:
     oasType: Paths
     oasChildren:
-      - 0/{pathTemplate}
+      0/{pathTemplate}: pathItem
     oasExtensible: true
     propertyNames:
         anyOf:
-          - pattern: '^\\/'
+          - pattern: '^\/'
             oasType: PathOnlyTemplatedUrl
           - true
 
   Reference:
+    # oasReferences is set adjacent to where this schema is referenced,
+    # as that is where the intended reference target type is clear.
     oasType: Reference
-    oasReferences:
-      0/$ref: true
 
   RequestBody:
     oasType: RequestBody
     oasChildren:
-      - 0/content/{contentType}
+      0/content/{contentType}: content
     oasLiterals:
-      - 0/description
-      - 0/required
-    oasExtensible:
+      0/description: 0#
+      0/required: 0#
+    oasExtensible: True
+    properties:
+      description:
+        format: markdown-commonmark
 
   Response:
     oasType: Response
+    oasReferences:
+      0/headers/{header}/$ref: Header
+      0/links/{linkRel}/$ref: Link
     oasChildren:
-      - 0/headers/{header}
-      - 0/content/{contentType}
-      - 0/links/{linkRel}  # TODO: I think?
+      0/headers/{header}: header
+      0/content/{contentType}: 1#
+      0/links/{linkRel}: link
     oasLiterals:
-      - 0/description
+      0/description: 0#
     oasExtensible: true
+    properties:
+      description:
+        format: markdown-commonmark
 
   Responses:
     oasType: Responses
+    oasReferences:
+      # TODO: "^x-" statuses may not support $ref
+      0/{statusSpecification}/$ref: Response
     oasChildren:
-      - 0/{statusSpecification}
+      0/{statusSpecification}: response
     oasExtensible: true
     propertyNames:
       anyOf:
         - const: default
           oasType: StatusDefault
-        - pattern: '^[1-5]\\d{2}$'
+        - pattern: '^[1-5]\d{2}$'
           oasType: StatusCode
         - pattern: '^[1-5]XX$'
           oasType: StatusCodeRange
@@ -324,103 +459,134 @@ $defs:
 
   Schema:
     oasType: Schema
-    oasChildren:
-      - 0/allOf/{index}
-      - 0/anyOf/{index}
-      - 0/oneOf/{index}
-      - 0/not
-      - 0/properties/{name}
-      - 0/additionalProperties
-      - 0/items
-      - 0/xml
-      - 0/discriminator
-      - 0/externalDocs
     oasReferences:
-      0/$ref: Schema
+      # TODO: Would `0/$ref: Schema` work here?
+      #       I do not think there is anywhere that a Schema Object
+      #       cannot be replaced by a Reference Object.  Also should
+      #       check if similar conditions hold for other oasTypes.
+      0/allOf/{index}/$ref: Schema
+      0/anyOf/{index}/$ref: Schema
+      0/oneOf/{index}/$ref: Schema
+      0/not/$ref: Schema
+      0/properties/{name}/$ref: Schema
+      0/additionalProperties/$ref: Schema
+      0/items/$ref: Schema
+    oasChildren:
+      0/allOf/{index}: schemaAllOf
+      0/anyOf/{index}: schemaAnyOf
+      0/oneOf/{index}: schemaOneOf
+      0/not: schemaNot
+      0/properties/{name}: schemaProperty
+      0/additionalProperties: schemaAdditionalProperties
+      0/items: schemaItems
+      0/xml: schemaXml
+      0/discriminator: schemaDiscriminator
+      0/externalDocs: externalDocs
     oasLiterals:
-      - 0/type
-      - 0/enum
-      - 0/maximum
-      - 0/minimum
-      - 0/exclusiveMaximum
-      - 0/exclusiveMinimum
-      - 0/multipleOf
-      - 0/maxLength
-      - 0/minLength
-      - 0/pattern
-      - 0/maxItems
-      - 0/minItems
-      - 0/uniqueItems
-      - 0/maxProperties
-      - 0/minProperties
-      - 0/required
-      - 0/title
-      - 0/description
-      - 0/format
-      - 0/default
-      - 0/readOnly
-      - 0/writeOnly
-      - 0/deprecated
+      0/type: schemaType
+      0/enum: schemaEnum
+      0/maximum: schemaMaximum
+      0/minimum: schemaMinimum
+      0/exclusiveMaximum: schemaExclusiveMaximum
+      0/exclusiveMinimum: schemaExclusiveMinimum
+      0/multipleOf: schemaMultipleOf
+      0/maxLength: schemaMaxLength
+      0/minLength: schemaMinLength
+      0/pattern: schemaPattern
+      0/maxItems: schemaMaxItems
+      0/minItems: schemaMinItems
+      0/uniqueItems: schemaUniqueItems
+      0/maxProperties: schemaMaxProperties
+      0/minProperties: schemaMinProperties
+      0/required: schemaRequired
+      0/title: schemaTitle
+      0/description: schemaDescription
+      0/format: schemaFormat
+      0/default: schemaDefault
+      0/readOnly: schemaReadOnly
+      0/writeOnly: schemaWriteOnly
+      0/deprecated: schemaDeprecated
+      0/nullable: schemaNullable
+    oasExamples:
       - 0/example
-      - 0/nullable
     oasExtensible: True
+    properties:
+      description:
+        format: markdown-commonmark
 
   SecurityRequirement:
     oasType: SecurityRequirement
     additionalProperties:
     oasImplicitReferences:
-      0/{scheme}:
-        oasSourceModifier: '0#'
+      0/{scheme}#:
+        oasRelationType: securitySchemeRef
         oasTargetType: SecurityScheme
         oasTargetField: 0/scheme
+      0/{scheme}/{index}:
+        oasRelationType: securitySchemeScopeRef
+        oasTargetType: SecurityScheme
+        oasTargetField: 0/{scheme}/flows/{flow}/scopes/{scope}#
   Server:
     oasType: Server
     oasChildren:
-      - 0/variables/{name}
+      0/variables/{name}: variable
     oasLiterals:
-      - 0/description
+      0/description: 0#
     oasApiLinks:
-      - 0/url
+      0/url: 0#
     oasExtensible: true
+    properties:
+      description:
+        format: markdown-commonmark
 
   ServerVariable:
     oasType: ServerVariable
     oasImplicitReferences:
       '0#':
+        oasRelationType: serverVariableRef
         oasTargetType: Server
         oasTargetField: 0/url
         oasTargetIsTemplateVariable: true
     oasLiterals:
-      - 0/enum/{index}
-      - 0/default
-      - 0/description
+      0/enum/{index}: 1#
+      0/default: 0#
+      0/description: 0#
     oasExtensible: true
+    properties:
+      description:
+        format: markdown-commonmark
 
   XML:
     oasType: Xml
     oasLiterals:
-      - 0/name
-      - 0/namespace
-      - 0/prefix
-      - 0/attribute
-      - 0/wrapped
+      0/name: 0#
+      0/namespace: xmlNamespace
+      0/prefix: xmlPrefix
+      0/attribute: xmlAttribute
+      0/wrapped: 0#
     oasExtensible: true
 
   Tag:
     oasType: Tag
     oasChildren:
-      - 0/externalDocs
+      0/externalDocs: 0#
     oasLiterals:
-      - 0/name
-      - 0/description
+      0/name: 0#
+      0/description: 0#
+    properties:
+      description:
+        format: markdown-commonmark
 
   SecurityScheme:
     oasLiterals:
-      - 0/type
-      - 0/name
-      - 0/in
-      - 0/description
+      0/type: 0#
+      0/name: 0#
+      0/in: parameteLocation
+      0/description: 0#
     oasExtensible: true
+    properties:
+      description:
+        format: markdown-commonmark
   APIKeySecurityScheme:
     oasType: APIKeySecurityScheme
   HTTPSecurityScheme:

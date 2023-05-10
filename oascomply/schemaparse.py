@@ -178,12 +178,7 @@ class SchemaParser:
 
 
 class JschonSchemaParser(SchemaParser):
-    _catalog = None
-
     def __init__(self, config, annotations=()):
-        if not self._catalog:
-            self._catalog = jschon.create_catalog('2020-12')
-
         super().__init__(config, annotations)
         self._filtered = True
         with open(

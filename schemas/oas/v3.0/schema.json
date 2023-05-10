@@ -1,6 +1,6 @@
 {
-  "$id": "https://spec.openapis.org/oas/3.0/schema/2021-09-28",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spec.openapis.org/compliance/schemas/oas/3.0/2023-06",
+  "$schema": "https://spec.openapis.org/compliance/schemas/dialect/2023-06/oas-ontology",
   "description": "The description of OpenAPI v3.0.x documents, as defined by https://spec.openapis.org/oas/v3.0.3",
   "type": "object",
   "required": [
@@ -50,18 +50,18 @@
   },
   "additionalProperties": false,
   "oasType": "OpenAPI",
-  "oasChildren": [
-    "0/info",
-    "0/externalDocs",
-    "0/servers/{index}",
-    "0/security/{index}",
-    "0/tags/{index}",
-    "0/paths",
-    "0/components"
-  ],
-  "oasLiterals": [
-    "0/openapi"
-  ],
+  "oasChildren": {
+    "0/info": "0#",
+    "0/externalDocs": "0#",
+    "0/servers/{index}": "server",
+    "0/security/{index}": "1#",
+    "0/tags/{index}": "tag",
+    "0/paths": "0#",
+    "0/components": "0#"
+  },
+  "oasLiterals": {
+    "0/openapi": "oasVersion"
+  },
   "oasExtensible": true,
   "$defs": {
     "Reference": {
@@ -75,10 +75,7 @@
           "format": "uri-reference"
         }
       },
-      "oasType": "Reference",
-      "oasReferences": {
-        "0/$ref": true
-      }
+      "oasType": "Reference"
     },
     "Info": {
       "type": "object",
@@ -91,7 +88,8 @@
           "type": "string"
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "format": "markdown-commonmark"
         },
         "termsOfService": {
           "type": "string",
@@ -112,18 +110,18 @@
       },
       "additionalProperties": false,
       "oasType": "Info",
-      "oasChildren": [
-        "0/contact",
-        "0/license"
-      ],
-      "oasLiterals": [
-        "0/title",
-        "0/description",
-        "0/version"
-      ],
-      "oasDescriptionLinks": [
-        "0/termsOfService"
-      ],
+      "oasChildren": {
+        "0/contact": "0#",
+        "0/license": "0#"
+      },
+      "oasLiterals": {
+        "0/title": "0#",
+        "0/description": "0#",
+        "0/version": "apiDescriptionVersion"
+      },
+      "oasDescriptionLinks": {
+        "0/termsOfService": "0#"
+      },
       "oasExtensible": true
     },
     "Contact": {
@@ -146,11 +144,11 @@
       },
       "additionalProperties": false,
       "oasType": "Contact",
-      "oasLiterals": [
-        "0/name",
-        "0/url",
-        "0/email"
-      ],
+      "oasLiterals": {
+        "0/name": "0#",
+        "0/url": "0#",
+        "0/email": "0#"
+      },
       "oasExtensible": true
     },
     "License": {
@@ -172,12 +170,12 @@
       },
       "additionalProperties": false,
       "oasType": "License",
-      "oasLiterals": [
-        "0/name"
-      ],
-      "oasDescriptionLinks": [
-        "0/url"
-      ],
+      "oasLiterals": {
+        "0/name": "0#"
+      },
+      "oasDescriptionLinks": {
+        "0/url": "0#"
+      },
       "oasExtensible": true
     },
     "Server": {
@@ -190,7 +188,8 @@
           "type": "string"
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "format": "markdown-commonmark"
         },
         "variables": {
           "type": "object",
@@ -204,15 +203,15 @@
       },
       "additionalProperties": false,
       "oasType": "Server",
-      "oasChildren": [
-        "0/variables/{name}"
-      ],
-      "oasLiterals": [
-        "0/description"
-      ],
-      "oasApiLinks": [
-        "0/url"
-      ],
+      "oasChildren": {
+        "0/variables/{name}": "variable"
+      },
+      "oasLiterals": {
+        "0/description": "0#"
+      },
+      "oasApiLinks": {
+        "0/url": "0#"
+      },
       "oasExtensible": true
     },
     "ServerVariable": {
@@ -231,7 +230,8 @@
           "type": "string"
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "format": "markdown-commonmark"
         }
       },
       "patternProperties": {
@@ -241,16 +241,17 @@
       "oasType": "ServerVariable",
       "oasImplicitReferences": {
         "0#": {
+          "oasRelationType": "serverVariableRef",
           "oasTargetType": "Server",
           "oasTargetField": "0/url",
           "oasTargetIsTemplateVariable": true
         }
       },
-      "oasLiterals": [
-        "0/enum/{index}",
-        "0/default",
-        "0/description"
-      ],
+      "oasLiterals": {
+        "0/enum/{index}": "1#",
+        "0/default": "0#",
+        "0/description": "0#"
+      },
       "oasExtensible": true
     },
     "Components": {
@@ -267,8 +268,15 @@
                 {
                   "$ref": "#/$defs/Reference"
                 }
-              ]
+              ],
+              "oasReferences": {
+                "0/$ref": "Schema"
+              }
             }
+          },
+          "oasType": "SchemaComponents",
+          "oasChildren": {
+            "0/{name}": "namedSchema"
           }
         },
         "responses": {
@@ -282,8 +290,15 @@
                 {
                   "$ref": "#/$defs/Response"
                 }
-              ]
+              ],
+              "oasReferences": {
+                "0/$ref": "Response"
+              }
             }
+          },
+          "oasType": "ResponseComponents",
+          "oasChildren": {
+            "0/{name}": "namedResponse"
           }
         },
         "parameters": {
@@ -297,8 +312,15 @@
                 {
                   "$ref": "#/$defs/Parameter"
                 }
-              ]
+              ],
+              "oasReferences": {
+                "0/$ref": "Parameter"
+              }
             }
+          },
+          "oasType": "ParameterComponents",
+          "oasChildren": {
+            "0/{name}": "namedParameter"
           }
         },
         "examples": {
@@ -312,8 +334,15 @@
                 {
                   "$ref": "#/$defs/Example"
                 }
-              ]
+              ],
+              "oasReferences": {
+                "0/$ref": "Example"
+              }
             }
+          },
+          "oasType": "ExampleComponents",
+          "oasChildren": {
+            "0/{name}": "namedExample"
           }
         },
         "requestBodies": {
@@ -327,8 +356,15 @@
                 {
                   "$ref": "#/$defs/RequestBody"
                 }
-              ]
+              ],
+              "oasReferences": {
+                "0/$ref": "RequestBody"
+              }
             }
+          },
+          "oasType": "RequestBodyComponents",
+          "oasChildren": {
+            "0/{name}": "namedRequestBody"
           }
         },
         "headers": {
@@ -342,8 +378,15 @@
                 {
                   "$ref": "#/$defs/Header"
                 }
-              ]
+              ],
+              "oasReferences": {
+                "0/$ref": "Header"
+              }
             }
+          },
+          "oasType": "HeaderComponents",
+          "oasChildren": {
+            "0/{name}": "namedHeader"
           }
         },
         "securitySchemes": {
@@ -357,8 +400,15 @@
                 {
                   "$ref": "#/$defs/SecurityScheme"
                 }
-              ]
+              ],
+              "oasReferences": {
+                "0/$ref": "SecurityScheme"
+              }
             }
+          },
+          "oasType": "SecuritySchemeComponents",
+          "oasChildren": {
+            "0/{name}": "namedSecurityScheme"
           }
         },
         "links": {
@@ -372,8 +422,15 @@
                 {
                   "$ref": "#/$defs/Link"
                 }
-              ]
+              ],
+              "oasReferences": {
+                "0/$ref": "Link"
+              }
             }
+          },
+          "oasType": "LinkComponents",
+          "oasChildren": {
+            "0/{name}": "namedLink"
           }
         },
         "callbacks": {
@@ -387,17 +444,32 @@
                 {
                   "$ref": "#/$defs/Callback"
                 }
-              ]
+              ],
+              "oasReferences": {
+                "0/$ref": "Callback"
+              }
             }
+          },
+          "oasType": "CallbackComponents",
+          "oasChildren": {
+            "0/{name}": "namedCallback"
           }
         }
       },
       "patternProperties": {
-        "^x-": true
+        "^x-": {
+          "oasType": "ExtensionComponents",
+          "oasChildren": {
+            "0/{name}": "namedExtensionComponents"
+          }
+        }
       },
       "additionalProperties": false,
       "oasType": "Components",
-      "oasExtensible": true
+      "oasExtensible": true,
+      "oasChildren": {
+        "0/{type}": "componentGroup"
+      }
     },
     "Schema": {
       "type": "object",
@@ -570,7 +642,8 @@
           "default": true
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "format": "markdown-commonmark"
         },
         "format": {
           "type": "string"
@@ -608,47 +681,55 @@
       },
       "additionalProperties": false,
       "oasType": "Schema",
-      "oasChildren": [
-        "0/allOf/{index}",
-        "0/anyOf/{index}",
-        "0/oneOf/{index}",
-        "0/not",
-        "0/properties/{name}",
-        "0/additionalProperties",
-        "0/items",
-        "0/xml",
-        "0/discriminator",
-        "0/externalDocs"
-      ],
       "oasReferences": {
-        "0/$ref": "Schema"
+        "0/allOf/{index}/$ref": "Schema",
+        "0/anyOf/{index}/$ref": "Schema",
+        "0/oneOf/{index}/$ref": "Schema",
+        "0/not/$ref": "Schema",
+        "0/properties/{name}/$ref": "Schema",
+        "0/additionalProperties/$ref": "Schema",
+        "0/items/$ref": "Schema"
       },
-      "oasLiterals": [
-        "0/type",
-        "0/enum",
-        "0/maximum",
-        "0/minimum",
-        "0/exclusiveMaximum",
-        "0/exclusiveMinimum",
-        "0/multipleOf",
-        "0/maxLength",
-        "0/minLength",
-        "0/pattern",
-        "0/maxItems",
-        "0/minItems",
-        "0/uniqueItems",
-        "0/maxProperties",
-        "0/minProperties",
-        "0/required",
-        "0/title",
-        "0/description",
-        "0/format",
-        "0/default",
-        "0/readOnly",
-        "0/writeOnly",
-        "0/deprecated",
-        "0/example",
-        "0/nullable"
+      "oasChildren": {
+        "0/allOf/{index}": "schemaAllOf",
+        "0/anyOf/{index}": "schemaAnyOf",
+        "0/oneOf/{index}": "schemaOneOf",
+        "0/not": "schemaNot",
+        "0/properties/{name}": "schemaProperty",
+        "0/additionalProperties": "schemaAdditionalProperties",
+        "0/items": "schemaItems",
+        "0/xml": "schemaXml",
+        "0/discriminator": "schemaDiscriminator",
+        "0/externalDocs": "externalDocs"
+      },
+      "oasLiterals": {
+        "0/type": "schemaType",
+        "0/enum": "schemaEnum",
+        "0/maximum": "schemaMaximum",
+        "0/minimum": "schemaMinimum",
+        "0/exclusiveMaximum": "schemaExclusiveMaximum",
+        "0/exclusiveMinimum": "schemaExclusiveMinimum",
+        "0/multipleOf": "schemaMultipleOf",
+        "0/maxLength": "schemaMaxLength",
+        "0/minLength": "schemaMinLength",
+        "0/pattern": "schemaPattern",
+        "0/maxItems": "schemaMaxItems",
+        "0/minItems": "schemaMinItems",
+        "0/uniqueItems": "schemaUniqueItems",
+        "0/maxProperties": "schemaMaxProperties",
+        "0/minProperties": "schemaMinProperties",
+        "0/required": "schemaRequired",
+        "0/title": "schemaTitle",
+        "0/description": "schemaDescription",
+        "0/format": "schemaFormat",
+        "0/default": "schemaDefault",
+        "0/readOnly": "schemaReadOnly",
+        "0/writeOnly": "schemaWriteOnly",
+        "0/deprecated": "schemaDeprecated",
+        "0/nullable": "schemaNullable"
+      },
+      "oasExamples": [
+        "0/example"
       ],
       "oasExtensible": true
     },
@@ -673,9 +754,11 @@
         }
       },
       "oasType": "Discriminator",
-      "oasImplicitReferences": [
-        "0/propertyName"
-      ]
+      "oasImplicitReferences": {
+        "0/propertyName": {
+          "oasTargetType": "Schema"
+        }
+      }
     },
     "XML": {
       "type": "object",
@@ -704,13 +787,13 @@
       },
       "additionalProperties": false,
       "oasType": "Xml",
-      "oasLiterals": [
-        "0/name",
-        "0/namespace",
-        "0/prefix",
-        "0/attribute",
-        "0/wrapped"
-      ],
+      "oasLiterals": {
+        "0/name": "0#",
+        "0/namespace": "xmlNamespace",
+        "0/prefix": "xmlPrefix",
+        "0/attribute": "xmlAttribute",
+        "0/wrapped": "0#"
+      },
       "oasExtensible": true
     },
     "Response": {
@@ -720,7 +803,8 @@
       ],
       "properties": {
         "description": {
-          "type": "string"
+          "type": "string",
+          "format": "markdown-commonmark"
         },
         "headers": {
           "type": "object",
@@ -760,14 +844,18 @@
       },
       "additionalProperties": false,
       "oasType": "Response",
-      "oasChildren": [
-        "0/headers/{header}",
-        "0/content/{contentType}",
-        "0/links/{linkRel}"
-      ],
-      "oasLiterals": [
-        "0/description"
-      ],
+      "oasReferences": {
+        "0/headers/{header}/$ref": "Header",
+        "0/links/{linkRel}/$ref": "Link"
+      },
+      "oasChildren": {
+        "0/headers/{header}": "header",
+        "0/content/{contentType}": "1#",
+        "0/links/{linkRel}": "link"
+      },
+      "oasLiterals": {
+        "0/description": "0#"
+      },
       "oasExtensible": true
     },
     "MediaType": {
@@ -814,10 +902,10 @@
         }
       ],
       "oasType": "MediaType",
-      "oasChildren": [
-        "0/schema",
-        "0/encoding/{property}"
-      ],
+      "oasChildren": {
+        "0/schema": "0#",
+        "0/encoding/{property}": "1#"
+      },
       "oasReferences": {
         "0/schema/$ref": "Schema",
         "0/examples/{name}/$ref": "Example"
@@ -834,7 +922,8 @@
           "type": "string"
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "format": "markdown-commonmark"
         },
         "value": true,
         "externalValue": {
@@ -847,21 +936,22 @@
       },
       "additionalProperties": false,
       "oasType": "Example",
-      "oasLiterals": [
-        "0/summary",
-        "0/description",
-        "0/value"
-      ],
-      "oasDescriptionLinks": [
-        "0/externalValue"
-      ],
+      "oasLiterals": {
+        "0/summary": "0#",
+        "0/description": "0#",
+        "0/value": "0#"
+      },
+      "oasDescriptionLinks": {
+        "0/externalValue": "0#"
+      },
       "oasExtensible": true
     },
     "Header": {
       "type": "object",
       "properties": {
         "description": {
-          "type": "string"
+          "type": "string",
+          "format": "markdown-commonmark"
         },
         "required": {
           "type": "boolean",
@@ -933,23 +1023,23 @@
         }
       ],
       "oasType": "Header",
-      "oasChildren": [
-        "0/schema",
-        "0/{contentType}"
-      ],
+      "oasChildren": {
+        "0/schema": "0#",
+        "0/{contentType}": "content"
+      },
       "oasReferences": {
         "0/schema/$ref": "Schema",
         "0/examples/{name}/$ref": "Example"
       },
-      "oasLiterals": [
-        "0/description",
-        "0/required",
-        "0/deprecated",
-        "0/allowEmptyValue",
-        "0/style",
-        "0/explode",
-        "0/allowReserved"
-      ],
+      "oasLiterals": {
+        "0/description": "0#",
+        "0/required": "0#",
+        "0/deprecated": "0#",
+        "0/allowEmptyValue": "0#",
+        "0/style": "0#",
+        "0/explode": "0#",
+        "0/allowReserved": "0#"
+      },
       "oasExamples": [
         "0/example",
         "0/examples/{name}/value"
@@ -965,14 +1055,14 @@
       },
       "additionalProperties": false,
       "oasType": "Paths",
-      "oasChildren": [
-        "0/{pathTemplate}"
-      ],
+      "oasChildren": {
+        "0/{pathTemplate}": "pathItem"
+      },
       "oasExtensible": true,
       "propertyNames": {
         "anyOf": [
           {
-            "pattern": "^\\\\/",
+            "pattern": "^\\/",
             "oasType": "PathOnlyTemplatedUrl"
           },
           true
@@ -989,7 +1079,8 @@
           "type": "string"
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "format": "markdown-commonmark"
         },
         "servers": {
           "type": "array",
@@ -1044,26 +1135,27 @@
       },
       "additionalProperties": false,
       "oasType": "PathItem",
-      "oasChildren": [
-        "0/delete",
-        "0/get",
-        "0/head",
-        "0/options",
-        "0/patch",
-        "0/post",
-        "0/put",
-        "0/trace"
-      ],
+      "oasChildren": {
+        "0/delete": "operation",
+        "0/get": "operation",
+        "0/head": "operation",
+        "0/options": "operation",
+        "0/patch": "operation",
+        "0/post": "operation",
+        "0/put": "operation",
+        "0/trace": "operation"
+      },
       "oasReferences": {
-        "0/$ref": "PathItem"
+        "0/$ref": "PathItem",
+        "0/parameters/$ref": "Parameter"
       },
       "oasReferenceConflict": {
         "0/$ref": "undefined"
       },
-      "oasLiterals": [
-        "0/summary",
-        "0/description"
-      ]
+      "oasLiterals": {
+        "0/summary": "0#",
+        "0/description": "0#"
+      }
     },
     "Operation": {
       "type": "object",
@@ -1082,7 +1174,8 @@
           "type": "string"
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "format": "markdown-commonmark"
         },
         "externalDocs": {
           "$ref": "#/$defs/ExternalDocumentation"
@@ -1151,31 +1244,35 @@
         "^x-": true
       },
       "additionalProperties": false,
-      "oasChildren": [
-        "0/externalDocs",
-        "0/parameters/{index}",
-        "0/requestBody",
-        "0/responses",
-        "0/callbacks/{name}",
-        "0/security/{index}",
-        "0/servers/{index}"
-      ],
+      "oasChildren": {
+        "0/externalDocs": "0#",
+        "0/parameters/{index}": "parameter",
+        "0/requestBody": "0#",
+        "0/responses": "0#",
+        "0/callbacks": "0#",
+        "0/security/{index}": "security",
+        "0/servers/{index}": "server"
+      },
+      "oasImplicitReferences": {
+        "0/tags/{index}": {
+          "oasRelationType": "tagRef",
+          "oasTargetType": "Tag",
+          "oasTargetField": "0/name",
+          "oasTargetRequired": false
+        }
+      },
       "oasReferences": {
         "0/externalDocs/$ref": "ExternalDocumentation",
         "0/parameters/{index}/$ref": "Parameter",
         "0/requestBody/$ref": "RequestBody",
-        "0/responses/$ref": "Responses",
-        "0/callbacks/{name}/$ref": "Callback",
-        "0/security/{index}/$ref": "SecurityRequirement",
-        "0/servers/{index}/$ref": "Server"
+        "0/callbacks/{name}/$ref": "Callback"
       },
-      "oasLiterals": [
-        "0/summary",
-        "0/description",
-        "0/externalDocs",
-        "0/operationId",
-        "0/deprecated"
-      ]
+      "oasLiterals": {
+        "0/summary": "0#",
+        "0/description": "0#",
+        "0/operationId": "0#",
+        "0/deprecated": "0#"
+      }
     },
     "Responses": {
       "type": "object",
@@ -1207,9 +1304,12 @@
       "minProperties": 1,
       "additionalProperties": false,
       "oasType": "Responses",
-      "oasChildren": [
-        "0/{statusSpecification}"
-      ],
+      "oasReferences": {
+        "0/{statusSpecification}/$ref": "Response"
+      },
+      "oasChildren": {
+        "0/{statusSpecification}": "response"
+      },
       "oasExtensible": true,
       "propertyNames": {
         "anyOf": [
@@ -1218,7 +1318,7 @@
             "oasType": "StatusDefault"
           },
           {
-            "pattern": "^[1-5]\\\\d{2}$",
+            "pattern": "^[1-5]\\d{2}$",
             "oasType": "StatusCode"
           },
           {
@@ -1233,10 +1333,15 @@
       "type": "object",
       "oasType": "SecurityRequirement",
       "oasImplicitReferences": {
-        "0/{scheme}": {
-          "oasSourceModifier": "0#",
+        "0/{scheme}#": {
+          "oasRelationType": "securitySchemeRef",
           "oasTargetType": "SecurityScheme",
           "oasTargetField": "0/scheme"
+        },
+        "0/{scheme}/{index}": {
+          "oasRelationType": "securitySchemeScopeRef",
+          "oasTargetType": "SecurityScheme",
+          "oasTargetField": "0/{scheme}/flows/{flow}/scopes/{scope}#"
         }
       }
     },
@@ -1250,7 +1355,8 @@
           "type": "string"
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "format": "markdown-commonmark"
         },
         "externalDocs": {
           "$ref": "#/$defs/ExternalDocumentation"
@@ -1261,13 +1367,13 @@
       },
       "additionalProperties": false,
       "oasType": "Tag",
-      "oasChildren": [
-        "0/externalDocs"
-      ],
-      "oasLiterals": [
-        "0/name",
-        "0/description"
-      ]
+      "oasChildren": {
+        "0/externalDocs": "0#"
+      },
+      "oasLiterals": {
+        "0/name": "0#",
+        "0/description": "0#"
+      }
     },
     "ExternalDocumentation": {
       "type": "object",
@@ -1276,7 +1382,8 @@
       ],
       "properties": {
         "description": {
-          "type": "string"
+          "type": "string",
+          "format": "markdown-commonmark"
         },
         "url": {
           "type": "string",
@@ -1288,12 +1395,12 @@
       },
       "additionalProperties": false,
       "oasType": "ExternalDocumentation",
-      "oasLiterals": [
-        "0/description"
-      ],
-      "oasDescriptionLinks": [
-        "0/url"
-      ],
+      "oasLiterals": {
+        "0/description": "0#"
+      },
+      "oasDescriptionLinks": {
+        "0/url": "0#"
+      },
       "oasExtensible": true
     },
     "ExampleXORExamples": {
@@ -1374,7 +1481,8 @@
           "type": "string"
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "format": "markdown-commonmark"
         },
         "required": {
           "type": "boolean",
@@ -1461,27 +1569,25 @@
           "$ref": "#/$defs/CookieParameter"
         }
       ],
-      "oasChildren": [
-        "0/schema",
-        "0/content/{contentType}",
-        "0/examples/{name}"
-      ],
+      "oasChildren": {
+        "0/schema": "0#",
+        "0/content/{contentType}": "1#"
+      },
       "oasReferences": {
         "0/schema/$ref": "Schema",
         "0/examples/{name}/$ref": "Example"
       },
-      "oasLiterals": [
-        "0/name",
-        "0/in",
-        "0/description",
-        "0/required",
-        "0/deprecated",
-        "0/allowEmptyValue",
-        "0/style",
-        "0/explode",
-        "0/allowReserved",
-        "0/example"
-      ],
+      "oasLiterals": {
+        "0/name": "0#",
+        "0/in": "parameterLocation",
+        "0/description": "0#",
+        "0/required": "0#",
+        "0/deprecated": "0#",
+        "0/allowEmptyValue": "0#",
+        "0/style": "0#",
+        "0/explode": "0#",
+        "0/allowReserved": "0#"
+      },
       "oasUniqueKey": [
         "0/name",
         "0/in"
@@ -1499,7 +1605,8 @@
       ],
       "properties": {
         "description": {
-          "type": "string"
+          "type": "string",
+          "format": "markdown-commonmark"
         },
         "content": {
           "type": "object",
@@ -1517,13 +1624,14 @@
       },
       "additionalProperties": false,
       "oasType": "RequestBody",
-      "oasChildren": [
-        "0/content/{contentType}"
-      ],
-      "oasLiterals": [
-        "0/description",
-        "0/required"
-      ]
+      "oasChildren": {
+        "0/content/{contentType}": "content"
+      },
+      "oasLiterals": {
+        "0/description": "0#",
+        "0/required": "0#"
+      },
+      "oasExtensible": true
     },
     "SecurityScheme": {
       "oneOf": [
@@ -1540,13 +1648,18 @@
           "$ref": "#/$defs/OpenIdConnectSecurityScheme"
         }
       ],
-      "oasLiterals": [
-        "0/type",
-        "0/name",
-        "0/in",
-        "0/description"
-      ],
-      "oasExtensible": true
+      "oasLiterals": {
+        "0/type": "0#",
+        "0/name": "0#",
+        "0/in": "parameteLocation",
+        "0/description": "0#"
+      },
+      "oasExtensible": true,
+      "properties": {
+        "description": {
+          "format": "markdown-commonmark"
+        }
+      }
     },
     "APIKeySecurityScheme": {
       "type": "object",
@@ -1702,18 +1815,18 @@
       },
       "patternProperties": {
         "^x-": {
-          "oasType": "XCustomOAuthFlow"
+          "oasType": "ExtensionOAuthFlow"
         }
       },
       "additionalProperties": false,
-      "oasLiterals": [
-        "0/scopes/{scopeName}"
-      ],
-      "oasApiLinks": [
-        "0/authorizationUrl",
-        "0/tokenUrl",
-        "0/refreshUrl"
-      ],
+      "oasLiterals": {
+        "0/scopes/{scopeName}": "scope"
+      },
+      "oasApiLinks": {
+        "0/authorizationUrl": "0#",
+        "0/tokenUrl": "0#",
+        "0/refreshUrl": "0#"
+      },
       "oasExtensible": true
     },
     "ImplicitOAuthFlow": {
@@ -1845,7 +1958,12 @@
         },
         "parameters": {
           "type": "object",
-          "additionalProperties": true
+          "additionalProperties": {
+            "type": "string"
+          },
+          "propertyNames": {
+            "oasType": "QualifiedTemplateParameter"
+          }
         },
         "requestBody": true,
         "description": {
@@ -1869,33 +1987,42 @@
       "oasType": "Link",
       "oasImplicitReferences": {
         "0/operationId": {
+          "oasRelationType": "operationIdRef",
           "oasTargetType": "Operation",
           "oasTargetField": "0/operationId"
+        },
+        "0/parameters/{name}#": {
+          "oasTargetType": "Parameter",
+          "oasTargetField": "0/name",
+          "oasTargetQualifier": "0/in"
         }
       },
       "oasReferences": {
         "0/operationRef": "Operation"
       },
-      "parameters": {
-        "propertyNames": {
-          "oasType": "QualifiedTemplateParameter"
-        }
-      },
       "oneOf": [
         {
-          "oasChildren": "0/parameters/{parameterSpecification}",
-          "parameters": {
-            "additionalProperties": {
-              "$ref": "#/$defs/RuntimeExpression"
+          "oasChildren": {
+            "0/parameters/{parameterSpecification}": "parameterExpression"
+          },
+          "properties": {
+            "parameters": {
+              "additionalProperties": {
+                "$ref": "#/$defs/RuntimeExpression"
+              }
             }
           }
         },
         {
-          "oasLiterals": "0/parameters/{parameterSpecification}",
-          "parameters": {
-            "additionalProperties": {
-              "not": {
-                "$ref": "#/$defs/RuntimeExpression"
+          "oasLiterals": {
+            "0/parameters/{parameterSpecification}": "parameterValue"
+          },
+          "properties": {
+            "parameters": {
+              "additionalProperties": {
+                "not": {
+                  "$ref": "#/$defs/RuntimeExpression"
+                }
               }
             }
           }
@@ -1904,24 +2031,20 @@
     },
     "Callback": {
       "type": "object",
-      "additionalProperties": {
-        "$ref": "#/$defs/PathItem"
-      },
       "patternProperties": {
         "^x-": true
       },
       "oasType": "Callback",
-      "oasLiterals": [
-        "0/openapi"
-      ],
+      "oasChildren": {
+        "0/{name}/{pathTemplate}": "callback"
+      },
       "oasExtensible": true
     },
     "Encoding": {
       "type": "object",
       "properties": {
         "contentType": {
-          "type": "string",
-          "oasLiteralType": "ContentType"
+          "type": "string"
         },
         "headers": {
           "type": "object",
@@ -1958,11 +2081,17 @@
       },
       "additionalProperties": false,
       "oasType": "Encoding",
-      "oasLiterals": [
-        "0/style",
-        "0/explode",
-        "0/allowReserved"
-      ]
+      "oasChildren": {
+        "0/headers/{header}": "header"
+      },
+      "oasReferences": {
+        "0/headers/{header}/$ref": "Header"
+      },
+      "oasLiterals": {
+        "0/style": "0#",
+        "0/explode": "0#",
+        "0/allowReserved": "0#"
+      }
     },
     "PathParameter": {
       "description": "Parameter in path",
@@ -1983,6 +2112,9 @@
         },
         "required": {
           "const": true
+        },
+        "name": {
+          "oasType": "TemplateParameter"
         }
       },
       "oasType": "PathParameter"
@@ -2034,7 +2166,7 @@
     "RuntimeExpression": {
       "oasType": "RuntimeExpression",
       "type": "string",
-      "pattern": "\\\\$(url$|method$|statusCode$|request\\.|response\\.)"
+      "pattern": "\\$(url$|method$|statusCode$|request\\.|response\\.)"
     }
   }
 }

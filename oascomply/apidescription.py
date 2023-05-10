@@ -74,7 +74,11 @@ class ApiDescription:
             raise ValueError(f"OAS v{self._version} not supported!")
 
         parsed_base = rfc3987.parse(uri, rule='IRI')
-        if parsed_base['path'] and not parsed_base['path'].endswith('/'):
+        if (
+            parsed_base['path'] and 
+            '/' in parsed_base['path'] and
+            not parsed_base['path'].endswith('/')
+        ):
             # RDF serialization works better with a directory
             # as a base IRI, particularly for multi-document
             # API descriptions within a single directory.
@@ -260,24 +264,19 @@ class ApiDescription:
     def load(cls):
         class CustomArgumentParser(argparse.ArgumentParser):
             def _fix_message(self, message):
-                return re.sub(
-                    r'{[^}]*ttl[^}]*}',
-                    '{nt, ttl, n3, trig, json-ld, xml, nquads, trix, hext, ...}',
-                    message.replace(
-                        'FILES [FILES ...]',
-                        'FILE [URI] [TYPE]',
-                    ).replace(
-                        'DIRECTORIES [DIRECTORIES ...]',
-                        'DIRECTORY [URI_PREFIX]',
-                    ),
+                # nargs=+ does not support metavar=tuple
+                return message.replace(
+                    'FILES [FILES ...]',
+                    'FILE [URI] [TYPE]',
+                ).replace(
+                    'DIRECTORIES [DIRECTORIES ...]',
+                    'DIRECTORY [URI_PREFIX]',
                 )
 
             def format_usage(self):
-                # return super().format_usage()
                 return self._fix_message(super().format_usage())
 
             def format_help(self):
-                # return super().format_help()
                 return self._fix_message(super().format_help())
 
         parser = CustomArgumentParser(
@@ -356,15 +355,7 @@ class ApiDescription:
             '--output-format',
             nargs='?',
             const='nt11',
-            choices=(
-                {
-                    'none', # Do not write to stdout
-                }.union(
-                    OUTPUT_FORMATS_LINE
-                ).union(
-                    OUTPUT_FORMATS_STRUCTURED
-                )
-            ),
+            metavar="nt | ttl | n3 | trig | json-ld | xml | hext | ...",
             help="Serialize the parsed graph to stdout in the given format, "
                  "or 'nt11' (N-Triples with UTF-8 encoding) if no format name "
                  "is provided.  Format names are passed through to rdflib, "
@@ -424,6 +415,10 @@ class ApiDescription:
 
         desc.validate()
         if args.output_format is not None:
+            # Note that while rdflib.Graph.serialize can take
+            # a destination, at least some of the serializers
+            # write bytes rather than text which does not work
+            # with sys.stdout in Python 3.
             print(desc.serialize(output_format=args.output_format))
         else:
             print('Your API description is valid!')

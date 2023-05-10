@@ -1,6 +1,6 @@
 {
-    "title": "JSON Schema 2020-12 extended with OpenAPI Specification Type annotations",
-    "$id": "https://spec.openapis.org/reference/dialect/2020-12/oastype",
+    "title": "Strict JSON Schema 2020-12 extended with OpenAPI Specification Ontology annotations",
+    "$id": "https://spec.openapis.org/compliance/schemas/dialect/2023-06/oas-ontology",
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$vocabulary": {
         "https://json-schema.org/draft/2020-12/vocab/core": true,
@@ -10,7 +10,7 @@
         "https://json-schema.org/draft/2020-12/vocab/meta-data": true,
         "https://json-schema.org/draft/2020-12/vocab/format-annotation": true,
         "https://json-schema.org/draft/2020-12/vocab/content": true,
-        "https://spec.openapis.org/reference/vocab/2020-12/oastype": true
+        "https://spec.openapis.org/compliance/vocab/2023-06/oas-ontology": false
     },
     "$dynamicAnchor": "meta",
     "type": ["object", "boolean"],
@@ -22,6 +22,7 @@
         {"$ref": "https://json-schema.org/draft/2020-12/meta/meta-data"},
         {"$ref": "https://json-schema.org/draft/2020-12/meta/format-annotation"},
         {"$ref": "https://json-schema.org/draft/2020-12/meta/content"},
-        {"$ref": "https://spec.openapis.org/reference/meta/2020-12/oastype"}
-    ]
+        {"$ref": "https://spec.openapis.org/compliance/schemas/meta/2023-06/oas-ontology"}
+    ],
+    "unevaluatedProperties": false
 }
