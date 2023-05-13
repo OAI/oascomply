@@ -455,13 +455,17 @@ description = "Validating URI References per RFC 3986"
 category = "main"
 optional = false
 python-versions = ">=3.7"
-files = [
-    {file = "rfc3986-2.0.0-py2.py3-none-any.whl", hash = "sha256:50b1502b60e289cb37883f3dfd34532b8873c7de9f49bb546641ce9cbd256ebd"},
-    {file = "rfc3986-2.0.0.tar.gz", hash = "sha256:97aacf9dbd4bfd829baad6e6309fa6573aaf1be3f6fa735c8ab05e46cecb261c"},
-]
+files = []
+develop = false
 
 [package.extras]
 idna2008 = ["idna"]
+
+[package.source]
+type = "git"
+url = "https://github.com/handrews/rfc3986.git"
+reference = "no-deprecation-warnings"
+resolved_reference = "9d847bfc087f5cc719e1f4e19486b12a5d41ebbc"
 
 [[package]]
 name = "rfc3987"
@@ -573,4 +577,4 @@ resolved_reference = "26da57e83c74607ca2153a2d304ac1921c587561"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "2c737ee3136a1a6ba43b20f440ae445cb4a48a42d1988af6819bd810373981a7"
+content-hash = "000ee2fdec1eaab14ad88e954b2ae2d89b139c26440ee3cac891d7943230fe10"
