@@ -1,4 +1,6 @@
 import json
+import re
+from functools import cached_property
 from pathlib import Path
 from uuid import uuid4
 from typing import Any, Optional
@@ -9,6 +11,11 @@ import rfc3987
 import rdflib
 from rdflib.namespace import RDF
 import yaml
+
+from oascomply.pointers import (
+    RelativeJSONPointerTemplate,
+    RelativeJSONPointerTemplateError,
+)
 
 __all__ = [
     'OasGraph',
@@ -49,17 +56,41 @@ OUTPUT_FORMATS_STRUCTURED = frozenset({
 
 
 class OasGraph:
-    def __init__(self, version):
+    """
+    Graph representing an OAS API description
+
+    :param version: The X.Y OAS version string for the description
+    """
+    def __init__(self, version: str):
         if version not in ('3.0', '3.1'):
             raise ValueError(f'OAS v{version} is not supported.')
         if version == '3.1':
             raise ValueError(f'OAS v3.1 support TBD.')
+        self._version = version
 
         self._g = rdflib.Graph()
-        self._oas = rdflib.Namespace(
-            f'https://spec.openapis.org/oas/v{version}/ontology#'
+        self._oas_unversioned = rdflib.Namespace(
+            'https://spec.openapis.org/compliance/ontology#'
         )
-        self._g.bind('oas3.0', self._oas)
+        self._oas_versions = {
+            '3.0': rdflib.Namespace(
+                'https://spec.openapis.org/compliance/ontology#3.0-'
+            ),
+            '3.1': rdflib.Namespace(
+                'https://spec.openapis.org/compliance/ontology#3.1-'
+            ),
+        }
+        self._g.bind('oas', self._oas_unversioned)
+        self._g.bind('oas3.0', self._oas_versions['3.0'])
+        self._g.bind('oas3.1', self._oas_versions['3.1'])
+
+    @cached_property
+    def oas(self):
+        return self._oas_unversioned
+
+    @cached_property
+    def oas_v(self):
+        return self._oas_versions[self._version]
 
     def serialize(self, *args, base=None, output_format=None, **kwargs):
         """Serialize the graph using the given output format."""
@@ -77,11 +108,16 @@ class OasGraph:
         rdf_node = rdflib.URIRef(iri)
         self._g.add((
             rdf_node,
-            self._oas['locatedAt'],
+            self.oas['locatedAt'],
             rdflib.URIRef(
                 location.resolve().as_uri() if isinstance(location, Path)
                 else location,
             ),
+        ))
+        self._g.add((
+            rdf_node,
+            self.oas['root'],
+            rdf_node + '#',
         ))
         filename = None
         if isinstance(location, Path):
@@ -94,7 +130,7 @@ class OasGraph:
         if filename:
             self._g.add((
                 rdf_node,
-                self._oas['filename'],
+                self.oas['filename'],
                 rdflib.Literal(filename),
             ))
 
@@ -104,14 +140,14 @@ class OasGraph:
         self._g.add((
             instance_uri,
             RDF.type,
-            self._oas[annotation.value],
-        ))
-        self._g.add((
-            instance_uri,
-            RDF.type,
-            self._oas['ParsedStructure'],
+            self.oas_v[annotation.value],
         ))
         if sourcemap:
+            self._g.add((
+                instance_uri,
+                RDF.type,
+                self.oas['ParsedStructure'],
+            ))
             self.add_sourcemap(
                 instance_uri,
                 annotation.location.instance_ptr,
@@ -126,28 +162,55 @@ class OasGraph:
             entry = sourcemap[map_key]
             self._g.add((
                 instance_rdf_uri,
-                self._oas['line'],
+                self.oas['line'],
                 rdflib.Literal(entry.value_start.line),
             ))
             self._g.add((
                 instance_rdf_uri,
-                self._oas['column'],
+                self.oas['column'],
                 rdflib.Literal(entry.value_start.column),
             ))
+
+    def _resolve_child_template(
+        self,
+        annotation,
+        instance,
+        value_processor=None,
+    ):
+        parent_uri = rdflib.URIRef(str(annotation.location.instance_uri))
+        parent_obj = annotation.location.instance_ptr.evaluate(instance)
+        for child_template, ann_value in annotation.value.items():
+            # Yield back relname unchanged?
+            # Take modifier funciton?
+            # double generator of some sort?
+            rdf_name = ann_value.value   # unwrap jschon.JSON
+            relptr = None
+            if re.match(r'\d', rdf_name):
+                relptr = jschon.RelativeJSONPointer(rdf_name)
+                rdf_name = None
+
+            yield from (
+                (
+                    result,
+                    rdf_name if rdf_name
+                        else relptr.evaluate(result.data),
+                )
+                for result in RelativeJSONPointerTemplate(
+                    child_template,
+                ).evaluate(parent_obj)
+            )
 
     def add_oaschildren(self, annotation, instance, sourcemap):
         location = annotation.location
         # to_rdf()
         parent_uri = rdflib.URIRef(str(location.instance_uri))
-        for child in annotation.value:
-            child = child.value
-            if '{' in child:
-                continue
-
-            child_ptr = jschon.RelativeJSONPointer(child)
-            parent_obj = location.instance_ptr.evaluate(instance)
-            try:
-                child_obj = child_ptr.evaluate(parent_obj)
+        parent_obj = location.instance_ptr.evaluate(instance)
+        try:
+            for result, relname in self._resolve_child_template(
+                annotation,
+                instance,
+        ):
+                child_obj = result.data
                 child_path = child_obj.path
                 iu = location.instance_uri
                 # replace fragment; to_rdf
@@ -156,12 +219,12 @@ class OasGraph:
                 )))
                 self._g.add((
                     parent_uri,
-                    self._oas[child_ptr.path[0]],
+                    self.oas[relname],
                     child_uri,
                 ))
                 self._g.add((
                     child_uri,
-                    self._oas['parent'],
+                    self.oas['parent'],
                     parent_uri,
                 ))
                 if sourcemap:
@@ -170,20 +233,52 @@ class OasGraph:
                         child_path,
                         sourcemap,
                     )
-            except jschon.RelativeJSONPointerError as e:
-                pass
+        except (
+            jschon.RelativeJSONPointerError,
+            RelativeJSONPointerTemplateError,
+        ) as e:
+            # TODO: actual error handling
+            raise
+
+    def add_oasliterals(self, annotation, instance, sourcemap):
+        location = annotation.location
+        # to_rdf()
+        parent_uri = rdflib.URIRef(str(location.instance_uri))
+        parent_obj = location.instance_ptr.evaluate(instance)
+        try:
+            for result, relname in self._resolve_child_template(
+                annotation,
+                instance,
+        ):
+                literal = result.data
+                literal_path = literal.path
+                iu = location.instance_uri
+                # replace fragment; to_rdf
+                literal_node = rdflib.Literal(literal.value)
+                self._g.add((
+                    parent_uri,
+                    self.oas[relname],
+                    literal_node,
+                ))
+                # TODO: Sourcemap for literals?  might need
+                #       intermediate node as literals cannot
+                #       be subjects in triples.
+        except (
+            jschon.RelativeJSONPointerError,
+            RelativeJSONPointerTemplateError,
+        ) as e:
+            # TODO: actual error handling
+            raise
 
     def add_oasreferences(self, annotation, instance, sourcemap):
         location = annotation.location
         remote_resources = []
-        for refloc, reftype in annotation.value.items():
-            reftype = reftype.value
-            # if '{' in refloc:
-                # continue
-            try:
-                ref_ptr = jschon.RelativeJSONPointer(refloc)
-                parent_obj = location.instance_ptr.evaluate(instance)
-                ref_obj = ref_ptr.evaluate(parent_obj)
+        try:
+            for template_result, reftype in self._resolve_child_template(
+                annotation,
+                instance,
+            ):
+                ref_obj = template_result.data
                 ref_source_path = ref_obj.path
                 iu = location.instance_uri
                 # replace fragment; to_rdf
@@ -195,7 +290,7 @@ class OasGraph:
                 ))
                 self._g.add((
                     ref_src_uri,
-                    self._oas['references'],
+                    self.oas['references'],
                     ref_target_uri,
                 ))
                 # TODO: elide the reference with a new edge
@@ -213,6 +308,12 @@ class OasGraph:
                         ref_source_path,
                         sourcemap,
                     )
-            except (ValueError, jschon.RelativeJSONPointerError) as e:
-                pass
+        except (
+            ValueError,
+            jschon.RelativeJSONPointerError,
+            RelativeJSONPointerTemplateError,
+        ) as e:
+            # TODO: Actual error handling
+            pass
+
         return remote_resources

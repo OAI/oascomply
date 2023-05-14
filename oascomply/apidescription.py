@@ -144,10 +144,12 @@ class ApiDescription:
                 return None, None
 
     def validate(self, resource_uri=None, oastype='OpenAPI'):
-        sp = SchemaParser.get_parser(
-            {},
-            annotations=('oasType', 'oasChildren', 'oasReferences')
-        )
+        sp = SchemaParser.get_parser({}, annotations=(
+            'oasType',
+            'oasChildren',
+            'oasReferences',
+            'oasLiterals',
+        ))
         if resource_uri is None:
             assert oastype == 'OpenAPI'
             resource_uri = self._primary_uri

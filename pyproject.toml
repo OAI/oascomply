@@ -25,6 +25,8 @@ rfc3986 = { extras = ["idna"], git = "https://github.com/handrews/rfc3986.git", 
 urnparse = "^0.2.0"
 json-source-map = "^1.0.5"
 yaml-source-map = { git = "https://github.com/handrews/yaml-source-map.git", branch = "versions" }
+regex = "^2023.5.5"
+idna = "^3.4"
 
 [build-system]
 requires = ["poetry-core"]

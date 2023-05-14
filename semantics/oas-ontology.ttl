@@ -1,6 +1,6 @@
-@prefix oas: <https://openapis.org/ontology#> .
-@prefix oas3.0: <https://openapis.org/ontology#3.0-> .
-@prefix oas3.1: <https://openapis.org/ontology#3.1-> .
+@prefix oas: <https://spec.openapis.org/compliance/ontology#> .
+@prefix oas3.0: <https://spec.openapis.org/compliance/ontology#3.0-> .
+@prefix oas3.1: <https://spec.openapis.org/compliance/ontology#3.1-> .
 
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .

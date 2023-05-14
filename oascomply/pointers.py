@@ -1,4 +1,5 @@
 from typing import Generator, Sequence, Tuple, Union
+from collections import namedtuple
 import re
 import jschon
 
@@ -9,6 +10,12 @@ TEMPLATE_ESCAPED = r'\~[0123]'
 NON_TEMPLATE_TOKEN = f'(?:{TEMPLATE_UNESCAPED}|{TEMPLATE_ESCAPED})*'
 BASIC_POINTER_TEMPLATE = f'(?:/(?:{TEMPLATE_TOKEN}|{NON_TEMPLATE_TOKEN}))*'
 JSON_POINTER_TEMPLATE = f'{BASIC_POINTER_TEMPLATE}(?:{TEMPLATE_TOKEN}#)?'
+
+
+TemplateResult = namedtuple(
+    'TemplateResult',
+    ['pointer', 'data', 'variables', 'index'],
+)
 
 
 class GenericPointerTemplateError(Exception):
@@ -74,6 +81,8 @@ class JSONPointerTemplate:
     def evaluate(
         self,
         instance: jschon.JSON,
+        *,
+        require_match: bool = False,
         _index=0,
         _resolved=jschon.JSONPointer(),
         _variables=None,
@@ -91,7 +100,7 @@ class JSONPointerTemplate:
         variables = _variables or {}
 
         if len(remaining) == 0:
-            yield _resolved, instance, variables, None
+            yield TemplateResult(_resolved, instance, variables, None)
             return
 
         next_c = remaining[0]
@@ -100,16 +109,19 @@ class JSONPointerTemplate:
             try:
                 new_instance = next_c.evaluate(instance)
             except jschon.JSONPointerError as e:
+                if not require_match:
+                    return
                 raise JSONPointerTemplateEvaluationError(
-                    f"Path '{new_resolved}' not found in document while"
+                    f"Path '{new_resolved}' not found in document {instance} while "
                     f"evaluating template '{self}'"
                 ) from e
 
             yield from self.evaluate(
                 new_instance,
-                _index + 1,
-                new_resolved,
-                variables,
+                require_match=require_match,
+                _index=_index + 1,
+                _resolved=new_resolved,
+                _variables=variables,
             )
 
         elif isinstance(next_c, str):
@@ -130,15 +142,16 @@ class JSONPointerTemplate:
                 yield from (
                     self.evaluate(
                         instance[key],
-                        _index + 1,
-                        _resolved / str(key),
-                        newvars,
+                        require_match=require_match,
+                        _index=_index + 1,
+                        _resolved=_resolved / str(key),
+                        _variables=newvars,
                     )
                 )
         else:
             assert next_c is True
             prev_val = next(reversed(variables.values()))
-            yield _resolved, instance, variables, prev_val
+            yield TempalteResult(_resolved, instance, variables, prev_val)
 
 
     @staticmethod
@@ -211,7 +224,7 @@ class RelativeJSONPointerTemplate:
             self._template == other._template
         )
 
-    def evaluate(self, instance):
+    def evaluate(self, instance, *, require_match=False):
         try:
             base = self._relptr.evaluate(instance)
         except jschon.RelativeJSONPointerError as e:
@@ -230,24 +243,28 @@ class RelativeJSONPointerTemplate:
             else:
                 value = base
                 name = None
-            yield self._relptr, value, {}, name
+            yield TemplateResult(self._relptr, value, {}, name)
             return
 
         try:
             yield from (
-                (
+                TemplateResult(
                     jschon.RelativeJSONPointer(
                         up=self._relptr.up,
                         over=self._relptr.over,
                         ref=result[0],
                     ),
-                    result[1],
-                    result[2],
-                    result[3],
+                    result.data,
+                    result.variables,
+                    result.index,
                 )
-                for result in self._jptemplate.evaluate(base)
+                for result in self._jptemplate.evaluate(
+                    base,
+                    require_match=require_match,
+                )
             )
         except JSONPointerTemplateError as e:
             raise RelativeJSONPointerTemplateEvaluationError(
-                e.args[0] + f' (after applying {self._relptr}',
+                e.args[0] +
+                f" (after applying relative pointer '{self._relptr}')",
             ) from e
