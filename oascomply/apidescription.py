@@ -154,6 +154,8 @@ class ApiDescription:
         sp = SchemaParser.get_parser({}, annotations=(
             'oasType',
             'oasChildren',
+            'oasDescriptionLinks',
+            'oasApiLinks',
             'oasReferences',
             'oasLiterals',
         ))

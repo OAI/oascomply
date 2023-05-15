@@ -254,8 +254,6 @@ class OasGraph:
         ):
                 literal = result.data
                 literal_path = literal.path
-                iu = location.instance_uri
-                # replace fragment; to_rdf
                 literal_node = rdflib.Literal(literal.value)
                 self._g.add((
                     parent_uri,
@@ -265,6 +263,46 @@ class OasGraph:
                 # TODO: Sourcemap for literals?  might need
                 #       intermediate node as literals cannot
                 #       be subjects in triples.
+        except (
+            jschon.RelativeJSONPointerError,
+            RelativeJSONPointerTemplateError,
+        ) as e:
+            # TODO: actual error handling
+            raise
+
+    def add_oasapilinks(self, annotation, instance, sourcemap):
+        return self._add_links(
+            annotation, instance, sourcemap, 'Endpoint',
+        )
+
+    def add_oasdescriptionlinks(self, annotation, instance, sourcemap):
+        return self._add_links(
+            annotation, instance, sourcemap, 'ExternalResource',
+        )
+
+    def _add_links(self, annotation, instance, sourcemap, entity):
+        location = annotation.location
+        # to_rdf()
+        parent_uri = rdflib.URIRef(str(location.instance_uri))
+        parent_obj = location.instance_ptr.evaluate(instance)
+        try:
+            for result, relname in self._resolve_child_template(
+                annotation,
+                instance,
+        ):
+                link_obj = result.data
+                link_path = link_obj.path
+                link_uri = rdflib.URIRef(str(link_obj.value))
+                self._g.add((
+                    parent_uri,
+                    self.oas[relname],
+                    link_uri,
+                ))
+                self._g.add((
+                    link_uri,
+                    RDF.type,
+                    self.oas[entity],
+                ))
         except (
             jschon.RelativeJSONPointerError,
             RelativeJSONPointerTemplateError,
