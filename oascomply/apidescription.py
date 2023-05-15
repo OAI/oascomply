@@ -5,8 +5,10 @@ from pathlib import Path
 import urllib
 from uuid import uuid4
 from collections import namedtuple
-from typing import Any, Mapping, Optional, Tuple
+from typing import Any, Iterator, Mapping, Optional, Tuple, Union
 import logging
+import os
+import sys
 
 import jschon
 
@@ -61,7 +63,11 @@ class ApiDescription:
         path: Optional[Path] = None,
         url: Optional[str] = None,
         sourcemap: Optional[Mapping] = None,
+        test_mode: bool = False,
     ) -> None:
+
+        self._test_mode = test_mode
+
         if 'openapi' not in data:
             raise ValueError(
                 "Initial API description must include `openapi` field!"
@@ -91,6 +97,7 @@ class ApiDescription:
 
         self._g = OasGraph(
             self._version[:self._version.rindex('.')],
+            test_mode=test_mode,
         )
         self._primary_uri = uri
 
@@ -176,8 +183,68 @@ class ApiDescription:
             if uri not in self._validated:
                 self.validate(uri, oastype)
 
-    def serialize(self, *args, output_format='nt11', **kwargs):
-        return self._g.serialize(*args, output_format=output_format, base=self._base_uri, **kwargs)
+    def serialize(
+        self,
+        *args,
+        output_format='nt11',
+        destination=sys.stdout,
+        **kwargs
+    ) -> Optional[Union[str, Iterator[str]]]:
+        if self._test_mode:
+            if output_format and output_format != 'nt11':
+                sys.stderr.write('Only "nt11" supported in test mode!\n')
+                sys.exit(-1)
+            if destination not in (None, sys.stdout):
+                sys.stderr.write(
+                    'Only in-memory and stdout supported in test mode!\n',
+                )
+                sys.exit(-1)
+
+            # TODO: At least sometimes, there is a blank line in the output.
+            #       But there does not seem to be when serializeing directly
+            #       to stdout.  This might be an issue with split(), in which
+            #       case maybe use split()[:-1]?  Need to check performance
+            #       with large graphs.
+            filtered = filter(
+                lambda l: l != '',
+                sorted(self._g.serialize(output_format='nt11').split('\n')),
+            )
+            if destination is None:
+                return filtered
+            for line in filtered:
+                print(line)
+            return
+
+        # Note that only lowercase "utf-8" avoids an encoding
+        # warning with N-Triples output (and possibly other
+        # serializers).  rdflib doesn't understand "UTF-8", but
+        # confusingly uses "UTF-8" in the warning message.
+        new_kwargs = {
+            'encoding': 'utf-8',
+            'base': self._base_uri,
+            'output_format': output_format,
+        }
+        new_kwargs.update(kwargs)
+
+        if destination in (sys.stdout, sys.stderr):
+            # rdflib serializers write bytes, not str # if destination
+            # is not None, which doesn't work with sys.stdout / sys.stderr
+            destination.flush()
+            with os.fdopen(
+                sys.stdout.fileno(),
+                "wb",
+                closefd=False,  # Don't close stdout/err exiting the with
+            ) as dest:
+                self._g.serialize(*args, destination=dest, **new_kwargs)
+                dest.flush()
+                return
+
+        elif destination is None:
+            return self._g.serialize(
+                *args, destination=destination, **new_kwargs,
+            )
+
+        self._g.serialize(*args, destination=destination, **new_kwargs)
 
     @classmethod
     def _process_resource_arg(cls, r, prefixes, create_source_map):
@@ -371,6 +438,13 @@ class ApiDescription:
             choices=(('none',)),
             help="TODO: Support storing to various kinds of databases."
         )
+        parser.add_argument(
+            '--test-mode',
+            action='store_true',
+            help="Omit data such as 'locatedAt' that will change for "
+                 "every environment.  This is intended to facilitate "
+                 "automated testing of the entire system.",
+        )
         args = parser.parse_args()
         if args.directories:
             raise NotImplementedError('-D option not yet implemented')
@@ -404,6 +478,7 @@ class ApiDescription:
             primary['uri'],
             path=primary['path'],
             sourcemap=primary['sourcemap'],
+            test_mode=args.test_mode,
         )
         for r in resources:
             if r['uri'] != primary['uri']:
@@ -416,11 +491,7 @@ class ApiDescription:
             logger.info(f"Adding document {r['path']!r} <{r['uri']}>")
 
         desc.validate()
-        if args.output_format is not None:
-            # Note that while rdflib.Graph.serialize can take
-            # a destination, at least some of the serializers
-            # write bytes rather than text which does not work
-            # with sys.stdout in Python 3.
-            print(desc.serialize(output_format=args.output_format))
+        if args.output_format is not None or args.test_mode is True:
+            desc.serialize(output_format=args.output_format)
         else:
             print('Your API description is valid!')

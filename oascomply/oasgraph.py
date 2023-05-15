@@ -12,7 +12,7 @@ import rdflib
 from rdflib.namespace import RDF
 import yaml
 
-from oascomply.pointers import (
+from oascomply.ptrtemplates import (
     RelativeJSONPointerTemplate,
     RelativeJSONPointerTemplateError,
 )
@@ -61,12 +61,13 @@ class OasGraph:
 
     :param version: The X.Y OAS version string for the description
     """
-    def __init__(self, version: str):
+    def __init__(self, version: str, *, test_mode=False):
         if version not in ('3.0', '3.1'):
             raise ValueError(f'OAS v{version} is not supported.')
         if version == '3.1':
             raise ValueError(f'OAS v3.1 support TBD.')
         self._version = version
+        self._test_mode = test_mode
 
         self._g = rdflib.Graph()
         self._oas_unversioned = rdflib.Namespace(
@@ -106,14 +107,15 @@ class OasGraph:
 
     def add_resource(self, location, iri):
         rdf_node = rdflib.URIRef(iri)
-        self._g.add((
-            rdf_node,
-            self.oas['locatedAt'],
-            rdflib.URIRef(
-                location.resolve().as_uri() if isinstance(location, Path)
-                else location,
-            ),
-        ))
+        if not self._test_mode:
+            self._g.add((
+                rdf_node,
+                self.oas['locatedAt'],
+                rdflib.URIRef(
+                    location.resolve().as_uri() if isinstance(location, Path)
+                    else location,
+                ),
+            ))
         self._g.add((
             rdf_node,
             self.oas['root'],

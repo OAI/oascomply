@@ -151,7 +151,7 @@ class JSONPointerTemplate:
         else:
             assert next_c is True
             prev_val = next(reversed(variables.values()))
-            yield TempalteResult(_resolved, instance, variables, prev_val)
+            yield TemplateResult(_resolved, instance, variables, prev_val)
 
 
     @staticmethod

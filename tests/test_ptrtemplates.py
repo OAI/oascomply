@@ -2,7 +2,7 @@ from itertools import chain
 import jschon
 import pytest
 
-from oascomply.pointers import (
+from oascomply.ptrtemplates import (
     JSONPointerTemplate,
     InvalidJSONPointerTemplateError,
     JSONPointerTemplateEvaluationError,
@@ -90,8 +90,7 @@ TEST_DOCUMENT = jschon.JSON({
     ), (
         JSONPointerTemplate('/a/0'),
         [(jschon.JSONPointer('/a/0'), TEST_DOCUMENT['a'][0], {}, None)],
-    ),
-    (
+    ), (
         JSONPointerTemplate('/e/{key}'),
         [
             (
@@ -123,7 +122,10 @@ TEST_DOCUMENT = jschon.JSON({
                 ) for index in range(len(TEST_DOCUMENT['e'][key1]))
             ] for key1 in TEST_DOCUMENT['e'].keys()
         ])),
-    ),
+    ), (
+        JSONPointerTemplate('/nope/{whatever}'),
+        [],
+    )
 ))
 def test_evaluation(template, output):
     actual = list(
@@ -132,14 +134,15 @@ def test_evaluation(template, output):
     assert actual == output
 
 
-@pytest.mark.parametrize('template,match', (
-    ('/nope', 'not found in document'),
-    ('/a/0/{scalar}', 'Cannot match template variable'),
+@pytest.mark.parametrize('template,match,require', (
+    ('/nope', 'not found in document', True),
+    ('/a/0/{scalar}', 'Cannot match template variable', False),
+    ('/a/0/{scalar}', 'Cannot match template variable', True),
 ))
-def test_evaluation_errors(template, match):
+def test_evaluation_errors(template, match, require):
     jpt = JSONPointerTemplate(template)
     with pytest.raises(JSONPointerTemplateEvaluationError, match=match):
-        list(jpt.evaluate(TEST_DOCUMENT))
+        list(jpt.evaluate(TEST_DOCUMENT, require_match=require))
 
 
 @pytest.mark.parametrize('template_str,relptr,jptemplate', (
@@ -172,13 +175,11 @@ def test_rel_constructor_errors(template_str, match):
         RelativeJSONPointerTemplate('0+1'),
         jschon.JSONPointer('/a/1').evaluate(TEST_DOCUMENT),
         [(jschon.RelativeJSONPointer('0+1'), TEST_DOCUMENT['a'][2], {}, None)],
-    ),
-    (
+    ), (
         RelativeJSONPointerTemplate('1#'),
         jschon.JSONPointer('/e/f').evaluate(TEST_DOCUMENT),
         [(jschon.RelativeJSONPointer('1#'), TEST_DOCUMENT['e'], {}, 'e')],
-    ),
-    (
+    ), (
         RelativeJSONPointerTemplate('0/{var}'),
         jschon.JSONPointer('/e/i').evaluate(TEST_DOCUMENT),
         [
@@ -195,23 +196,29 @@ def test_rel_constructor_errors(template_str, match):
                 None,
             ),
         ],
-    ),
+    ), (
+        RelativeJSONPointerTemplate('0/nope/{whatever}'),
+        TEST_DOCUMENT,
+        [],
+    )
 ))
 def test_rel_evaluation(template, start, output):
     actual = list(template.evaluate(start))
     assert actual == output
 
-@pytest.mark.parametrize('template,start,match', (
+@pytest.mark.parametrize('template,start,match,require', (
     (
         RelativeJSONPointerTemplate('1/{whatever}'),
         TEST_DOCUMENT,
         'Could not evaluate origin',
+        False,
     ), (
         RelativeJSONPointerTemplate('0/x'),
         TEST_DOCUMENT,
         r'Path .* not found .* \(after applying',
+        True,
     )
 ))
-def test_rel_evaluation_errors(template, start, match):
+def test_rel_evaluation_errors(template, start, match, require):
     with pytest.raises(RelativeJSONPointerTemplateEvaluationError, match=match):
-        list(template.evaluate(start))
+        list(template.evaluate(start, require_match=require))
