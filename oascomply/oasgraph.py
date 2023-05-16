@@ -179,13 +179,9 @@ class OasGraph:
         instance,
         value_processor=None,
     ):
-        parent_uri = rdflib.URIRef(str(annotation.location.instance_uri))
         parent_obj = annotation.location.instance_ptr.evaluate(instance)
         for child_template, ann_value in annotation.value.items():
-            # Yield back relname unchanged?
-            # Take modifier funciton?
-            # double generator of some sort?
-            rdf_name = ann_value.value   # unwrap jschon.JSON
+            rdf_name = ann_value.value
             relptr = None
             if re.match(r'\d', rdf_name):
                 relptr = jschon.RelativeJSONPointer(rdf_name)
@@ -206,7 +202,6 @@ class OasGraph:
         location = annotation.location
         # to_rdf()
         parent_uri = rdflib.URIRef(str(location.instance_uri))
-        parent_obj = location.instance_ptr.evaluate(instance)
         try:
             for result, relname in self._resolve_child_template(
                 annotation,
@@ -246,7 +241,6 @@ class OasGraph:
         location = annotation.location
         # to_rdf()
         parent_uri = rdflib.URIRef(str(location.instance_uri))
-        parent_obj = location.instance_ptr.evaluate(instance)
         try:
             for result, relname in self._resolve_child_template(
                 annotation,
@@ -284,7 +278,6 @@ class OasGraph:
         location = annotation.location
         # to_rdf()
         parent_uri = rdflib.URIRef(str(location.instance_uri))
-        parent_obj = location.instance_ptr.evaluate(instance)
         try:
             for result, relname in self._resolve_child_template(
                 annotation,
@@ -357,3 +350,14 @@ class OasGraph:
             pass
 
         return remote_resources
+
+    def add_oasextensible(self, annotation, instance, sourcemap):
+        if annotation.value is True:
+            # to_rdf()
+            parent_uri = rdflib.URIRef(str(annotation.location.instance_uri))
+            parent_obj = annotation.location.instance_ptr.evaluate(instance)
+            self._g.add((
+                parent_uri,
+                self.oas['allowsExtensions'],
+                rdflib.Literal(True),
+            ))
