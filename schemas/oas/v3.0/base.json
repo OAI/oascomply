@@ -1,0 +1,297 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spec.openapis.org/oas/v3.0/dialect/base",
+  "$comment": "This utilizes the 2020-12 core to bootstrap, but the actual keywords are forbidden by the metaschema",
+  "$vocabulary": {
+    "https://json-schema.org/draft/2020-12/vocab/core": true,
+    "https://spec.openapis.org/oas/v3.0/vocab/draft-04-subset": true,
+    "https://spec.openapis.org/oas/v3.0/vocab/extension": true
+  },
+  "$dynamicAnchor": "meta",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "multipleOf": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "maximum": {
+      "type": "number"
+    },
+    "exclusiveMaximum": {
+      "type": "boolean",
+      "default": false
+    },
+    "minimum": {
+      "type": "number"
+    },
+    "exclusiveMinimum": {
+      "type": "boolean",
+      "default": false
+    },
+    "maxLength": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "minLength": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "pattern": {
+      "type": "string",
+      "format": "regex"
+    },
+    "maxItems": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "minItems": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "uniqueItems": {
+      "type": "boolean",
+      "default": false
+    },
+    "maxProperties": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "minProperties": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "required": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "enum": {
+      "type": "array",
+      "items": true,
+      "minItems": 1,
+      "uniqueItems": false
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "array",
+        "boolean",
+        "integer",
+        "number",
+        "object",
+        "string"
+      ]
+    },
+    "not": {
+      "oneOf": [
+        {
+          "$dynamicRef": "#meta"
+        },
+        {
+          "$ref": "#/$defs/Reference"
+        }
+      ]
+    },
+    "allOf": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "$dynamicRef": "#meta"
+          },
+          {
+            "$ref": "#/$defs/Reference"
+          }
+        ]
+      }
+    },
+    "oneOf": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "$dynamicRef": "#meta"
+          },
+          {
+            "$ref": "#/$defs/Reference"
+          }
+        ]
+      }
+    },
+    "anyOf": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "$dynamicRef": "#meta"
+          },
+          {
+            "$ref": "#/$defs/Reference"
+          }
+        ]
+      }
+    },
+    "items": {
+      "oneOf": [
+        {
+          "$dynamicRef": "#meta"
+        },
+        {
+          "$ref": "#/$defs/Reference"
+        }
+      ]
+    },
+    "properties": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "$dynamicRef": "#meta"
+          },
+          {
+            "$ref": "#/$defs/Reference"
+          }
+        ]
+      }
+    },
+    "additionalProperties": {
+      "oneOf": [
+        {
+          "$dynamicRef": "#meta"
+        },
+        {
+          "$ref": "#/$defs/Reference"
+        },
+        {
+          "type": "boolean"
+        }
+      ],
+      "default": true
+    },
+    "description": {
+      "type": "string",
+      "format": "commonmark"
+    },
+    "format": {
+      "type": "string"
+    },
+    "default": true,
+    "nullable": {
+      "type": "boolean",
+      "default": false
+    },
+    "discriminator": {
+      "$ref": "#/$defs/Discriminator"
+    },
+    "readOnly": {
+      "type": "boolean",
+      "default": false
+    },
+    "writeOnly": {
+      "type": "boolean",
+      "default": false
+    },
+    "example": true,
+    "externalDocs": {
+      "$ref": "#/$defs/ExternalDocumentation"
+    },
+    "deprecated": {
+      "type": "boolean",
+      "default": false
+    },
+    "xml": {
+      "$ref": "#/$defs/XML"
+    }
+  },
+  "patternProperties": {
+    "^x-": true
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "ExternalDocumentation": {
+      "type": "object",
+      "required": [
+        "url"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "format": "commonmark"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri-reference"
+        }
+      },
+      "patternProperties": {
+        "^x-": true
+      },
+      "additionalProperties": false
+    },
+    "Discriminator": {
+      "type": "object",
+      "required": [
+        "propertyName"
+      ],
+      "properties": {
+        "propertyName": {
+          "type": "string"
+        },
+        "mapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Reference": {
+      "type": "object",
+      "required": [
+        "$ref"
+      ],
+      "properties": {
+        "$ref": {
+          "type": "string",
+          "format": "uri-reference"
+        }
+      }
+    },
+    "XML": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string",
+          "format": "uri"
+        },
+        "prefix": {
+          "type": "string"
+        },
+        "attribute": {
+          "type": "boolean",
+          "default": false
+        },
+        "wrapped": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "patternProperties": {
+        "^x-": true
+      },
+      "additionalProperties": false
+    }
+  }
+}

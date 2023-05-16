@@ -614,6 +614,17 @@ files = [
 ]
 
 [[package]]
+name = "tonyg-rfc3339"
+version = "0.1"
+description = "Python implementation of RFC 3339"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "tonyg-rfc3339-0.1.tar.gz", hash = "sha256:e424e7b4ddf2a2f5c70d7317faecf9b69b7da099c9fc08d046c3ac679dd30d3d"},
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.5.0"
 description = "Backported and Experimental Type Hints for Python 3.7+"
@@ -687,4 +698,4 @@ resolved_reference = "26da57e83c74607ca2153a2d304ac1921c587561"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "70eca28454b4229f3041ea8b02af8bb8deb7c7a57be3e656bef6ae41e360d561"
+content-hash = "301e2187046a98128aee3db2a3fe04943faadacd87b7750b2f8bc6d623ecad18"
