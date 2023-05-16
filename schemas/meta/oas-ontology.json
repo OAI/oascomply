@@ -11,8 +11,27 @@
     "properties": {
         "oasApiLinks": {"$ref": "#/$defs/templatedPointerRelationObject"},
         "oasChildren": {"$ref": "#/$defs/templatedPointerRelationObject"},
-        "oasDescriptionLinks": {"$ref": "#/$defs/templatedPointerRelationObject"},
-        "oasExamples": {"$ref": "#/$defs/templatedPointerArray"},
+        "oasDescriptionLinks": {
+            "$ref": "#/$defs/templatedPointerRelationObject"
+        },
+        "oasExamples": {
+            "type": "object",
+            "required": ["examples"],
+            "properties": {
+                "examples": {"$ref": "#/$defs/templatedPointerArray"},
+                "schemas": {
+                    "$comment": "Some schema objects may not exist, but must be valid against all that do; TBD: 'override' of examples in schemas",
+                    "default": ["0"],
+                    "$ref": "#/$defs/templatedPointerArray"
+                },
+                "encodings": {
+                    "$comment": "Applies only to the property named by the 'property' template variable match",
+                    "pattern": "{property}$",
+                    "$ref": "#/$defs/templatedPointerArray"
+                }
+            },
+            "additionalProperties": false
+        },
         "oasExtensible": {
             "type": "boolean",
             "default": false
@@ -54,7 +73,20 @@
         },
         "oasReferences": {"$ref": "#/$defs/templatedPointerTypeObject"},
         "oasType": {"$ref": "#/$defs/semanticType"},
-        "oasUniqueKey": {"$ref": "#/$defs/templatedPointerArray"}
+        "oasUniqueKey": {
+            "type": "object",
+            "properties": {
+                "fields": {
+                    "$comment": "Relative to each scope item",
+                    "$ref": "#/$defs/templatedPointerArray"
+                },
+                "scope": {
+                    "$comment": "Unique across all matches of all array items",
+                    "$ref": "#/$defs/templatedPointerArray"
+                }
+            },
+            "additionalProperties": false
+        }
     },
     "$defs": {
         "semanticType": {

@@ -153,7 +153,7 @@ $defs:
     oasExtensible: true
     properties:
       description:
-        format: markdown-commonmark
+        format: commonmark
 
   ExternalDocumentation:
     oasType: ExternalDocumentation
@@ -164,7 +164,7 @@ $defs:
     oasExtensible: true
     properties:
       description:
-        format: markdown-commonmark
+        format: commonmark
 
   Header:
     oasType: Header
@@ -183,11 +183,15 @@ $defs:
       0/explode: 0#
       0/allowReserved: 0#
     oasExamples:
-      - 0/example
-      - 0/examples/{name}/value
+      examples:
+        - 0/example
+        - 0/examples/{name}/value
+      schemas:
+        - 0/schema
+        - 0/content/{contentType}/schema
     properties:
       description:
-        format: markdown-commonmark
+        format: commonmark
 
   Info:
     oasType: Info
@@ -203,7 +207,7 @@ $defs:
     oasExtensible: true
     properties:
       description:
-        format: markdown-commonmark
+        format: commonmark
 
   License:
     oasType: License
@@ -261,8 +265,13 @@ $defs:
       0/schema/$ref: Schema
       0/examples/{name}/$ref: Example
     oasExamples:
-      - 0/example
-      - 0/examples/{name}
+      examples:
+        - 0/example
+        - 0/examples/{name}
+      schemas:
+        - 0/schema
+      encodings:
+        - 0/encoding/{property}
 
   OAuthFlows:
     oasLiterals:
@@ -310,9 +319,16 @@ $defs:
       0/description: 0#
       0/operationId: 0#
       0/deprecated: 0#
+    oasUniqueKey:
+      fields:
+        - 0/name
+        - 0/in
+      scope:
+        - 0/parameters/{index}
+        - 2/parameters/{index}
     properties:
       description:
-        format: markdown-commonmark
+        format: commonmark
       tags:
         items:
           oasType: TagName
@@ -334,16 +350,19 @@ $defs:
       0/style: 0#
       0/explode: 0#
       0/allowReserved: 0#
-    oasUniqueKey:
-      - 0/name
-      - 0/in
     oasExamples:
-      - 0/example
-      - 0/examples/{name}
+      examples:
+        - 0/example
+        - 0/examples/{name}
+      schemas:
+        - 0/schema
+        - 0/content/{contentType}/schema
+      encodings:
+        - 0/content/{contentType}/encoding/{property}
     oasExtensible: true
     properties:
       description:
-        format: markdown-commonmark
+        format: commonmark
   PathParameter:
     oasType: PathParameter
     properties:
@@ -367,6 +386,8 @@ $defs:
       0/post: operation
       0/put: operation
       0/trace: operation
+      0/parameters/{index}: parameter
+      0/servers/{index}: server
     oasReferences:
       0/$ref: PathItem
       0/parameters/$ref: Parameter
@@ -377,7 +398,7 @@ $defs:
       0/description: 0#
     properties:
       description:
-        format: markdown-commonmark
+        format: commonmark
       delete:
         oasType: DeleteOperation
       get:
@@ -421,7 +442,7 @@ $defs:
     oasExtensible: True
     properties:
       description:
-        format: markdown-commonmark
+        format: commonmark
 
   Response:
     oasType: Response
@@ -437,7 +458,7 @@ $defs:
     oasExtensible: true
     properties:
       description:
-        format: markdown-commonmark
+        format: commonmark
 
   Responses:
     oasType: Responses
@@ -508,11 +529,13 @@ $defs:
       0/deprecated: schemaDeprecated
       0/nullable: schemaNullable
     oasExamples:
-      - 0/example
+      examples:
+        - 0/example
+        - 0/default
     oasExtensible: True
     properties:
       description:
-        format: markdown-commonmark
+        format: commonmark
 
   SecurityRequirement:
     oasType: SecurityRequirement
@@ -530,14 +553,15 @@ $defs:
     oasType: Server
     oasChildren:
       0/variables/{name}: variable
+      0/url: 0#
     oasLiterals:
       0/description: 0#
-    oasApiLinks:
-      0/url: 0#
     oasExtensible: true
     properties:
       description:
-        format: markdown-commonmark
+        format: commonmark
+      url:
+        oasType: TemplatedUrl
 
   ServerVariable:
     oasType: ServerVariable
@@ -554,7 +578,7 @@ $defs:
     oasExtensible: true
     properties:
       description:
-        format: markdown-commonmark
+        format: commonmark
 
   XML:
     oasType: Xml
@@ -575,7 +599,7 @@ $defs:
       0/description: 0#
     properties:
       description:
-        format: markdown-commonmark
+        format: commonmark
 
   SecurityScheme:
     oasLiterals:
@@ -586,7 +610,7 @@ $defs:
     oasExtensible: true
     properties:
       description:
-        format: markdown-commonmark
+        format: commonmark
   APIKeySecurityScheme:
     oasType: APIKeySecurityScheme
   HTTPSecurityScheme:

@@ -89,7 +89,7 @@
         },
         "description": {
           "type": "string",
-          "format": "markdown-commonmark"
+          "format": "commonmark"
         },
         "termsOfService": {
           "type": "string",
@@ -185,11 +185,12 @@
       ],
       "properties": {
         "url": {
-          "type": "string"
+          "type": "string",
+          "oasType": "TemplatedUrl"
         },
         "description": {
           "type": "string",
-          "format": "markdown-commonmark"
+          "format": "commonmark"
         },
         "variables": {
           "type": "object",
@@ -204,13 +205,11 @@
       "additionalProperties": false,
       "oasType": "Server",
       "oasChildren": {
-        "0/variables/{name}": "variable"
+        "0/variables/{name}": "variable",
+        "0/url": "0#"
       },
       "oasLiterals": {
         "0/description": "0#"
-      },
-      "oasApiLinks": {
-        "0/url": "0#"
       },
       "oasExtensible": true
     },
@@ -231,7 +230,7 @@
         },
         "description": {
           "type": "string",
-          "format": "markdown-commonmark"
+          "format": "commonmark"
         }
       },
       "patternProperties": {
@@ -643,7 +642,7 @@
         },
         "description": {
           "type": "string",
-          "format": "markdown-commonmark"
+          "format": "commonmark"
         },
         "format": {
           "type": "string"
@@ -728,9 +727,12 @@
         "0/deprecated": "schemaDeprecated",
         "0/nullable": "schemaNullable"
       },
-      "oasExamples": [
-        "0/example"
-      ],
+      "oasExamples": {
+        "examples": [
+          "0/example",
+          "0/default"
+        ]
+      },
       "oasExtensible": true
     },
     "Discriminator": {
@@ -804,7 +806,7 @@
       "properties": {
         "description": {
           "type": "string",
-          "format": "markdown-commonmark"
+          "format": "commonmark"
         },
         "headers": {
           "type": "object",
@@ -910,10 +912,18 @@
         "0/schema/$ref": "Schema",
         "0/examples/{name}/$ref": "Example"
       },
-      "oasExamples": [
-        "0/example",
-        "0/examples/{name}"
-      ]
+      "oasExamples": {
+        "examples": [
+          "0/example",
+          "0/examples/{name}"
+        ],
+        "schemas": [
+          "0/schema"
+        ],
+        "encodings": [
+          "0/encoding/{property}"
+        ]
+      }
     },
     "Example": {
       "type": "object",
@@ -923,7 +933,7 @@
         },
         "description": {
           "type": "string",
-          "format": "markdown-commonmark"
+          "format": "commonmark"
         },
         "value": true,
         "externalValue": {
@@ -951,7 +961,7 @@
       "properties": {
         "description": {
           "type": "string",
-          "format": "markdown-commonmark"
+          "format": "commonmark"
         },
         "required": {
           "type": "boolean",
@@ -1040,10 +1050,16 @@
         "0/explode": "0#",
         "0/allowReserved": "0#"
       },
-      "oasExamples": [
-        "0/example",
-        "0/examples/{name}/value"
-      ]
+      "oasExamples": {
+        "examples": [
+          "0/example",
+          "0/examples/{name}/value"
+        ],
+        "schemas": [
+          "0/schema",
+          "0/content/{contentType}/schema"
+        ]
+      }
     },
     "Paths": {
       "type": "object",
@@ -1080,7 +1096,7 @@
         },
         "description": {
           "type": "string",
-          "format": "markdown-commonmark"
+          "format": "commonmark"
         },
         "servers": {
           "type": "array",
@@ -1143,7 +1159,9 @@
         "0/patch": "operation",
         "0/post": "operation",
         "0/put": "operation",
-        "0/trace": "operation"
+        "0/trace": "operation",
+        "0/parameters/{index}": "parameter",
+        "0/servers/{index}": "server"
       },
       "oasReferences": {
         "0/$ref": "PathItem",
@@ -1175,7 +1193,7 @@
         },
         "description": {
           "type": "string",
-          "format": "markdown-commonmark"
+          "format": "commonmark"
         },
         "externalDocs": {
           "$ref": "#/$defs/ExternalDocumentation"
@@ -1272,6 +1290,16 @@
         "0/description": "0#",
         "0/operationId": "0#",
         "0/deprecated": "0#"
+      },
+      "oasUniqueKey": {
+        "fields": [
+          "0/name",
+          "0/in"
+        ],
+        "scope": [
+          "0/parameters/{index}",
+          "2/parameters/{index}"
+        ]
       }
     },
     "Responses": {
@@ -1356,7 +1384,7 @@
         },
         "description": {
           "type": "string",
-          "format": "markdown-commonmark"
+          "format": "commonmark"
         },
         "externalDocs": {
           "$ref": "#/$defs/ExternalDocumentation"
@@ -1383,7 +1411,7 @@
       "properties": {
         "description": {
           "type": "string",
-          "format": "markdown-commonmark"
+          "format": "commonmark"
         },
         "url": {
           "type": "string",
@@ -1482,7 +1510,7 @@
         },
         "description": {
           "type": "string",
-          "format": "markdown-commonmark"
+          "format": "commonmark"
         },
         "required": {
           "type": "boolean",
@@ -1588,14 +1616,19 @@
         "0/explode": "0#",
         "0/allowReserved": "0#"
       },
-      "oasUniqueKey": [
-        "0/name",
-        "0/in"
-      ],
-      "oasExamples": [
-        "0/example",
-        "0/examples/{name}"
-      ],
+      "oasExamples": {
+        "examples": [
+          "0/example",
+          "0/examples/{name}"
+        ],
+        "schemas": [
+          "0/schema",
+          "0/content/{contentType}/schema"
+        ],
+        "encodings": [
+          "0/content/{contentType}/encoding/{property}"
+        ]
+      },
       "oasExtensible": true
     },
     "RequestBody": {
@@ -1606,7 +1639,7 @@
       "properties": {
         "description": {
           "type": "string",
-          "format": "markdown-commonmark"
+          "format": "commonmark"
         },
         "content": {
           "type": "object",
@@ -1657,7 +1690,7 @@
       "oasExtensible": true,
       "properties": {
         "description": {
-          "format": "markdown-commonmark"
+          "format": "commonmark"
         }
       }
     },

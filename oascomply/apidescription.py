@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import urllib
 from uuid import uuid4
-from collections import namedtuple
+from collections import defaultdict, namedtuple
 from typing import Any, Iterator, Mapping, Optional, Tuple, Union
 import logging
 import os
@@ -21,7 +21,7 @@ import yaml_source_map as ymap
 from yaml_source_map.errors import InvalidYamlError
 
 from oascomply.oasgraph import (
-    OasGraph, OUTPUT_FORMATS_LINE, OUTPUT_FORMATS_STRUCTURED,
+    OasGraph, OasGraphResult, OUTPUT_FORMATS_LINE, OUTPUT_FORMATS_STRUCTURED,
 )
 from oascomply.schemaparse import Annotation, SchemaParser
 
@@ -42,8 +42,20 @@ See the README for further information on:
 * What you need to know about IRIs vs URIs/URLs
 """
 
+ANNOT_ORDER = (
+    'oasType',
+    'oasReferences',
+    'oasChildren',
+    'oasLiterals',
+    'oasExtensible',
+    'oasApiLinks',
+    'oasDescriptionLinks',
+    'oasExamples',
+)
+
 
 UriPrefix = namedtuple('UriPrefix', ['dir', 'prefix'])
+
 
 class ApiDescription:
     """
@@ -151,15 +163,7 @@ class ApiDescription:
                 return None, None
 
     def validate(self, resource_uri=None, oastype='OpenAPI'):
-        sp = SchemaParser.get_parser({}, annotations=(
-            'oasApiLinks',
-            'oasChildren',
-            'oasDescriptionLinks',
-            'oasExtensible',
-            'oasLiterals',
-            'oasReferences',
-            'oasType',
-        ))
+        sp = SchemaParser.get_parser({}, annotations=ANNOT_ORDER)
         if resource_uri is None:
             assert oastype == 'OpenAPI'
             resource_uri = self._primary_uri
@@ -169,6 +173,7 @@ class ApiDescription:
 
         output = sp.parse(data, oastype)
         to_validate = {}
+        by_method = defaultdict(list)
         for unit in output['annotations']:
             ann=Annotation(unit, instance_base=resource_uri)
             method = f'add_{ann.keyword.lower()}'
@@ -176,15 +181,26 @@ class ApiDescription:
             # Using a try/except here can result in confusion if something
             # else produces an AttributeError, so use hasattr()
             if hasattr(self._g, method):
-                if resources := getattr(self._g, method)(ann, data, sourcemap):
-                    for uri, oastype in resources:
-                        to_validate[uri] = oastype
+                by_method[method].append((ann, data, sourcemap))
             else:
                 raise ValueError(f"Unexpected annotation {ann.keyword!r}")
         self._validated.add(resource_uri)
-        for uri, oastype in to_validate.items():
-            if uri not in self._validated:
-                self.validate(uri, oastype)
+
+        for annot in ANNOT_ORDER:
+            if annot == 'oasExamples':
+                # By this point we have set up the necessary reference info
+                for uri, oastype in to_validate.items():
+                    # TODO: Handle fragments vs whole resources
+                    if uri not in self._validated:
+                        self.validate(uri, oastype)
+
+            method_name = f'add_{annot.lower()}'
+            method_callable = getattr(self._g, method_name)
+            for args in by_method[method_name]:
+                graph_result = method_callable(*args)
+                for uri, oastype in graph_result.refTargets:
+                    to_validate[uri] = oastype
+
 
     def serialize(
         self,

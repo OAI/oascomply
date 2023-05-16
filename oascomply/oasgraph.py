@@ -1,6 +1,8 @@
 import json
 import re
+from collections import namedtuple
 from functools import cached_property
+from itertools import chain
 from pathlib import Path
 from uuid import uuid4
 from typing import Any, Optional
@@ -16,6 +18,7 @@ from oascomply.ptrtemplates import (
     RelativeJSONPointerTemplate,
     RelativeJSONPointerTemplateError,
 )
+from oascomply.oas30dialect import OAS30_DIALECT_METASCHEMA
 
 __all__ = [
     'OasGraph',
@@ -53,6 +56,9 @@ OUTPUT_FORMATS_STRUCTURED = frozenset({
     'trix',                     # Trix (RDF/XML for quads)
     'application/trix',         # Trix (RDF/XML for quads)
 })
+
+
+OasGraphResult = namedtuple('Graphresult', ['errors', 'refTargets'])
 
 
 class OasGraph:
@@ -155,6 +161,7 @@ class OasGraph:
                 annotation.location.instance_ptr,
                 sourcemap,
             )
+        return OasGraphResult(errors=[], refTargets=[])
 
     def add_sourcemap(self, instance_rdf_uri, instance_ptr, sourcemap):
             if len(instance_ptr):
@@ -198,6 +205,19 @@ class OasGraph:
                 ).evaluate(parent_obj)
             )
 
+    def _flatten_template_array(
+            self,
+            location,
+            template_array,
+            instance,
+    ):
+        return chain.from_iterable((
+            (
+                r for r in RelativeJSONPointerTemplate(t).evaluate(instance)
+            )
+            for t in template_array
+        ))
+
     def add_oaschildren(self, annotation, instance, sourcemap):
         location = annotation.location
         # to_rdf()
@@ -230,6 +250,7 @@ class OasGraph:
                         child_path,
                         sourcemap,
                     )
+            return OasGraphResult(errors=[], refTargets=[])
         except (
             jschon.RelativeJSONPointerError,
             RelativeJSONPointerTemplateError,
@@ -245,7 +266,7 @@ class OasGraph:
             for result, relname in self._resolve_child_template(
                 annotation,
                 instance,
-        ):
+            ):
                 literal = result.data
                 literal_path = literal.path
                 literal_node = rdflib.Literal(literal.value)
@@ -257,6 +278,7 @@ class OasGraph:
                 # TODO: Sourcemap for literals?  might need
                 #       intermediate node as literals cannot
                 #       be subjects in triples.
+            return OasGraphResult(errors=[], refTargets=[])
         except (
             jschon.RelativeJSONPointerError,
             RelativeJSONPointerTemplateError,
@@ -296,6 +318,7 @@ class OasGraph:
                     RDF.type,
                     self.oas[entity],
                 ))
+            return OasGraphResult(errors=[], refTargets=[])
         except (
             jschon.RelativeJSONPointerError,
             RelativeJSONPointerTemplateError,
@@ -341,6 +364,9 @@ class OasGraph:
                         ref_source_path,
                         sourcemap,
                     )
+
+            return OasGraphResult(errors=[], refTargets=remote_resources)
+
         except (
             ValueError,
             jschon.RelativeJSONPointerError,
@@ -349,7 +375,79 @@ class OasGraph:
             # TODO: Actual error handling
             pass
 
-        return remote_resources
+    def _build_example_schema(
+        self,
+        schema_data,
+        metaschema_uri,
+        components,
+        location,
+    ):
+        assert 'components' not in schema_data
+        patched_data = schema_data.copy()
+        patched_data['components'] = {}
+        patched_data['components']['schemas'] = components
+        # TODO: This $id is also a problematic workaround,
+        #       as it gives all example schemas the same URI
+        #       as the whole OAS file, which will be confusing
+        #       in any error output.
+        patched_data['$id'] = str(location.instance_resource_uri)
+        return jschon.JSONSchema(
+            patched_data,
+            metaschema_uri=metaschema_uri,
+        )
+
+    def add_oasexamples(self, annotation, instance, sourcemap):
+        errors = []
+        location = annotation.location
+        schema_components = instance.get('components', {}).get('schemas', {})
+        if schema_components:
+            # This is a jschon.JSON object, so unwrap it
+            schema_components = schema_components.value
+
+        parent_obj = location.instance_ptr.evaluate(instance)
+        m_uri = jschon.URI(OAS30_DIALECT_METASCHEMA)
+        schemas = [
+            self._build_example_schema(
+                schema_data.value,
+                metaschema_uri=m_uri,
+                components=schema_components,
+                location=location,
+            )
+            for schema_data in (
+                (result.data for result in self._flatten_template_array(
+                    location,
+                    annotation.value['schemas'].value,
+                    parent_obj,
+                ))
+                if 'schemas' in annotation.value
+                else [parent_obj]
+            )
+        ]
+
+        # TODO: Handle encoding objects
+        try:
+            for result in self._flatten_template_array(
+                location,
+                annotation.value['examples'].value,
+                parent_obj,
+            ):
+                example = result.data
+                for schema in schemas:
+                    schema_result = schema.evaluate(example)
+                    if not schema_result.valid:
+                        errors.append({
+                            'location': location,
+                            'error': schema_result.output('detailed'),
+                        })
+            assert errors == []
+            return OasGraphResult(errors=errors, refTargets=[])
+
+        except (
+            jschon.RelativeJSONPointerError,
+            RelativeJSONPointerTemplateError,
+        ) as e:
+            # TODO: actual error handling
+            raise
 
     def add_oasextensible(self, annotation, instance, sourcemap):
         if annotation.value is True:
@@ -361,3 +459,4 @@ class OasGraph:
                 self.oas['allowsExtensions'],
                 rdflib.Literal(True),
             ))
+            return OasGraphResult(errors=[], refTargets=[])

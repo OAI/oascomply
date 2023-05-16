@@ -3,8 +3,8 @@ from jschon.catalog import Catalog
 from jschon.jsonpointer import RelativeJSONPointer
 from jschon.vocabulary.format import format_validator
 from jschon.vocabulary import (
-    Keyword, KeywordClass, Metaschema, Vocabulary,
-    format as format_, annotation, applicator, validation,
+    Keyword, KeywordClass, Metaschema, ObjectOfSubschemas, Subschema,
+    Vocabulary, format as format_, annotation, applicator, validation,
 )
 
 import rfc3339
@@ -109,6 +109,25 @@ class Oas30ExclusiveMinimumKeyword(Keyword):
                 )
 
 
+# TODO: Something better than this workaround where we consider
+#       "components" and "schemas" to be keywords and splice the
+#       /componenets/schemas tree into the schema excepts used
+#       to validate examples and defaults.
+#
+#       Currently jschon does not support
+#       objects-of-objects-of-schemas, although it will need to
+#       for "propertyDependencies" and I have part of that
+#       written for submission as a PR.
+class ComponentsKeyword(Keyword, Subschema):
+    key = 'components'
+    static = True
+
+
+class SchemasKeyword(Keyword, ObjectOfSubschemas):
+    key = 'schemas'
+    static = True
+
+
 # NOTE: This RFC 3339 implementation does not support "duration"
 @format_validator('date')
 def validate_relative_json_pointer(value: str) -> None:
@@ -210,6 +229,7 @@ def initialize_oas30_dialect(catalog: Catalog):
         validation.MaxPropertiesKeyword,
         validation.MinPropertiesKeyword,
         validation.RequiredKeyword,
+        format_.FormatKeyword,
     )
     catalog.create_vocabulary(
         URI(OAS30_EXTENSION_VOCAB),
@@ -222,11 +242,17 @@ def initialize_oas30_dialect(catalog: Catalog):
         NullableKeyword,
         XmlKeyword,
     )
+    catalog.create_vocabulary(
+        URI("https://spec.openapis.org/oas/v3.0/vocab/workaround"),
+        ComponentsKeyword,
+        SchemasKeyword,
+    )
     catalog.create_metaschema(
         URI("https://spec.openapis.org/oas/v3.0/dialect/base"),
         URI('https://json-schema.org/draft/2020-12/vocab/core'),
         URI(OAS30_SUBSET_VOCAB),
         URI(OAS30_EXTENSION_VOCAB),
+        URI("https://spec.openapis.org/oas/v3.0/vocab/workaround"),
     )
     # NOTE: All strings are valid CommonMark, so the "commonmark"
     #       format is not validated.
