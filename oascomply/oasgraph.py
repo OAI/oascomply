@@ -11,7 +11,7 @@ import logging
 import jschon
 import rfc3987
 import rdflib
-from rdflib.namespace import RDF, RDFS
+from rdflib.namespace import RDF, RDFS, XSD
 import yaml
 
 from oascomply.ptrtemplates import (
@@ -399,7 +399,7 @@ class OasGraph:
                 ref_obj = template_result.data
                 ref_source_path = ref_obj.path
                 iu = location.instance_uri
-                # replace fragment; to_rdf
+                # TODO: URI lib interface - replace fragment; to_rdf
                 ref_src_uri = rdflib.URIRef(str(
                     iu.copy(fragment=ref_source_path.uri_fragment())
                 ))
@@ -407,11 +407,30 @@ class OasGraph:
                     jschon.URI(ref_obj.value).resolve(iu)
                 ))
                 self._g.add((
+                    rdflib.URIRef(str(iu)),
+                    self.oas['jsonReference'],
+                    ref_src_uri,
+                ))
+                self._g.add((
                     ref_src_uri,
                     self.oas['references'],
                     ref_target_uri,
                 ))
-                # TODO: elide the reference with a new edge
+                self._g.add((
+                    ref_src_uri,
+                    self.oas['referenceValue'],
+                    rdflib.Literal(ref_obj.value, datatype=XSD.anyURI),
+                ))
+                self._g.add((
+                    ref_src_uri,
+                    self.oas['referenceBase'],
+                    # TODO: deal with too many URI libraries here
+                    rdflib.Literal(
+                        rdflib.URIRef(str(iu)).defrag(),
+                        datatype=XSD.anyURI,
+                    ),
+                ))
+                # TODO: elide the reference with a new edge w/correct predicate
 
                 # compare absolute forms
                 if ref_src_uri.defrag() != ref_target_uri.defrag():
