@@ -11,7 +11,7 @@ import logging
 import jschon
 import rfc3987
 import rdflib
-from rdflib.namespace import RDF
+from rdflib.namespace import RDF, RDFS
 import yaml
 
 from oascomply.ptrtemplates import (
@@ -117,9 +117,10 @@ class OasGraph:
             self._g.add((
                 rdf_node,
                 self.oas['locatedAt'],
-                rdflib.URIRef(
+                rdflib.Literal(
                     location.resolve().as_uri() if isinstance(location, Path)
                     else location,
+                    datatype=XSD.anyURI,
                 ),
             ))
         self._g.add((
@@ -138,9 +139,64 @@ class OasGraph:
         if filename:
             self._g.add((
                 rdf_node,
-                self.oas['filename'],
-                rdflib.Literal(filename),
+                RDFS.label,
+                rdflib.Literal(f'file:{filename}'),
             ))
+
+    def _create_label(self, location, instance, instance_uri, oastype):
+        if oastype in (
+            'PathOnlyTemplatedUrl', 'StatusCode', 'TemplateParameter',
+        ):
+            # These are handled by other types on the same node
+            # TODO: Reconsider having these oastype at all
+            return
+
+        elif oastype.endswith('Operation'):
+            op = location.instance_ptr.evaluate(instance)
+            if 'operationId' in op:
+                label = rdflib.Literal(f"Op:{op['operationId'].value}")
+            else:
+                label = rdflib.Literal(
+                    f"Op:{location.instance_ptr[-2]}"
+                    f":{location.instance_ptr[-1]}"
+                )
+
+        elif oastype in (
+            'Callback', 'Encoding', 'Link', 'Response',
+        ):
+            label = rdflib.Literal(f"{oastype}:{location.instance_ptr[-1]}")
+
+        elif oastype == 'MediaType':
+            label = rdflib.Literal(location.instance_ptr[-1])
+
+        elif oastype == 'PathItem':
+            label = rdflib.Literal(f"Path:{location.instance_ptr[-1]}")
+
+        elif oastype == 'SecurityRequirement':
+            label = rdflib.Literal(f"SecReq:{location.instance_ptr[-1]}")
+
+        elif oastype == 'ServerVariable':
+            label = rdflib.Literal(f"Variable:{location.instance_ptr[-1]}")
+
+        elif oastype.endswith('Parameter'):
+            i = location.instance_ptr.evaluate(instance)
+            label = rdflib.Literal(f"Param:{i['in']}:{i['name']}")
+
+        elif oastype in ('Header', 'Tag'):
+            i = location.instance_ptr.evaluate(instance)
+            label = rdflib.Literal(f"{oastype}:{i['name'].value}")
+
+        elif oastype == 'ExternalDocs':
+            label = rdflib.Literal('ExtDocs')
+
+        else:
+            label = rdflib.Literal(oastype)
+
+        self._g.add((
+            instance_uri,
+            RDFS.label,
+            label,
+        ))
 
     def add_oastype(self, annotation, instance, sourcemap):
         # to_rdf()
@@ -150,6 +206,12 @@ class OasGraph:
             RDF.type,
             self.oas_v[annotation.value],
         ))
+        self._create_label(
+            annotation.location,
+            instance,
+            instance_uri,
+            annotation.value,
+        )
         if sourcemap:
             self._g.add((
                 instance_uri,
