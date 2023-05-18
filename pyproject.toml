@@ -12,15 +12,17 @@ yaml-to-json = 'oascomply.patch:yaml_to_json'
 
 [tool.poetry.dependencies]
 python = "^3.8"
-jschon = "^0.10.2"
+# jschon changes submitted upstream as jschon PRs #100 and #101
+jschon = { git = "https://github.com/handrews/jschon.git", branch = "oas3"}
 pyyaml = "^6.0"
 rdflib = "^6.3.2"
 pyshacl = "^0.22.1"
 json-merge-patch = "^0.2"
 abnf = "^2.2.0"
 rfc3987 = "^1.3.8"
-# The no-deprecation-warnings branch has been merged upstream, but there
-# is no published timeline for a 2.0.1 or 2.1.0 release
+# The no-deprecation-warnings branch has been merged upstream (PR #95)
+# See https://github.com/python-hyper/rfc3986/issues/107 for tracking
+# a possible patch release.
 rfc3986 = { extras = ["idna"], git = "https://github.com/handrews/rfc3986.git", branch = "no-deprecation-warnings"}
 urnparse = "^0.2.0"
 json-source-map = "^1.0.5"

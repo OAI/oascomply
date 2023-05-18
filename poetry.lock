@@ -172,15 +172,13 @@ six = "*"
 
 [[package]]
 name = "jschon"
-version = "0.10.2"
+version = "0.10.3"
 description = "A pythonic, extensible JSON Schema implementation."
 category = "main"
 optional = false
 python-versions = "~=3.8"
-files = [
-    {file = "jschon-0.10.2-py3-none-any.whl", hash = "sha256:f035572a404e7aa8d5df8a749eafcb4845230dd58f00bda8f61b76c73da4da7c"},
-    {file = "jschon-0.10.2.tar.gz", hash = "sha256:8d48b1a80626925df0886134cc9f752f508cf5df0c5719b346e7df3fa2f47cd7"},
-]
+files = []
+develop = false
 
 [package.dependencies]
 rfc3986 = "*"
@@ -190,6 +188,12 @@ dev = ["coverage", "hypothesis (<6.0.4)", "pytest", "pytest-benchmark", "pytest-
 doc = ["sphinx", "sphinx-rtd-theme"]
 requests = ["requests"]
 test = ["tox"]
+
+[package.source]
+type = "git"
+url = "https://github.com/handrews/jschon.git"
+reference = "oas3"
+resolved_reference = "1b40063bc527ad66130bd4bbf155ff56d8de284e"
 
 [[package]]
 name = "json-merge-patch"
@@ -698,4 +702,4 @@ resolved_reference = "26da57e83c74607ca2153a2d304ac1921c587561"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "301e2187046a98128aee3db2a3fe04943faadacd87b7750b2f8bc6d623ecad18"
+content-hash = "348adf1255ca4348248ebc60a1cfaf801d2988f8c736655beac49577460de56d"

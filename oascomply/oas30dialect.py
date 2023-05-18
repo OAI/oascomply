@@ -1,3 +1,5 @@
+import re
+
 from jschon import JSON, JSONCompatible, Result, URI
 from jschon.catalog import Catalog
 from jschon.jsonpointer import RelativeJSONPointer
@@ -12,6 +14,7 @@ import rfc3987
 
 from oascomply.ptrtemplates import (
     JSON_POINTER_TEMPLATE, RELATIVE_JSON_POINTER_TEMPLATE,
+    RelativeJSONPointerTemplate,
 )
 
 __all__ = [
@@ -154,21 +157,22 @@ def validate_relative_json_pointer(value: str) -> None:
 @format_validator('relative-json-pointer')
 def validate_relative_json_pointer(value: str) -> None:
     if isinstance(value, str):
-        if not RelativeJSONPointer._regex.fullmatch(value):
+        if not re.fullmatch(RelativeJSONPointer._regex, value):
             raise ValueError
 
 
 @format_validator('json-pointer-template')
 def validate_relative_json_pointer(value: str) -> None:
     if isinstance(value, str):
-        if not JSON_POINTER_TEMPLATE.fullmatch(value):
+        if not re.fullmatch(JSON_POINTER_TEMPLATE, value):
             raise ValueError
 
 
 @format_validator('relative-json-pointer-template')
 def validate_relative_json_pointer(value: str) -> None:
     if isinstance(value, str):
-        if not RELATIVE_JSON_POINTER_TEMPLATE.fullmatch(value):
+        RelativeJSONPointerTemplate(value)
+        if not re.fullmatch(RELATIVE_JSON_POINTER_TEMPLATE, value):
             raise ValueError
 
 

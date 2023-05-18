@@ -14,7 +14,6 @@ import jschon
 
 import rdflib
 from rdflib.namespace import RDF
-import rfc3987
 import yaml
 import json_source_map as jmap
 import yaml_source_map as ymap
@@ -24,6 +23,7 @@ from oascomply.oasgraph import (
     OasGraph, OasGraphResult, OUTPUT_FORMATS_LINE, OUTPUT_FORMATS_STRUCTURED,
 )
 from oascomply.schemaparse import Annotation, SchemaParser
+import oascomply.resourceid as rid
 
 __all__ = [
     'ApiDescription',
@@ -54,7 +54,7 @@ ANNOT_ORDER = (
 )
 
 
-UriPrefix = namedtuple('UriPrefix', ['dir', 'prefix'])
+UriPrefix = namedtuple('UriPrefix', ['directory', 'prefix'])
 
 
 class ApiDescription:
@@ -77,6 +77,13 @@ class ApiDescription:
         sourcemap: Optional[Mapping] = None,
         test_mode: bool = False,
     ) -> None:
+        assert url is None, "Remote URLs not yet supported"
+        if uri is not None:
+            # TODO: URI vs IRI terminology
+            uri = rid.Iri(uri)
+            assert uri.fragment is None, \
+                "API description document URI cannot have a fragment"
+        self._primary_uri = uri
 
         self._test_mode = test_mode
 
@@ -91,27 +98,22 @@ class ApiDescription:
                 raise NotImplementedError("OAS v3.1 support stil in progress")
             raise ValueError(f"OAS v{self._version} not supported!")
 
-        parsed_base = rfc3987.parse(uri, rule='IRI')
-        if (
-            parsed_base['path'] and 
-            '/' in parsed_base['path'] and
-            not parsed_base['path'].endswith('/')
-        ):
+        if uri.path and '/' in uri.path and not uri.path.endswith('/'):
             # RDF serialization works better with a directory
             # as a base IRI, particularly for multi-document
             # API descriptions within a single directory.
             # Otherwise it fails to notice many opportunities to
             # shorten IRI-references.
-            parsed_base['path'] = (
-                parsed_base['path'][:parsed_base['path'].rindex('/') + 1]
+            self._base_uri = uri.copy_with(
+                path=uri.path[:uri.path.rindex('/') + 1]
             )
-        self._base_uri=rfc3987.compose(**parsed_base)
+        else:
+            self._base_uri = uri
 
         self._g = OasGraph(
             self._version[:self._version.rindex('.')],
             test_mode=test_mode,
         )
-        self._primary_uri = uri
 
         self._contents = {}
         self._sources = {}
@@ -119,7 +121,7 @@ class ApiDescription:
 
         self.add_resource(
             data=data,
-            uri=uri,
+            uri=self._primary_uri,
             path=path,
             sourcemap=sourcemap,
         )
@@ -127,7 +129,7 @@ class ApiDescription:
     def add_resource(
         self,
         data: Any,
-        uri: str,
+        uri: Union[str, rid.Iri],
         *,
         path: Optional[Path] = None,
         url: Optional[str] = None,
@@ -137,23 +139,33 @@ class ApiDescription:
         Add a resource as part of the API description, and set its URI
         for use in resolving references and in the parser's output.
         """
-        # The jschon.JSON class keeps track of JSONPointer values for
+        assert url is None, "Remote URLs not yet supported"
+        assert path is not None, "Must provide path for local document"
+
+        url = rid.Iri(path.resolve().as_uri())
+        if not isinstance(uri, rid.Iri):
+            # TODO: URI vs IRI usage
+            uri = rid.Iri(uri)
+
+        # The jschon.JSON class keeps track of JSON Pointer values for
         # every data entry, as well as providing parent links and type
         # information.
         self._contents[uri] = jschon.JSON(data)
         if sourcemap:
             self._sources[uri] = sourcemap
-        self._g.add_resource(path, uri)
+        self._g.add_resource(url, uri, filename=path.name)
 
-    def get(self, uri: str) -> Optional[Any]:
+    def get(self, uri: Union[str, rid.Iri]) -> Optional[Any]:
+        if isinstance(uri, str):
+            # TODO: IRI vs URI
+            uri = rid.Iri(uri)
         try:
             return self._contents[uri], self._sources.get(uri)
         except KeyError:
-            absolute, fragment = urllib.parse.urldefrag(uri)
             try:
-                data = self._contents[uri]
+                data = self._contents[uri.to_absolute()]
                 return (
-                    jschon.JSONPointer.parse_uri_fragment(
+                    rid.JsonPtr.parse_uri_fragment(
                         fragment
                     ).evaluate(data),
                     self._sources.get(uri),
@@ -167,6 +179,9 @@ class ApiDescription:
         if resource_uri is None:
             assert oastype == 'OpenAPI'
             resource_uri = self._primary_uri
+        elif isinstance(resource_uri, str):
+            # TODO: IRI vs URI
+            resource_uri = rid.Iri(resource_uri)
 
         data, sourcemap = self.get(resource_uri)
         assert data is not None
@@ -200,7 +215,6 @@ class ApiDescription:
                 graph_result = method_callable(*args)
                 for uri, oastype in graph_result.refTargets:
                     to_validate[uri] = oastype
-
 
     def serialize(
         self,
@@ -266,18 +280,18 @@ class ApiDescription:
         self._g.serialize(*args, destination=destination, **new_kwargs)
 
     @classmethod
-    def _process_resource_arg(cls, r, prefixes, create_source_map):
-        path = Path(r[0])
+    def _process_file_arg(cls, filearg, prefixes, create_source_map):
+        path = Path(filearg[0])
         full_path = path.resolve()
-        if len(r) > 1:
+        if len(filearg) > 1:
             # TODO: Support semantic type
-            uri = r[1]
+            uri = filearg[1]
         else:
             uri = full_path.with_suffix('').as_uri()
         for p in prefixes:
             try:
-                rel = full_path.relative_to(p.dir)
-                uri = p.prefix + str(rel.with_suffix(''))
+                rel = full_path.relative_to(p.directory)
+                uri = rid.Iri(str(p.prefix) + str(rel.with_suffix('')))
             except ValueError:
                 pass
         filetype = path.suffix[1:] or 'yaml'
@@ -314,39 +328,40 @@ class ApiDescription:
 
     @classmethod
     def _process_prefix(cls, p):
+        directory, prefix = p
         try:
-            parsed = rfc3987.parse(p[0], rule='URI')
-            if parsed['scheme'] == 'file':
-                raise ValueError(
-                    f"'file:' URIs cannot be used as URI prefixes: <{p[0]}>"
-                )
-            if parsed['query'] or parsed['fragment']:
-                raise ValueError(
-                    "URI prefixes cannot contain a query or fragment: "
-                    f"<{p[0]}>"
-                )
-            if not parsed['path'].endswith('/'):
-                raise ValueError(
-                    "URI prefixes must include a path that ends with '/': "
-                    f"<{p[p]}>"
-                )
-
-            path = Path(p[1]).resolve()
-            if not path.is_dir():
-                raise ValueError(
-                    "Path mapped to URI prefix must be an existing "
-                    f"directory: {p[1]!r}"
-                )
-            return UriPrefix(p[0], path)
-
+            prefix = rid.Iri(prefix)
         except ValueError:
             try:
-                rfc3987.parse(p[0], rule='URI_reference')
+                rid.IriReference(prefix)
                 raise ValueError(f'URI prefixes cannot be relative: <{p[0]}>')
             except ValueError:
                 raise ValueError(
                     f'URI prefix <{p[0]}> does not appear to be a URI'
                 )
+
+        if prefix.scheme == 'file':
+            raise ValueError(
+                f"'file:' URIs cannot be used as URI prefixes: <{p[0]}>"
+            )
+        if prefix.query or prefix.fragment:
+            raise ValueError(
+                "URI prefixes cannot contain a query or fragment: "
+                f"<{p[0]}>"
+            )
+        if not prefix.path.endswith('/'):
+            raise ValueError(
+                "URI prefixes must include a path that ends with '/': "
+                f"<{p[p]}>"
+            )
+
+        path = Path(directory).resolve()
+        if not path.is_dir():
+            raise ValueError(
+                "Path mapped to URI prefix must be an existing "
+                f"directory: {p[1]!r}"
+            )
+        return UriPrefix(prefix=prefix, directory=path)
 
     @classmethod
     def load(cls):
@@ -468,17 +483,18 @@ class ApiDescription:
         if args.directories:
             raise NotImplementedError('-D option not yet implemented')
 
-        prefixes = [cls._process_prefix(p) for p in args.prefixes] \
-            if args.prefixes \
-            else []
+        prefixes = [cls._process_prefix(p) for p in args.prefixes] # \
+            # if args.prefixes \
+            # else []
         # Reverse sort so that the first matching prefix is the longest
+        # TODO: At some point I switched the tuple order, does this still work?
         prefixes.sort(reverse=True)
 
-        resources = [cls._process_resource_arg(
-            r,
+        resources = [cls._process_file_arg(
+            filearg,
             prefixes,
             not args.no_source_map,
-        ) for r in args.files]
+        ) for filearg in args.files]
 
         candidates = list(filter(lambda r: 'openapi' in r['data'], resources))
         if not candidates:
