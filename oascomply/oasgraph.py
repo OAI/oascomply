@@ -121,6 +121,11 @@ class OasGraph:
             ))
         self._g.add((
             rdf_node,
+            RDF.type,
+            rdflib.URIRef('https://schema.org/DigitalDocument'),
+        ))
+        self._g.add((
+            rdf_node,
             self.oas['root'],
             rdf_node + '#',
         ))
