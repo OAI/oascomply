@@ -140,7 +140,7 @@ class OasGraph:
                 rdflib.Literal(filename),
             ))
 
-    def _create_label(self, location, instance, instance_uri, oastype):
+    def _create_label(self, location, document, data, instance_uri, oastype):
         if oastype in (
             'PathOnlyTemplatedUrl', 'StatusCode', 'TemplateParameter',
         ):
@@ -149,25 +149,37 @@ class OasGraph:
             return
 
         elif oastype.endswith('Operation'):
-            op = location.instance_ptr.evaluate(instance)
+            op = location.instance_ptr.evaluate(document)
             if 'operationId' in op:
                 label = rdflib.Literal(f"Op:{op['operationId'].value}")
             else:
+                logger.error(str(location.instance_ptr))
                 label = rdflib.Literal(
-                    f"Op:{location.instance_ptr[-2]}"
-                    f":{location.instance_ptr[-1]}"
+                    (
+                        f"Op:{location.instance_ptr[-2]}"
+                        f":{location.instance_ptr[-1]}"
+                    ) if len(location.instance_ptr) >= 2
+                    else f"Op:{location.instance_ptr[-1]}"
                 )
 
         elif oastype in (
             'Callback', 'Encoding', 'Link', 'Response',
         ):
-            label = rdflib.Literal(f"{oastype}:{location.instance_ptr[-1]}")
+            try:
+                label = rdflib.Literal(f"{oastype}:{location.instance_ptr[-1]}")
+            except IndexError:
+                # TODO: handle path item at root of file
+                label = None
 
         elif oastype == 'MediaType':
             label = rdflib.Literal(location.instance_ptr[-1])
 
         elif oastype == 'PathItem':
-            label = rdflib.Literal(f"Path:{location.instance_ptr[-1]}")
+            try:
+                label = rdflib.Literal(f"Path:{location.instance_ptr[-1]}")
+            except IndexError:
+                # TODO: handle path item at root of file
+                label = None
 
         elif oastype == 'SecurityRequirement':
             label = rdflib.Literal(f"SecReq:{location.instance_ptr[-1]}")
@@ -176,11 +188,11 @@ class OasGraph:
             label = rdflib.Literal(f"Variable:{location.instance_ptr[-1]}")
 
         elif oastype.endswith('Parameter'):
-            i = location.instance_ptr.evaluate(instance)
+            i = location.instance_ptr.evaluate(document)
             label = rdflib.Literal(f"Param:{i['in']}:{i['name']}")
 
         elif oastype in ('Header', 'Tag'):
-            i = location.instance_ptr.evaluate(instance)
+            i = location.instance_ptr.evaluate(document)
             label = rdflib.Literal(f"{oastype}:{i['name'].value}")
 
         elif oastype == 'ExternalDocs':
@@ -189,11 +201,12 @@ class OasGraph:
         else:
             label = rdflib.Literal(oastype)
 
-        self._g.add((
-            instance_uri,
-            RDFS.label,
-            label,
-        ))
+        if label is not None:
+            self._g.add((
+                instance_uri,
+                RDFS.label,
+                label,
+            ))
 
     def add_oastype(self, annotation, document, data, sourcemap):
         instance_uri = rdflib.URIRef(str(annotation.location.instance_uri))
@@ -204,7 +217,8 @@ class OasGraph:
         ))
         self._create_label(
             annotation.location,
-            instance,
+            document,
+            data,
             instance_uri,
             annotation.value,
         )
@@ -241,10 +255,11 @@ class OasGraph:
     def _resolve_child_template(
         self,
         annotation,
-        instance,
+        document,
+        data,
         value_processor=None,
     ):
-        parent_obj = annotation.location.instance_ptr.evaluate(instance)
+        parent_obj = annotation.location.instance_ptr.evaluate(document)
         for child_template, rdf_name in annotation.value.items():
             relptr = None
             if re.match(r'\d', rdf_name):
@@ -266,22 +281,23 @@ class OasGraph:
             self,
             location,
             template_array,
-            instance,
+            data,
     ):
         return chain.from_iterable((
             (
-                r for r in RelativeJSONPointerTemplate(t).evaluate(instance)
+                r for r in RelativeJSONPointerTemplate(t).evaluate(data)
             )
             for t in template_array
         ))
 
-    def add_oaschildren(self, annotation, instance, sourcemap):
+    def add_oaschildren(self, annotation, document, data, sourcemap):
         location = annotation.location
         parent_uri = rdflib.URIRef(str(location.instance_uri))
         try:
             for result, relname in self._resolve_child_template(
                 annotation,
-                instance,
+                document,
+                data,
         ):
                 child_obj = result.data
                 child_path = rid.JsonPtr(child_obj.path)
@@ -313,13 +329,14 @@ class OasGraph:
             # TODO: actual error handling
             raise
 
-    def add_oasliterals(self, annotation, instance, sourcemap):
+    def add_oasliterals(self, annotation, document, data, sourcemap):
         location = annotation.location
         parent_uri = rdflib.URIRef(str(location.instance_uri))
         try:
             for result, relname in self._resolve_child_template(
                 annotation,
-                instance,
+                document,
+                data,
             ):
                 literal = result.data
                 literal_path = rid.JsonPtr(literal.path)
@@ -340,23 +357,24 @@ class OasGraph:
             # TODO: actual error handling
             raise
 
-    def add_oasapilinks(self, annotation, instance, sourcemap):
+    def add_oasapilinks(self, annotation, document, data, sourcemap):
         return self._add_links(
-            annotation, instance, sourcemap, 'Endpoint',
+            annotation, document, data, sourcemap, 'Endpoint',
         )
 
-    def add_oasdescriptionlinks(self, annotation, instance, sourcemap):
+    def add_oasdescriptionlinks(self, annotation, document, data, sourcemap):
         return self._add_links(
-            annotation, instance, sourcemap, 'ExternalResource',
+            annotation, document, data, sourcemap, 'ExternalResource',
         )
 
-    def _add_links(self, annotation, instance, sourcemap, entity):
+    def _add_links(self, annotation, document, data, sourcemap, entity):
         location = annotation.location
         parent_uri = rdflib.URIRef(str(location.instance_uri))
         try:
             for result, relname in self._resolve_child_template(
                 annotation,
-                instance,
+                document,
+                data,
         ):
                 link_obj = result.data
                 link_path = rid.JsonPtr(link_obj.path)
@@ -379,53 +397,72 @@ class OasGraph:
             # TODO: actual error handling
             raise
 
-    def add_oasreferences(self, annotation, instance, sourcemap):
+    def add_oasreferences(self, annotation, document, data, sourcemap):
         location = annotation.location
         remote_resources = []
         try:
             for template_result, reftype in self._resolve_child_template(
                 annotation,
-                instance,
+                document,
+                data,
             ):
-                ref_obj = template_result.data
-                ref_source_path = rid.JsonPtr(ref_obj.path)
-                iu = location.instance_uri
-                ref_src_uri = iu.copy_with(fragment=ref_source_path)
-                rdf_ref_src_uri = rdflib.URIRef(str(ref_src_uri))
-                ref_target_uri_ref = rid.IriReference(ref_obj.value)
-                ref_target_uri = ref_target_uri_ref.resolve(iu)
+                ref_keyword = template_result.pointer.path[-1]
+                ref_source_uri = location.instance_uri.copy_with(
+                    fragment=rid.JsonPtr(template_result.data.path),
+                )
+                ref_uri_ref = rid.UriReference(template_result.data.value)
+                ref_target_uri = ref_uri_ref.resolve(location.instance_uri)
+
+                rdf_ref_source_uri = rdflib.URIRef(str(ref_source_uri))
                 rdf_ref_target_uri = rdflib.URIRef(str(ref_target_uri))
+                rdf_ref_value = rdflib.Literal(
+                    str(ref_uri_ref),
+                    datatype=XSD.anyURI
+                )
                 self._g.add((
-                    rdflib.URIRef(str(iu)),
-                    self.oas['jsonReference'],
-                    rdf_ref_src_uri,
+                    rdf_ref_source_uri,
+                    RDF.type,
+                    self.oas['JSONReference'],
                 ))
                 self._g.add((
-                    rdf_ref_src_uri,
+                    rdflib.URIRef(str(location.instance_uri)),
+                    self.oas[ref_keyword],
+                    rdf_ref_source_uri,
+                ))
+                self._g.add((
+                    rdf_ref_source_uri,
                     self.oas['references'],
                     rdf_ref_target_uri,
                 ))
                 self._g.add((
-                    rdf_ref_src_uri,
+                    rdf_ref_source_uri,
                     self.oas['referenceValue'],
-                    rdflib.Literal(ref_obj.value, datatype=XSD.anyURI),
+                    rdf_ref_value,
                 ))
                 self._g.add((
-                    rdf_ref_src_uri,
+                    rdf_ref_source_uri,
+                    RDFS.label,
+                    rdf_ref_value,
+                ))
+                self._g.add((
+                    rdf_ref_source_uri,
                     self.oas['referenceBase'],
                     rdflib.Literal(
-                        rdflib.URIRef(str(iu.to_absolute())),
+                        rdflib.URIRef(
+                            str(location.instance_uri.to_absolute())
+                        ),
                         datatype=XSD.anyURI,
                     ),
                 ))
                 # TODO: elide the reference with a new edge w/correct predicate
 
                 # compare absolute forms
-                if ref_src_uri.to_absolute() != ref_target_uri.to_absolute():
+                if ref_source_uri.to_absolute() != ref_target_uri.to_absolute():
+                    # TODO: Schema validation even if local?
                     remote_resources.append((ref_target_uri, reftype))
                 if sourcemap:
                     self.add_sourcemap(
-                        rdf_ref_src_uri,
+                        rdf_ref_source_uri,
                         ref_source_path,
                         sourcemap,
                     )
@@ -438,7 +475,7 @@ class OasGraph:
             RelativeJSONPointerTemplateError,
         ) as e:
             # TODO: Actual error handling
-            pass
+            raise
 
     def _build_example_schema(
         self,
@@ -456,22 +493,26 @@ class OasGraph:
         #       as the whole OAS file, which will be confusing
         #       in any error output.
         patched_data['$id'] = str(location.instance_resource_uri)
-        return jschon.JSONSchema(
-            patched_data,
-            metaschema_uri=jschon.URI(str(metaschema_uri)),
-        )
+        try:
+            return jschon.JSONSchema(
+                patched_data,
+                metaschema_uri=jschon.URI(str(metaschema_uri)),
+            )
+        except jschon.CatalogError as e:
+            logger.warn(f'Cannot valdate example: {e}')
 
-    def add_oasexamples(self, annotation, instance, sourcemap):
+    def add_oasexamples(self, annotation, document, data, sourcemap):
         errors = []
         location = annotation.location
-        schema_components = instance.get('components', {}).get('schemas', {})
+        schema_components = document.get('components', {}).get('schemas', {})
         if schema_components:
             # This is a jschon.JSON object, so unwrap it
             schema_components = schema_components.value
 
-        parent_obj = location.instance_ptr.evaluate(instance)
+        parent_obj = location.instance_ptr.evaluate(document)
         m_uri = rid.Iri(OAS30_DIALECT_METASCHEMA)
         schemas = [
+            # TODO: Handle failed schema building
             self._build_example_schema(
                 schema_data.value,
                 metaschema_uri=m_uri,
@@ -514,10 +555,10 @@ class OasGraph:
             # TODO: actual error handling
             raise
 
-    def add_oasextensible(self, annotation, instance, sourcemap):
+    def add_oasextensible(self, annotation, document, data, sourcemap):
         if annotation.value is True:
             parent_uri = rdflib.URIRef(str(annotation.location.instance_uri))
-            parent_obj = annotation.location.instance_ptr.evaluate(instance)
+            parent_obj = annotation.location.instance_ptr.evaluate(document)
             self._g.add((
                 parent_uri,
                 self.oas['allowsExtensions'],

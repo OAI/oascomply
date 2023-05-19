@@ -5,14 +5,27 @@ oasType: OpenAPI
 oasChildren:
   0/info: 0#
   0/externalDocs: 0#
-  0/servers/{index}: server
-  0/security/{index}: 1#
-  0/tags/{index}: tag
+  0/servers: 0#
+  0/security: securityRequirements
+  0/tags: 0#
   0/paths: 0#
   0/components: 0#
 oasLiterals:
   0/openapi: oasVersion
 oasExtensible: true
+properties:
+  tags:
+    oasType: Tags
+    oasChildren:
+      0/{index}: tag
+  servers:
+    oasType: Servers
+    oasChildren:
+      0/{index}: server
+  securty:
+    oasType: SecurityRequirements
+    oasChildren:
+      0/{index}: securityRequirement
 
 $defs:
   RuntimeExpression:
@@ -23,6 +36,8 @@ $defs:
   Callback:
     additionalProperties:
     oasType: Callback
+    oasReferences:
+      0/$ref: Callback
     oasChildren:
       0/{name}/{pathTemplate}: callback
     oasExtensible: true
@@ -135,12 +150,15 @@ $defs:
     oasType: Encoding
     oasChildren:
       0/headers/{header}: header
-    oasReferences:
-      0/headers/{header}/$ref: Header
     oasLiterals:
       0/style: 0#
       0/explode: 0#
       0/allowReserved: 0#
+    properties:
+      headers:
+        additionalProperties:
+          oasReferences:
+            0/$ref: Header
 
   Example:
     oasType: Example
@@ -171,9 +189,6 @@ $defs:
     oasChildren:
       0/schema: 0#
       0/{contentType}: content # TODO: Is this the same as "content" elsewhere?
-    oasReferences:
-      0/schema/$ref: Schema
-      0/examples/{name}/$ref: Example
     oasLiterals:
       0/description: 0#
       0/required: 0#
@@ -192,6 +207,13 @@ $defs:
     properties:
       description:
         format: commonmark
+      schema:
+        additionalProperties:
+          oasReferences:
+            0/$ref: Schema
+      schema:
+        oasReferences:
+          0/$ref: Schema
 
   Info:
     oasType: Info
@@ -236,34 +258,14 @@ $defs:
         oasTargetQualifier: 0/in
     oasReferences:
         0/operationRef: Operation
-    properties:
-      parameters:
-        propertyNames:
-          oasType: QualifiedTemplateParameter
-        additionalProperties:
-          type: string
-    oneOf:
-      - oasChildren:
-          0/parameters/{parameterSpecification}: parameterExpression
-        properties:
-          parameters:
-            additionalProperties:
-              $ref: '#/$defs/RuntimeExpression'
-      - oasLiterals:
-          0/parameters/{parameterSpecification}: parameterValue
-        properties:
-          parameters:
-            additionalProperties:
-              not: {$ref: '#/$defs/RuntimeExpression'}
+    oasChildren:
+      0/parameters/{parameterSpecification}: parameterSpecification
 
   MediaType:
     oasType: MediaType
     oasChildren:
       0/schema: 0#
       0/encoding/{property}: 1#
-    oasReferences:
-      0/schema/$ref: Schema
-      0/examples/{name}/$ref: Example
     oasExamples:
       examples:
         - 0/example
@@ -272,6 +274,13 @@ $defs:
         - 0/schema
       encodings:
         - 0/encoding/{property}
+    properties:
+      examples:
+        oasReferences:
+          0/$ref: Example
+      schema:
+        oasReferences:
+          0/$ref: Schema
 
   OAuthFlows:
     oasLiterals:
@@ -297,23 +306,12 @@ $defs:
     # for oasType, see /$defs/PathItem/properties/(get|put|...)
     oasChildren:
       0/externalDocs: 0#
-      0/parameters/{index}: parameter
+      0/parameters: 0#
       0/requestBody: 0#
       0/responses: 0#
       0/callbacks: 0#
-      0/security/{index}: security
-      0/servers/{index}: server
-    oasImplicitReferences:
-      0/tags/{index}:
-        oasRelationType: tagRef
-        oasTargetType: Tag
-        oasTargetField: 0/name
-        oasTargetRequired: False
-    oasReferences:
-      0/externalDocs/$ref: ExternalDocumentation
-      0/parameters/{index}/$ref: Parameter
-      0/requestBody/$ref: RequestBody
-      0/callbacks/{name}/$ref: Callback
+      0/security: securityRequirements
+      0/servers: 0#
     oasLiterals:
       0/summary: 0#
       0/description: 0#
@@ -327,19 +325,42 @@ $defs:
         - 0/parameters/{index}
         - 2/parameters/{index}
     properties:
+      callbacks:
+        additionalProperties:
+          oasReference:
+            0/$ref: Callback
       description:
         format: commonmark
-      tags:
+      parameters:
+        oasType: Parameters
+        oasChildren:
+          0/{index}: parameter
         items:
-          oasType: TagName
-
+          oasReferences:
+            0/$ref: Parameter
+      requestBody:
+        oasReferences:
+          0/$ref: RequestBody
+      security:
+        oasType: SecurityRequirement
+        oasChildren:
+          0/{index}: securityRequirement
+      servers:
+        oasType: Servers
+        oasChildren:
+          0/{index}: server
+      tags:
+        oasType: Tags
+        oasImplicitReferences:
+          0/{index}:
+            oasRelationType: tagRef
+            oasTargetType: Tag
+            oasTargetField: 0/name
+            oasTargetRequired: False
   Parameter:
     oasChildren:
       0/schema: 0#
       0/content/{contentType}: 1#
-    oasReferences:
-      0/schema/$ref: Schema
-      0/examples/{name}/$ref: Example
     oasLiterals:
       0/name: 0#
       0/in: parameterLocation
@@ -363,6 +384,13 @@ $defs:
     properties:
       description:
         format: commonmark
+      examples:
+        additionalProperties:
+          oasReferences:
+            0/$ref: Example
+      schema:
+        oasReferences:
+          0/$ref: Schema
   PathParameter:
     oasType: PathParameter
     properties:
@@ -378,6 +406,9 @@ $defs:
   PathItem:
     oasType: PathItem
     oasChildren:
+      0/parameters: 0#
+      0/servers: 0#
+      # TODO: Some way to insert an operations -> Operations node
       0/delete: operation
       0/get: operation
       0/head: operation
@@ -386,11 +417,8 @@ $defs:
       0/post: operation
       0/put: operation
       0/trace: operation
-      0/parameters/{index}: parameter
-      0/servers/{index}: server
     oasReferences:
       0/$ref: PathItem
-      0/parameters/$ref: Parameter
     oasReferenceConflict:
       0/$ref: undefined
     oasLiterals:
@@ -399,6 +427,17 @@ $defs:
     properties:
       description:
         format: commonmark
+      parameters:
+        oasType: Parameters
+        oasChildren:
+          0/{index}: parameter
+        items:
+          oasReferences:
+            0/$ref: Parameter
+      servers:
+        oasType: Servers
+        oasChildren:
+          0/{index}: server
       delete:
         oasType: DeleteOperation
       get:
@@ -421,15 +460,8 @@ $defs:
     oasChildren:
       0/{pathTemplate}: pathItem
     oasExtensible: true
-    propertyNames:
-        anyOf:
-          - pattern: '^\/'
-            oasType: PathOnlyTemplatedUrl
-          - true
 
   Reference:
-    # oasReferences is set adjacent to where this schema is referenced,
-    # as that is where the intended reference target type is clear.
     oasType: Reference
 
   RequestBody:
@@ -446,9 +478,6 @@ $defs:
 
   Response:
     oasType: Response
-    oasReferences:
-      0/headers/{header}/$ref: Header
-      0/links/{linkRel}/$ref: Link
     oasChildren:
       0/headers/{header}: header
       0/content/{contentType}: 1#
@@ -459,39 +488,31 @@ $defs:
     properties:
       description:
         format: commonmark
+      headers:
+        additionalProperties:
+          oasReferences:
+            0/$ref: Header
+      links:
+        additionalProperties:
+          oasReferences:
+            0/$ref: Link
 
   Responses:
     oasType: Responses
-    oasReferences:
-      # TODO: "^x-" statuses may not support $ref
-      0/{statusSpecification}/$ref: Response
     oasChildren:
       0/{statusSpecification}: response
     oasExtensible: true
-    propertyNames:
-      anyOf:
-        - const: default
-          oasType: StatusDefault
-        - pattern: '^[1-5]\d{2}$'
-          oasType: StatusCode
-        - pattern: '^[1-5]XX$'
-          oasType: StatusCodeRange
-        - true
+    properties:
+      default:
+        oasReferences:
+          0/$ref: Response
+    patternProperties:
+      ^[1-5](?:\d{2}|XX)$:
+        oasReferences:
+          0/$ref: Response
 
   Schema:
     oasType: Schema
-    oasReferences:
-      # TODO: Would `0/$ref: Schema` work here?
-      #       I do not think there is anywhere that a Schema Object
-      #       cannot be replaced by a Reference Object.  Also should
-      #       check if similar conditions hold for other oasTypes.
-      0/allOf/{index}/$ref: Schema
-      0/anyOf/{index}/$ref: Schema
-      0/oneOf/{index}/$ref: Schema
-      0/not/$ref: Schema
-      0/properties/{name}/$ref: Schema
-      0/additionalProperties/$ref: Schema
-      0/items/$ref: Schema
     oasChildren:
       0/allOf/{index}: schemaAllOf
       0/anyOf/{index}: schemaAnyOf
@@ -500,8 +521,8 @@ $defs:
       0/properties/{name}: schemaProperty
       0/additionalProperties: schemaAdditionalProperties
       0/items: schemaItems
-      0/xml: schemaXml
-      0/discriminator: schemaDiscriminator
+      0/xml: xmlSerialization
+      0/discriminator: discriminator
       0/externalDocs: externalDocs
     oasLiterals:
       0/type: schemaType
@@ -534,8 +555,33 @@ $defs:
         - 0/default
     oasExtensible: True
     properties:
+      additionalProperties:
+        oasReferences:
+          0/$ref: Schema
+      allOf:
+        items:
+          oasReferences:
+            0/$ref: Schema
+      anyOf:
+        items:
+          oasReferences:
+            0/$ref: Schema
       description:
         format: commonmark
+      items:
+        oasReferences:
+          0/$ref: Schema
+      not:
+        oasReferences:
+          0/$ref: Schema
+      oneOf:
+        items:
+          oasReferences:
+            0/$ref: Schema
+      properties:
+        additionalProperties:
+          oasReferences:
+            0/$ref: Schema
 
   SecurityRequirement:
     oasType: SecurityRequirement
@@ -592,14 +638,6 @@ $defs:
 
   Tag:
     oasType: Tag
-    oasChildren:
-      0/externalDocs: 0#
-    oasLiterals:
-      0/name: 0#
-      0/description: 0#
-    properties:
-      description:
-        format: commonmark
 
   SecurityScheme:
     oasLiterals:

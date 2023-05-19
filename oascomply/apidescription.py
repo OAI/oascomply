@@ -69,7 +69,7 @@ class ApiDescription:
 
     def __init__(
         self,
-        data: Any,
+        document: Any,
         uri: str,
         *,
         path: Optional[Path] = None,
@@ -87,12 +87,12 @@ class ApiDescription:
 
         self._test_mode = test_mode
 
-        if 'openapi' not in data:
+        if 'openapi' not in document:
             raise ValueError(
                 "Initial API description must include `openapi` field!"
                 f"{path} <{uri}>"
             )
-        self._version = data['openapi']
+        self._version = document['openapi']
         if not self._version.startswith('3.0.'):
             if self._version.startswith('3.1.'):
                 raise NotImplementedError("OAS v3.1 support stil in progress")
@@ -120,7 +120,7 @@ class ApiDescription:
         self._validated = set()
 
         self.add_resource(
-            data=data,
+            document=document,
             uri=self._primary_uri,
             path=path,
             sourcemap=sourcemap,
@@ -128,7 +128,7 @@ class ApiDescription:
 
     def add_resource(
         self,
-        data: Any,
+        document: Any,
         uri: Union[str, rid.Iri],
         *,
         path: Optional[Path] = None,
@@ -146,33 +146,33 @@ class ApiDescription:
         if not isinstance(uri, rid.Iri):
             # TODO: URI vs IRI usage
             uri = rid.Iri(uri)
+        assert uri.fragment is None, "Only complete documenets can be added."
 
         # The jschon.JSON class keeps track of JSON Pointer values for
         # every data entry, as well as providing parent links and type
         # information.
-        self._contents[uri] = jschon.JSON(data)
+        self._contents[uri] = jschon.JSON(document)
         if sourcemap:
             self._sources[uri] = sourcemap
         self._g.add_resource(url, uri, filename=path.name)
 
-    def get(self, uri: Union[str, rid.Iri]) -> Optional[Any]:
-        if isinstance(uri, str):
+    def get_resource(self, uri: Union[str, rid.Iri]) -> Optional[Any]:
+        if not isinstance(uri, rid.IriWithJsonPtr):
             # TODO: IRI vs URI
-            uri = rid.Iri(uri)
+            # TODO: Non-JSON Pointer fragments in 3.1
+            uri = rid.IriWithJsonPtr(uri)
+        document_uri = uri.to_absolute()
+        data_ptr = uri.fragment
         try:
-            return self._contents[uri], self._sources.get(uri)
-        except KeyError:
-            try:
-                data = self._contents[uri.to_absolute()]
-                return (
-                    rid.JsonPtr.parse_uri_fragment(
-                        fragment
-                    ).evaluate(data),
-                    self._sources.get(uri),
-                )
-
-            except (KeyError, jschon.JSONPointerError):
-                return None, None
+            document = self._contents[document_uri]
+            return (
+                document,
+                document if data_ptr is None else data_ptr.evaluate(document),
+                self._sources.get(uri),
+            )
+        except (KeyError, jschon.JSONPointerError):
+            logger.warning(f"Could not find resource {uri}")
+            return None, None, None
 
     def validate(self, resource_uri=None, oastype='OpenAPI'):
         sp = SchemaParser.get_parser({}, annotations=ANNOT_ORDER)
@@ -181,22 +181,23 @@ class ApiDescription:
             resource_uri = self._primary_uri
         elif isinstance(resource_uri, str):
             # TODO: IRI vs URI
-            resource_uri = rid.Iri(resource_uri)
+            # TODO: Non-JSON Pointer fragments in 3.1
+            resource_uri = rid.IriWithJsonPtr(resource_uri)
 
-        data, sourcemap = self.get(resource_uri)
-        assert data is not None
+        document, data, sourcemap = self.get_resource(resource_uri)
+        assert None not in (document, data)
 
         output = sp.parse(data, oastype)
         to_validate = {}
         by_method = defaultdict(list)
         for unit in output['annotations']:
-            ann=Annotation(unit, instance_base=resource_uri)
+            ann=Annotation(unit, instance_base=resource_uri.to_absolute())
             method = f'add_{ann.keyword.lower()}'
 
             # Using a try/except here can result in confusion if something
             # else produces an AttributeError, so use hasattr()
             if hasattr(self._g, method):
-                by_method[method].append((ann, data, sourcemap))
+                by_method[method].append((ann, document, data, sourcemap))
             else:
                 raise ValueError(f"Unexpected annotation {ann.keyword!r}")
         self._validated.add(resource_uri)
