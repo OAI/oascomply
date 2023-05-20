@@ -14,7 +14,7 @@ import rfc3987
 
 from oascomply.ptrtemplates import (
     JSON_POINTER_TEMPLATE, RELATIVE_JSON_POINTER_TEMPLATE,
-    RelativeJSONPointerTemplate,
+    RelJsonPtrTemplate,
 )
 
 __all__ = [
@@ -171,7 +171,7 @@ def validate_relative_json_pointer(value: str) -> None:
 @format_validator('relative-json-pointer-template')
 def validate_relative_json_pointer(value: str) -> None:
     if isinstance(value, str):
-        RelativeJSONPointerTemplate(value)
+        RelJsonPtrTemplate(value)
         if not re.fullmatch(RELATIVE_JSON_POINTER_TEMPLATE, value):
             raise ValueError
 

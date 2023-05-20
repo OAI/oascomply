@@ -15,8 +15,8 @@ import yaml
 
 import oascomply.resourceid as rid
 from oascomply.ptrtemplates import (
-    RelativeJSONPointerTemplate,
-    RelativeJSONPointerTemplateError,
+    RelJsonPtrTemplate,
+    RelJsonPtrTemplateError,
 )
 from oascomply.oas30dialect import OAS30_DIALECT_METASCHEMA
 
@@ -272,7 +272,7 @@ class OasGraph:
                     rdf_name if rdf_name
                         else relptr.evaluate(result.data),
                 )
-                for result in RelativeJSONPointerTemplate(
+                for result in RelJsonPtrTemplate(
                     child_template,
                 ).evaluate(parent_obj)
             )
@@ -285,7 +285,7 @@ class OasGraph:
     ):
         return chain.from_iterable((
             (
-                r for r in RelativeJSONPointerTemplate(t).evaluate(data)
+                r for r in RelJsonPtrTemplate(t).evaluate(data)
             )
             for t in template_array
         ))
@@ -324,7 +324,7 @@ class OasGraph:
             return OasGraphResult(errors=[], refTargets=[])
         except (
             jschon.RelativeJSONPointerError,
-            RelativeJSONPointerTemplateError,
+            RelJsonPtrTemplateError,
         ) as e:
             # TODO: actual error handling
             raise
@@ -352,7 +352,7 @@ class OasGraph:
             return OasGraphResult(errors=[], refTargets=[])
         except (
             jschon.RelativeJSONPointerError,
-            RelativeJSONPointerTemplateError,
+            RelJsonPtrTemplateError,
         ) as e:
             # TODO: actual error handling
             raise
@@ -392,7 +392,7 @@ class OasGraph:
             return OasGraphResult(errors=[], refTargets=[])
         except (
             jschon.RelativeJSONPointerError,
-            RelativeJSONPointerTemplateError,
+            RelJsonPtrTemplateError,
         ) as e:
             # TODO: actual error handling
             raise
@@ -472,7 +472,7 @@ class OasGraph:
         except (
             ValueError,
             jschon.RelativeJSONPointerError,
-            RelativeJSONPointerTemplateError,
+            RelJsonPtrTemplateError,
         ) as e:
             # TODO: Actual error handling
             raise
@@ -550,7 +550,7 @@ class OasGraph:
 
         except (
             jschon.RelativeJSONPointerError,
-            RelativeJSONPointerTemplateError,
+            RelJsonPtrTemplateError,
         ) as e:
             # TODO: actual error handling
             raise
