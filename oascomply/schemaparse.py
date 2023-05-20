@@ -141,7 +141,6 @@ class Location:
     def schema_keyword_ptr(self):
         return self._schema_keyword_ptr
 
-
 class SchemaParser:
     """
     JSON Schema parser for OpenAPI description files.
@@ -177,49 +176,6 @@ class SchemaParser:
 
     def parse(self, data, oastype, output_format='basic'):
         raise NotImplementedError
-
-    def _process_output(output, output_format):
-        """
-        Restructure the standardized output into an instance-oriented tree.
-
-        JSON Schema standardized output formats are either flat or organized
-        by the schema evaluation path structure.  This method converts
-        supported output formats (currenty only 'basic', and presumably 'list'
-        when it becomes available) into tree based on instance structure.
-
-        :param output: The standardized output from a JSON Schema implementation
-
-        :raises ValueError: when the output format is not supported
-        """
-        if output_format != 'basic':
-            raise ValueError(
-                f'Unsupported JSON Schema output format {output_format!r}'
-            )
-
-        return _process_basic_output(output)
-
-    def _process_basic_output(output):
-        datakey = 'annotations' if output['valid'] else 'error'
-        infokey = 'annotations' if output['valid'] else 'errors'
-
-        new_output = set()
-        for unit in sorted(
-            output[infokey],
-            lambda x: (x['instanceLocation'], x['keywordLocation']),
-        ):
-            if datakey not in unit:
-                continue
-
-            if (
-                not self._filtered and
-                datakey == 'annotations' and
-                self._annotations
-            ):
-                if keyword not in self.annotations:
-                    continue
-
-            ann = Annotation(unit)
-            # TODO: TBD
 
 
 class JschonSchemaParser(SchemaParser):
