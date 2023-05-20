@@ -458,6 +458,7 @@ class OasGraph:
                 # compare absolute forms
                 if ref_source_uri.to_absolute() != ref_target_uri.to_absolute():
                     # TODO: Schema validation even if local?
+                    logger.debug(f'REMOTE: <{ref_target_uri}> a {reftype} .')
                     remote_resources.append((ref_target_uri, reftype))
                 if sourcemap:
                     self.add_sourcemap(
@@ -476,58 +477,65 @@ class OasGraph:
             # TODO: Actual error handling
             raise
 
-    def _build_example_schema(
-        self,
-        schema_data,
-        metaschema_uri,
-        components,
-        location,
-    ):
-        assert 'components' not in schema_data
-        patched_data = schema_data.copy()
-        patched_data['components'] = {}
-        patched_data['components']['schemas'] = components
-        # TODO: This $id is also a problematic workaround,
-        #       as it gives all example schemas the same URI
-        #       as the whole OAS file, which will be confusing
-        #       in any error output.
-        patched_data['$id'] = str(location.instance_resource_uri)
-        try:
-            return jschon.JSONSchema(
-                patched_data,
-                metaschema_uri=jschon.URI(str(metaschema_uri)),
-            )
-        except jschon.CatalogError as e:
-            logger.warn(f'Cannot valdate example: {e}')
-
     def add_oasexamples(self, annotation, document, data, sourcemap):
         errors = []
         location = annotation.location
-        schema_components = document.get('components', {}).get('schemas', {})
-        if schema_components:
-            # This is a jschon.JSON object, so unwrap it
-            schema_components = schema_components.value
-
         parent_obj = location.instance_ptr.evaluate(document)
-        m_uri = rid.Iri(OAS30_DIALECT_METASCHEMA)
-        schemas = [
-            # TODO: Handle failed schema building
-            self._build_example_schema(
-                schema_data.value,
-                metaschema_uri=m_uri,
-                components=schema_components,
-                location=location,
-            )
-            for schema_data in (
-                (result.data for result in self._flatten_template_array(
+        parent_uri = rdflib.URIRef(str(location.instance_uri))
+
+        schemas = []
+        if 'schemas' in annotation.value:
+            schema_data = [
+                result.data for result in self._flatten_template_array(
                     location,
                     annotation.value['schemas'],
                     parent_obj,
+                )
+            ]
+        else:
+            schema_data = [parent_obj]
+
+        m_uri = jschon.URI(OAS30_DIALECT_METASCHEMA)
+        for sd in schema_data:
+            if isinstance(sd, jschon.JSONSchema):
+                schemas.append(sd)
+            else:
+                schemas.append(jschon.JSONSchema(
+                    sd.value,
+                    uri=jschon.URI(
+                        str(location.instance_resource_uri.copy_with(
+                            fragment=sd.path.uri_fragment(),
+                        )),
+                    ),
+                    metaschema_uri=m_uri,
                 ))
-                if 'schemas' in annotation.value
-                else [parent_obj]
-            )
-        ]
+
+        # for result in self._flatten_template_array(
+        #     location,
+        #     annotation.value['schemas'],
+        #     parent_obj,
+        # ):
+        #     assert result.data.path == result.pointer
+        # schemas = [
+        #     # TODO: Handle failed schema building
+        #     schema if isinstance(schema, jschon.JSONSchema)
+        #     else jschon.JSONSchema(
+        #         schema.value,
+        #         uri=location.instance_resource_uri.copy_with(
+        #             fragment=result.data.path,
+        #         ),
+        #         metaschema_uri=m_uri,
+        #     )
+        #     for schema in (
+        #         (result.data for result in self._flatten_template_array(
+        #             location,
+        #             annotation.value['schemas'],
+        #             parent_obj,
+        #         ))
+        #         if 'schemas' in annotation.value
+        #         else [parent_obj]
+        #     )
+        # ]
 
         # TODO: Handle encoding objects
         try:
@@ -537,17 +545,33 @@ class OasGraph:
                 parent_obj,
             ):
                 example = result.data
+                relname = (
+                    'default' if result.pointer.path[-1] == 'default'
+                    else 'example'
+                )
+                self._g.add((
+                    parent_uri,
+                    self.oas[relname],
+                    rdflib.Literal(str(example), datatype=RDF.JSON),
+                ))
                 for schema in schemas:
+                    ex_uri = location.instance_resource_uri.copy_with(
+                        fragment=result.pointer.path.uri_fragment(),
+                    )
+                    logger.info(
+                        f'Validating "{relname}" {ex_uri} against schema '
+                        f'{schema.uri}, metaschema {schema.metaschema_uri}'
+                    )
                     schema_result = schema.evaluate(example)
                     if not schema_result.valid:
                         errors.append({
                             'location': location,
                             'error': schema_result.output('detailed'),
                         })
-            assert errors == []
             return OasGraphResult(errors=errors, refTargets=[])
 
         except (
+            jschon.CatalogError,
             jschon.RelativeJSONPointerError,
             RelJsonPtrTemplateError,
         ) as e:

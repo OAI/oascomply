@@ -5,8 +5,7 @@
   "$vocabulary": {
     "https://json-schema.org/draft/2020-12/vocab/core": true,
     "https://spec.openapis.org/oas/v3.0/vocab/draft-04-subset": true,
-    "https://spec.openapis.org/oas/v3.0/vocab/extension": true,
-    "https://spec.openapis.org/oas/v3.0/vocab/workaround": true
+    "https://spec.openapis.org/oas/v3.0/vocab/extension": true
   },
   "$dynamicAnchor": "meta",
   "type": "object",

@@ -203,6 +203,8 @@ class JschonSchemaParser(SchemaParser):
                 # TODO: Better error handling
                 raise
 
+        # logger.error('\n\n\nDATA:\n' + str(data))
+        # logger.error('\n\nSCHEMA:\n' + str(schema.uri))
         result = schema.evaluate(data)
         if not result.valid:
             logger.critical(

@@ -19,10 +19,14 @@ import json_source_map as jmap
 import yaml_source_map as ymap
 from yaml_source_map.errors import InvalidYamlError
 
+from oascomply import schema_catalog
 from oascomply.oasgraph import (
     OasGraph, OasGraphResult, OUTPUT_FORMATS_LINE, OUTPUT_FORMATS_STRUCTURED,
 )
 from oascomply.schemaparse import Annotation, SchemaParser
+from oascomply.oas30dialect import (
+    OasJson, OasJsonTypeError, OasJsonRefSuffixError, OAS30_DIALECT_METASCHEMA,
+)
 import oascomply.resourceid as rid
 
 __all__ = [
@@ -134,6 +138,7 @@ class ApiDescription:
         path: Optional[Path] = None,
         url: Optional[str] = None,
         sourcemap: Optional[Mapping] = None,
+        oastype: Optional[str] = None,
     ) -> None:
         """
         Add a resource as part of the API description, and set its URI
@@ -148,13 +153,54 @@ class ApiDescription:
             uri = rid.Iri(uri)
         assert uri.fragment is None, "Only complete documenets can be added."
 
-        # The jschon.JSON class keeps track of JSON Pointer values for
-        # every data entry, as well as providing parent links and type
-        # information.
-        self._contents[uri] = jschon.JSON(document)
+        logger.info(f'Adding document "{path}" ...')
+        logger.info(f'...URL <{url}>')
+        logger.info(f'...URI <{uri}>')
+        if oastype and oastype == 'Schema':
+            logger.info(f'...instantiating JSON Schema <{uri}>')
+            self._contents[uri] = jschon.JSONSchema(
+                document,
+                uri=jschon.URI(str(uri)),
+                metaschema_uri=jschon.URI(OAS30_DIALECT_METASCHEMA),
+            )
+            # assert isinstance(
+        else:
+            # The jschon.JSON class keeps track of JSON Pointer values for
+            # every data entry, as well as providing parent links and type
+            # information.  The OasJson subclass also automatically
+            # instantiates jschon.JSONSchema classes for Schema Objects
+            # and (in 3.0) for Reference Objects occupying the place of
+            # Schema Objects.
+            logger.info(f'...instantiating OAS Document <{uri}>')
+            self._contents[uri] = OasJson(
+                document,
+                uri=uri,
+                url=url,
+                oasversion=self._version[:3],
+            )
         if sourcemap:
             self._sources[uri] = sourcemap
         self._g.add_resource(url, uri, filename=path.name)
+
+    def resolve_references(self):
+        for document in self._contents.values():
+            logger.info(
+                f'Checking JSON Schema references in <{document.uri}>...',
+            )
+            if isinstance(document, OasJson):
+                logger.info(
+                    '...resolving with OasJson.resolve_references()',
+                )
+                document.resolve_references()
+            elif isinstance(document, jschon.JSONSchema):
+                logger.info(
+                    '...already resolved by jschon.JSONSchema()',
+                )
+            else:
+                logger.warning(
+                    f'Unknown type "{type(document)}" '
+                    f'for document <{document.uri}>',
+                )
 
     def get_resource(self, uri: Union[str, rid.Iri]) -> Optional[Any]:
         if not isinstance(uri, rid.IriWithJsonPtr):
@@ -172,10 +218,11 @@ class ApiDescription:
             )
         except (KeyError, jschon.JSONPointerError):
             logger.warning(f"Could not find resource {uri}")
-            return None, None, None
+            raise # return None, None, None
 
     def validate(self, resource_uri=None, oastype='OpenAPI'):
         sp = SchemaParser.get_parser({}, annotations=ANNOT_ORDER)
+        errors = []
         if resource_uri is None:
             assert oastype == 'OpenAPI'
             resource_uri = self._primary_uri
@@ -206,16 +253,20 @@ class ApiDescription:
             if annot == 'oasExamples':
                 # By this point we have set up the necessary reference info
                 for uri, oastype in to_validate.items():
-                    # TODO: Handle fragments vs whole resources
                     if uri not in self._validated:
-                        self.validate(uri, oastype)
+                        errors.extend(self.validate(uri, oastype))
 
             method_name = f'add_{annot.lower()}'
             method_callable = getattr(self._g, method_name)
             for args in by_method[method_name]:
                 graph_result = method_callable(*args)
+                for err in graph_result.errors:
+                    errors.append(err)
+                    logger.error(json.dumps(err['error'], indent=2))
                 for uri, oastype in graph_result.refTargets:
                     to_validate[uri] = oastype
+
+        return errors
 
     def serialize(
         self,
@@ -261,7 +312,7 @@ class ApiDescription:
         new_kwargs.update(kwargs)
 
         if destination in (sys.stdout, sys.stderr):
-            # rdflib serializers write bytes, not str # if destination
+            # rdflib serializers write bytes, not str if destination
             # is not None, which doesn't work with sys.stdout / sys.stderr
             destination.flush()
             with os.fdopen(
@@ -281,29 +332,67 @@ class ApiDescription:
         self._g.serialize(*args, destination=destination, **new_kwargs)
 
     @classmethod
-    def _process_file_arg(cls, filearg, prefixes, create_source_map):
+    def _process_file_arg(
+        cls,
+        filearg,
+        prefixes,
+        create_source_map,
+        strip_suffix,
+    ):
         path = Path(filearg[0])
         full_path = path.resolve()
+        oastype = None
+        uri = None
+        logger.debug(
+            f'Processing {full_path!r}, strip_suffix={strip_suffix}...'
+        )
         if len(filearg) > 1:
-            # TODO: Support semantic type
-            uri = filearg[1]
-        else:
-            uri = full_path.with_suffix('').as_uri()
+            try:
+                uri = rid.IriWithJsonPtr(filearg[1])
+                logger.debug(f'...assigning URI <{uri}> from 2nd arg')
+            except ValueError:
+                # TODO: Verify OAS type
+                oastype = filearg[1]
+                logger.debug(f'...assigning OAS type "{oastype}" from 2nd arg')
+        if len(filearg) > 2:
+            if uri is None:
+                raise ValueError('2nd of 3 -f args must be URI')
+            oastype = filearg[2]
+            logger.debug(f'...assigning OAS type "{oastype}" from 3rd arg')
+
         for p in prefixes:
             try:
                 rel = full_path.relative_to(p.directory)
                 uri = rid.Iri(str(p.prefix) + str(rel.with_suffix('')))
+                logger.debug(
+                    f'...assigning URI <{uri}> using prefix <{p.prefix}>',
+                )
             except ValueError:
                 pass
+
         filetype = path.suffix[1:] or 'yaml'
         if filetype == 'yml':
             filetype = 'yaml'
+        logger.debug('...determined filetype={filetype}')
+
+        if uri is None:
+            if strip_suffix:
+                uri = rid.Iri(full_path.with_suffix('').as_uri())
+            else:
+                uri = rid.Iri(full_path.as_uri())
+            logger.debug(
+                f'...assigning URI <{uri}> from URL <{full_path.as_uri()}>',
+            )
 
         content = path.read_text()
         sourcemap = None
         if filetype == 'json':
             data = json.loads(content)
             if create_source_map:
+                logger.info(
+                    f'Creating JSON sourcemap for {path}, '
+                    '(can disable with -n if slow)',
+                )
                 sourcemap = jmap.calculate(content)
         elif filetype == 'yaml':
             data = yaml.safe_load(content)
@@ -311,6 +400,10 @@ class ApiDescription:
                 # The YAML source mapper gets confused sometimes,
                 # just log a warning and work without the map.
                 try:
+                    logger.info(
+                        f'Creating YAML sourcemap for {path}, '
+                        '(can disable with -n if slow)',
+                    )
                     sourcemap = ymap.calculate(content)
                 except InvalidYamlError:
                     logger.warn(
@@ -325,6 +418,7 @@ class ApiDescription:
             'sourcemap': sourcemap,
             'path': path,
             'uri': uri,
+            'oastype': oastype,
         }
 
     @classmethod
@@ -363,6 +457,19 @@ class ApiDescription:
                 f"directory: {p[1]!r}"
             )
         return UriPrefix(prefix=prefix, directory=path)
+
+    @classmethod
+    def _url_for(cls, uri):
+        if uri.scheme != 'file':
+            return None
+        path = Path(uri.path)
+        if path.exists():
+            return uri
+        for suffix in ('.json', '.yaml', '.ym'):
+            ps = path.with_suffix(suffix)
+            if ps.exists():
+                return rid.Iri(ps.as_uri())
+        return None
 
     @classmethod
     def load(cls):
@@ -433,10 +540,9 @@ class ApiDescription:
             '-x',
             '--strip-suffix',
             nargs='?',
-            type=bool,
-            default=None,
-            help="NOT YET IMPLEMENTED "
-                 "Assign URIs to documents by stripping the file extension "
+            choices=('auto', 'yes', 'no'),
+            default='auto',
+            help="Assign URIs to documents by stripping the file extension "
                  "from their URLs if they have not been assigned URIs by "
                  "-d or the two-argument form of -f; can be set to false "
                  "to *disable* prefix-stripping by -d"
@@ -487,6 +593,13 @@ class ApiDescription:
                  "TODO: Support storing to various kinds of databases.",
         )
         parser.add_argument(
+            '-v',
+            '--verbose',
+            action='count',
+            default=0,
+            help="Increase verbosity; can passed twice for full debug output.",
+        )
+        parser.add_argument(
             '--test-mode',
             action='store_true',
             help="Omit data such as 'locatedAt' that will change for "
@@ -495,6 +608,26 @@ class ApiDescription:
                  "automated testing of the entire system.",
         )
         args = parser.parse_args()
+        if args.verbose:
+            if args.verbose == 1:
+                logging.basicConfig(level=logging.INFO)
+            else:
+                logging.basicConfig(level=logging.DEBUG)
+        else:
+            logging.basicConfig(level=logging.WARN)
+
+        if args.strip_suffix is None:
+            # TODO: Write a custom arg action
+            #       For now this simulates '-x' without an arg
+            #       as equivalent to '-x yes' in the debug log.
+            args.strip_suffix = 'yes'
+        strip_suffix = {
+            'auto': None,
+            'yes': True,
+            'no': False,
+        }[args.strip_suffix]
+        logger.debug(f'Processed arguments:\n{args}')
+
         if args.directories:
             raise NotImplementedError('-D option not yet implemented')
 
@@ -509,17 +642,12 @@ class ApiDescription:
             filearg,
             prefixes,
             args.number_lines is True,
+            strip_suffix,
         ) for filearg in args.files]
 
         candidates = list(filter(lambda r: 'openapi' in r['data'], resources))
         if not candidates:
             logger.error("No document contains an 'openapi' field!")
-            return -1
-        if len(candidates) > 1:
-            logger.error(
-                "Multiple documents with an 'openapi' field "
-                "not yet supported"
-            )
             return -1
         primary = candidates[0]
 
@@ -537,10 +665,63 @@ class ApiDescription:
                     r['uri'],
                     path=r['path'],
                     sourcemap=r['sourcemap'],
+                    oastype=r['oastype'],
                 )
-            logger.info(f"Adding document {r['path']!r} <{r['uri']}>")
+        try:
+            desc.resolve_references()
+            errors = desc.validate()
+            if errors:
+                sys.stderr.write('\nAPI description contains errors\n\n')
+                sys.exit(-1)
 
-        desc.validate()
+        except OasJsonRefSuffixError as e:
+            path = Path(e.target_resource_uri.path).relative_to(Path.cwd())
+            logger.error(
+                f'{e.args[0]}\n\n'
+                'The above error can be fixed either by using -x:'
+                f'\n\n\t-x -f {path}\n\n'
+                '... or by using the two-argument form of -f:'
+                f'\n\n\t-f {path} {e.ref_resource_uri}\n'
+            )
+            sys.exit(-1)
+
+        except OasJsonTypeError as e:
+            url = cls._url_for(e.uri) if e.url is None else e.url
+            if url is None:
+                logger.error(
+                    f'Cannot determine URL and path for URI <{e.uri}>, '
+                    f'run with -v and check the logs',
+                )
+                url = rid.Iri('about:unknown-url')
+                path = '<unknown-path>'
+            else:
+                path = Path(url.path).relative_to(Path.cwd())
+
+            # TODO: This isn't always quite right depending on -d / -D
+            #       when strip_suffix is None
+            if strip_suffix in (True, None):
+                uri_len = len(str(e.uri))
+                truncated_url = str(url)[:uri_len]
+                missing_suffix = str(url)[uri_len:]
+                if  (
+                    truncated_url == str(e.uri) and
+                    missing_suffix in ('.json', '.yaml', '.yml')
+                ):
+                    path_and_uri = f'-x -f {path}'
+
+            if path_and_uri is None:
+                path_and_uri = (
+                    f'-f {path}' if e.uri == url
+                    else f'-f {path} {e.uri}'
+                )
+
+            logger.error(
+                f'JSON Schema documents must pass "Schema" (without quotes) '
+                f'as an additional -f argument:\n\n'
+                f'\t {path_and_uri} Schema\n'
+            )
+            sys.exit(-1)
+
         if args.output_format is not None or args.test_mode is True:
             desc.serialize(output_format=args.output_format)
         else:
