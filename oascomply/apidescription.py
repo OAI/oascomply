@@ -393,15 +393,11 @@ class ApiDescription:
             nargs='+',
             action='append',
             dest='files',
-            help="An API description file, given as a mandatory file path, "
-                 "optionally followed by an URI to associate with the file, "
-                 "and/or the semantic type of the file's contents, e.g. "
-                 "3.1:Schema; the path MUST be first, while the URI and "
-                 "semantic type can appear in either order; by default, "
-                 "a 'file:' URI will be generated matching the path, "
-                 "and the code will attempt to infer the semantic type "
-                 "from context and reference usage.\n\n"
-                 "See below for scenarios where the semantic type is required."
+            help="An API description file as a local path, optionally "
+                 "followed by a URI to use in place of the path's "
+                 "corresponding file: URL; validation begins with the "
+                 "first file containing an 'opnapi' field, with any "
+                 "others used to resolve references; see also -d, -x",
         )
         parser.add_argument(
             '-d',
@@ -410,12 +406,13 @@ class ApiDescription:
             nargs=2,
             metavar=('DIRECTORY', 'URI_PREFIX'),
             action='append',
+            default=[],
             dest='prefixes',
             help="A directory followed by a URI prefix that MUST have a path "
-                 "ending in '/'; all files loaded from this directory with "
-                 "the '-f' option without specifying a URI will be assigned "
-                 "URIs by replacing the directory with the URI prefix and "
-                 "removing any file extension suffix (e.g. '.json', '.yaml')"
+                 "ending in '/'; files loaded from this directory will be "
+                 "assigned URIs by replacing the directory with the prefix "
+                 "and stripping any file extension, unless overridden "
+                 "with the 2nd argument to -f; see also -x"
         )
         parser.add_argument(
             '-D',
@@ -423,36 +420,45 @@ class ApiDescription:
             nargs='+',
             action='append',
             dest='directories',
-            help="A directory containing API description files, optionally "
+            help="NOT YET IMPLEMENTED "
+                 "A directory containing API description files, optionally "
                  "followed by an URI prefix with a path component ending in "
-                 "a '/';  All files with a .json, .yaml, or .yml anywhere "
-                 "under the directory will be loaded; if an URI prefix is "
-                 "provided, the file path relative to the directory, but "
-                 "without the file extension, will be appended to the prefix "
-                 "to determine each file's URI; otherwise, each file will be "
-                 "assigned its corresponding 'file:' URI.\n\n"
-                 "See below for scenarios where certain files must be "
-                 "loaded separately with -f and -d.",
+                 "a '/';  The path-only form is equivaent to using -f on "
+                 "every .json, .yaml, or .yml file in the directory or its "
+                 "subdirectories (excluding dot-prefixed ones such as .git); "
+                 "The path with URI prefix form is equivalent to the same -f "
+                 "behavior plus -d",
+        )
+        parser.add_argument(
+            '-x',
+            '--strip-suffix',
+            nargs='?',
+            type=bool,
+            default=None,
+            help="NOT YET IMPLEMENTED "
+                 "Assign URIs to documents by stripping the file extension "
+                 "from their URLs if they have not been assigned URIs by "
+                 "-d or the two-argument form of -f; can be set to false "
+                 "to *disable* prefix-stripping by -d"
+        )
+        parser.add_argument(
+            '-n',
+            '--number-lines',
+            action='store_true',
+            help="Enable line and column numbers in the graph and in "
+                 "error reproting; this has a considerable performance "
+                 "impact, especially for YAML",
         )
         parser.add_argument(
             '-i',
             '--allow-iris',
             action='store_true',
-            help="Allow IRIs (URIs/URLs with full unicode support) even where "
+            help="NOT YET IMPLEMENTED "
+                 "Allow IRIs (URIs/URLs with full unicode support) even where "
                  "OAS and JSON Schema only support URIs/URLs; only use this "
                  "option if your OAS tooling supports IRIs and you want to "
                  "suppress errors about using unencoded non-ASCII characters "
                  "in your URIs/URLs."
-        )
-        parser.add_argument(
-            '-n',
-            '--no-source-map',
-            action='store_true',
-            help="Disable line number tracking for API descriptions, which "
-                 "substantially improves performance; locations wills be "
-                 "reported using JSON Pointers only; Note that currently, the "
-                 "YAML line map package sometimes gets confused and drops "
-                 "the line numbers anyway (this will be fied at some point).",
         )
         parser.add_argument(
             '-o',
@@ -467,17 +473,25 @@ class ApiDescription:
                  "options.",
         )
         parser.add_argument(
+            '-O',
+            '--output-file',
+            help="NOT YET IMPLEMENTED "
+                 "Write the output to the given file instead of stdout",
+        )
+        parser.add_argument(
             '-t',
             '--store',
             default='none',
             choices=(('none',)),
-            help="TODO: Support storing to various kinds of databases."
+            help="NOT YET IMPLEMENTED "
+                 "TODO: Support storing to various kinds of databases.",
         )
         parser.add_argument(
             '--test-mode',
             action='store_true',
             help="Omit data such as 'locatedAt' that will change for "
-                 "every environment.  This is intended to facilitate "
+                 "every environment and produce sorted nt11 output.  "
+                 "This is intended to facilitate "
                  "automated testing of the entire system.",
         )
         args = parser.parse_args()
@@ -494,7 +508,7 @@ class ApiDescription:
         resources = [cls._process_file_arg(
             filearg,
             prefixes,
-            not args.no_source_map,
+            args.number_lines is True,
         ) for filearg in args.files]
 
         candidates = list(filter(lambda r: 'openapi' in r['data'], resources))
