@@ -153,7 +153,6 @@ class OasGraph:
             if 'operationId' in op:
                 label = rdflib.Literal(f"Op:{op['operationId'].value}")
             else:
-                logger.error(str(location.instance_ptr))
                 label = rdflib.Literal(
                     (
                         f"Op:{location.instance_ptr[-2]}"
@@ -171,7 +170,7 @@ class OasGraph:
                 # TODO: handle path item at root of file
                 label = None
 
-        elif oastype == 'MediaType':
+        elif oastype in ('Header', 'MediaType'):
             label = rdflib.Literal(location.instance_ptr[-1])
 
         elif oastype == 'PathItem':
@@ -189,9 +188,9 @@ class OasGraph:
 
         elif oastype.endswith('Parameter'):
             i = location.instance_ptr.evaluate(document)
-            label = rdflib.Literal(f"Param:{i['in']}:{i['name']}")
+            label = rdflib.Literal(f"Param:{i['in']}:{i['name'].value}")
 
-        elif oastype in ('Header', 'Tag'):
+        elif oastype == 'Tag':
             i = location.instance_ptr.evaluate(document)
             label = rdflib.Literal(f"{oastype}:{i['name'].value}")
 
