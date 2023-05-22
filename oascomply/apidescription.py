@@ -220,7 +220,12 @@ class ApiDescription:
             logger.warning(f"Could not find resource {uri}")
             raise # return None, None, None
 
-    def validate(self, resource_uri=None, oastype='OpenAPI'):
+    def validate(
+        self,
+        resource_uri=None,
+        oastype='OpenAPI',
+        validate_examples=True,
+    ):
         sp = SchemaParser.get_parser({}, annotations=ANNOT_ORDER)
         errors = []
         if resource_uri is None:
@@ -254,7 +259,14 @@ class ApiDescription:
                 # By this point we have set up the necessary reference info
                 for uri, oastype in to_validate.items():
                     if uri not in self._validated:
-                        errors.extend(self.validate(uri, oastype))
+                        errors.extend(self.validate(
+                            uri,
+                            oastype,
+                            validate_examples=validate_examples,
+                        ))
+                if not validate_examples:
+                    logger.info('Skipping example validation')
+                    continue
 
             method_name = f'add_{annot.lower()}'
             method_callable = getattr(self._g, method_name)
@@ -560,6 +572,14 @@ class ApiDescription:
                  "impact, especially for YAML",
         )
         parser.add_argument(
+            '-e',
+            '--examples',
+            choices=('true', 'false'),
+            default='true',
+            help="Pass 'false' to disable validation of examples and defaults "
+                 "by the corresponding schema.",
+        )
+        parser.add_argument(
             '-i',
             '--allow-iris',
             action='store_true',
@@ -673,7 +693,7 @@ class ApiDescription:
                 )
         try:
             desc.resolve_references()
-            errors = desc.validate()
+            errors = desc.validate(validate_examples=(args.examples == 'true'))
             errors.extend(desc.validate_graph())
             if errors:
                 for err in errors:
