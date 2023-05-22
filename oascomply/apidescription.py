@@ -463,7 +463,7 @@ class ApiDescription:
         if not prefix.path.endswith('/'):
             raise ValueError(
                 "URI prefixes must include a path that ends with '/': "
-                f"<{p[p]}>"
+                f"<{p[0]}>"
             )
 
         path = Path(directory).resolve()
@@ -655,9 +655,12 @@ class ApiDescription:
         if args.directories:
             raise NotImplementedError('-D option not yet implemented')
 
-        prefixes = [cls._process_prefix(p) for p in args.prefixes] # \
-            # if args.prefixes \
-            # else []
+        try:
+            prefixes = [cls._process_prefix(p) for p in args.prefixes]
+        except ValueError as e:
+            logger.error(str(e))
+            sys.exit(-1)
+
         # Reverse sort so that the first matching prefix is the longest
         # TODO: At some point I switched the tuple order, does this still work?
         prefixes.sort(reverse=True)
