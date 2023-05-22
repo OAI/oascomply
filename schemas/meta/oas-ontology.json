@@ -1,0 +1,145 @@
+{
+    "title": "JSON Schema 2020-12 OpenAPI Specification Ontology vocabulary",
+    "$id": "https://spec.openapis.org/compliance/schemas/meta/2023-06/oas-ontology",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$vocabulary": {
+        "https://json-schema.org/draft/2020-12/vocab/core": true,
+        "https://spec.openapis.org/compliance/vocab/2023-06/oas-ontology": false
+    },
+    "$dynamicAnchor": "meta",
+
+    "properties": {
+        "oasApiLinks": {"$ref": "#/$defs/templatedPointerRelationObject"},
+        "oasChildren": {"$ref": "#/$defs/templatedPointerRelationObject"},
+        "oasDescriptionLinks": {
+            "$ref": "#/$defs/templatedPointerRelationObject"
+        },
+        "oasExamples": {
+            "type": "object",
+            "required": ["examples"],
+            "properties": {
+                "examples": {"$ref": "#/$defs/templatedPointerArray"},
+                "schemas": {
+                    "$comment": "Some schema objects may not exist, but must be valid against all that do; TBD: 'override' of examples in schemas",
+                    "default": ["0"],
+                    "$ref": "#/$defs/templatedPointerArray"
+                },
+                "encodings": {
+                    "$comment": "Applies only to the property named by the 'property' template variable match",
+                    "pattern": "{property}$",
+                    "$ref": "#/$defs/templatedPointerArray"
+                }
+            },
+            "additionalProperties": false
+        },
+        "oasExtensible": {
+            "type": "boolean",
+            "default": false
+        },
+        "oasImplicitReferences": {
+            "type": "object",
+            "propertyNames": {"$ref": "#/$defs/templatedPointer"},
+            "additionalProperties": {
+                "type": "object",
+                "properties": {
+                    "oasRelationType": {
+                        "default": "jsonReference",
+                        "$ref": "#/$defs/semanticRelation"
+                    },
+                    "oasTargetType": {"$ref": "#/$defs/semanticType"},
+                    "oasTargetField": {"$ref": "#/$defs/templatedPointer"},
+                    "oasTargetQualifier": {"$ref": "#/$defs/templatedPointer"},
+                    "oasTargetIsTemplateVariable": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "oasTargetRequired": {
+                        "type": "boolean",
+                        "default": false
+                    }
+                },
+                "additionalProperties": false
+            }
+        },
+        "oasLiterals": {"$ref": "#/$defs/templatedPointerRelationObject"},
+        "oasReferenceConflict": {
+            "type": "object",
+            "propertyNames": {"$ref": "#/$defs/templatedPointer"},
+            "additionalProperties": {
+                "type": "string",
+                "enum": ["allOf", "ignore", "merge", "undefined"],
+                "default": "ignore"
+            }
+        },
+        "oasReferences": {"$ref": "#/$defs/templatedPointerTypeObject"},
+        "oasType": {"$ref": "#/$defs/semanticType"},
+        "oasUniqueKey": {
+            "type": "object",
+            "properties": {
+                "fields": {
+                    "$comment": "Relative to each scope item",
+                    "$ref": "#/$defs/templatedPointerArray"
+                },
+                "scope": {
+                    "$comment": "Unique across all matches of all array items",
+                    "$ref": "#/$defs/templatedPointerArray"
+                }
+            },
+            "additionalProperties": false
+        }
+    },
+    "$defs": {
+        "semanticType": {
+            "$comment": "class name suffixed to longest relevant prefix",
+            "rdfType": "rdfs:Class",
+            "rdfNamespaces": {
+                "oas": "https://openapis.org/ontology#",
+                "oas3.0": "https://openapis.org/ontology#3.0-",
+                "oas3.1": "https://openapis.org/ontology#3.1-"
+            },
+            "type": "string",
+            "pattern": "[A-Z][A-Za-z0-9]*$"
+        },
+        "semanticRelation": {
+            "$comment": "property name suffixed to longest relevant prefix",
+            "rdfType": "rdfs:Class",
+            "rdfNamespaces": {
+                "oas": "https://openapis.org/ontology#",
+                "oas3.0": "https://openapis.org/ontology#3.0-",
+                "oas3.1": "https://openapis.org/ontology#3.1-"
+            },
+            "type": "string",
+            "pattern": "^[a-z][A-Za-z0-9]*$"
+        },
+        "templatedPointer": {
+            "type": "string",
+            "format": "relative-json-pointer-template"
+        },
+        "templatedPointerArray": {
+            "$comment": "instance RJP templates",
+            "type": "array",
+            "items": {"$ref": "#/$defs/templatedPointer"}
+        },
+        "templatedPointerTypeObject": {
+            "$comment": "instance RJP template to ontology class name",
+            "type": "object",
+            "propertyNames": {"$ref": "#/$defs/templatedPointer"},
+            "additionalProperties": {"$ref": "#/$defs/semanticType"}
+        },
+        "templatedPointerRelationObject": {
+            "$comment": "instance RJP to ontology relationship",
+            "type": "object",
+            "propertyNames": {"$ref": "#/$defs/templatedPointer"},
+            "additionalProperties": {
+                "type": "string",
+                "oneOf": [{
+                    "$comment": "instance RJP for ontology relationship name",
+                    "format": "relative-json-pointer",
+                    "pattern": "^[0-9]"
+                }, {
+                    "$ref": "#/$defs/semanticRelation"
+                }]
+            }
+        }
+    }
+}

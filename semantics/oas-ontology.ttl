@@ -1,0 +1,167 @@
+@prefix oas: <https://spec.openapis.org/compliance/ontology#> .
+@prefix oas3.0: <https://spec.openapis.org/compliance/ontology#3.0-> .
+@prefix oas3.1: <https://spec.openapis.org/compliance/ontology#3.1-> .
+
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+oas:document a rdfs:Property .
+oas:lineNumber a rdfs:Property ;
+    rdfs:domain oas:ParsedStructure ;
+    rdfs:range xsd:nonNegativeInteger .
+oas:columnNumber a rdfs:Property ;
+    rdfs:domain oas:ParsedStructure ;
+    rdfs:range xsd:nonNegativeInteger .
+
+oas:parent a rdfs:Property .
+
+# Child entity relationships (oasChildren, oasReferences)
+oas:callback a rdfs:Property .
+oas:callbacks a rdfs:Property .
+oas:components a rdfs:Property .
+oas:componentGroup a rdfs:Property .
+oas:contact a rdfs:Property .
+oas:content a rdfs:Property .
+oas:encoding a rdfs:Property .
+oas:externalDocs a rdfs:Property .
+oas:header a rdfs:Property .
+oas:info a rdfs:Property .
+oas:license a rdfs:Property .
+oas:link a rdfs:Property .
+oas:namedCallback a rdfs:Property .
+oas:namedExample a rdfs:Property .
+oas:namedHeader a rdfs:Property .
+oas:namedLink a rdfs:Property .
+oas:namedParameter a rdfs:Property .
+oas:namedRequestBody a rdfs:Property .
+oas:namedResponse a rdfs:Property .
+oas:namedSchema a rdfs:Property .
+oas:namedSecurityScheme a rdfs:Property .
+oas:namedExtensionComponents a rdfs:Property .
+oas:operation a rdfs:Property .
+oas:parameter a rdfs:Property .
+oas:parameterExpression a rdfs:Property .
+oas:paths a rdfs:Property .
+oas:requestBody a rdfs:Property .
+oas:response a rdfs:Property .
+oas:responses a rdfs:Property .
+oas:schema a rdfs:Property .
+oas:security a rdfs:Property .
+oas:server a rdfs:Property .
+oas:tag a rdfs:Property .
+
+# Referencing relationships
+oas:reference a rdfs:Property .
+oas:referenceTarget a rdfs:Property .
+oas:operationRef a rdfs:Property .
+oas:operationIdRef a rdfs:Property .
+oas:securitySchemeRef a rdfs:Property .
+oas:securitySchemeScopeRef a rdfs:Property .
+oas:serverVariableRef a rdfs:Property .
+
+# Literal relationships (oasLiterals, oasDescriptionLinks, oasApiLinks)
+oas:allowEmptyValue a rdfs:Property .
+oas:allowReserved a rdfs:Property .
+oas:apiDescriptionVersion a rdfs:Property .
+oas:authorizationUrl a rdfs:Property .
+oas:deprecated a rdfs:Property .
+oas:description a rdfs:Property .
+oas:email a rdfs:Property .
+oas:explode a rdfs:Property .
+oas:externalValue a rdfs:Property .
+oas:name a rdfs:Property .
+oas:oasVersion a rdfs:Property .
+oas:operationId a rdfs:Property .
+oas:parameterValue a rdfs:Property .
+oas:parameterLocation a rdfs:Property .
+oas:refreshUrl a rdfs:Property .
+oas:required a rdfs:Property .
+oas:style a rdfs:Property .
+oas:scope a rdfs:Property .
+oas:summary a rdfs:Property .
+oas:termsOfService a rdfs:Property .
+oas:title a rdfs:Property .
+oas:tokenUrl a rdfs:Property .
+oas:type a rdfs:Property .
+oas:url a rdfs:Property .
+oas:value a rdfs:Property .
+oas:variable a rdfs:Property .
+oas:wrapped a rdfs:Property .
+oas:xmlAttribute a rdfs:Property .
+oas:xmlNamespace a rdfs:Property .
+oas:xmlPrefix a rdfs:Propery .
+
+# General entities
+oas:ParsedStructure a rdfs:Class .
+
+# OAS 3.0 entities
+oas3.0:Callback a rdfs:Class .
+oas3.0:CallbackComponents a rdfs:Class .
+oas3.0:Components a rdfs:Class .
+oas3.0:Contact a rdfs:Class .
+oas3.0:Discriminator a rdfs:Class .
+oas3.0:Encoding a rdfs:Class .
+oas3.0:Example a rdfs:Class .
+oas3.0:ExampleComponents a rdfs:Class .
+oas3.0:ExtensionComponents a rdfs:Class .
+oas3.0:ExternalDocumentation a rdfs:Class .
+oas3.0:Header a rdfs:Class .
+oas3.0:HeaderComponents a rdfs:Class .
+oas3.0:Info a rdfs:Class .
+oas3.0:License a rdfs:Class .
+oas3.0:Link a rdfs:Class .
+oas3.0:LinkComponents a rdfs:Class .
+oas3.0:MediaType a rdfs:Class .
+oas3.0:OAuthFlow a rdfs:Class .
+oas3.0:OpenAPI a rdfs:Class .
+oas3.0:Operation a rdfs:Class .
+oas3.0:PathItem a rdfs:Class .
+oas3.0:PathOnlyTemplatedUrl a rdfs:Class .
+oas3.0:Parameter a rdfs:Class .
+oas3.0:Components a rdfs:Class .
+oas3.0:Components a rdfs:Class .
+oas3.0:Paths a rdfs:Class .
+oas3.0:QualifiedTemplateParameter a rdfs:Class .
+oas3.0:Reference a rdfs:Class .
+oas3.0:RequestBody a rdfs:Class .
+oas3.0:Response a rdfs:Class .
+oas3.0:Responses a rdfs:Class .
+oas3.0:RuntimeExpression a rdfs:Class .
+oas3.0:Schema a rdfs:Class .
+oas3.0:SecurityRequirement a rdfs:Class .
+oas3.0:SecurityScheme a rdfs:Class .
+oas3.0:Server a rdfs:Class .
+oas3.0:ServerVariable a rdfs:Class .
+oas3.0:StatusCode a rdfs:Class .
+oas3.0:StatusCodeRange a rdfs:Class .
+oas3.0:StatusDefault a rdfs:Class .
+oas3.0:Tag a rdfs:Class .
+oas3.0:TagName a rdfs:Class .
+oas3.0:Xml a rdfs:Class .
+
+oas3.0:PathParameter rdfs:subClassOf oas3.0:Parameter .
+oas3.0:QueryParameter rdfs:subClassOf oas3.0:Parameter .
+oas3.0:HeaderParameter rdfs:subClassOf oas3.0:Parameter .
+oas3.0:CookieParameter rdfs:subClassOf oas3.0:Parameter .
+
+oas3.0:DeleteOperation rdfs:subClassOf oas3.0:Operation .
+oas3.0:GetOperation rdfs:subClassOf oas3.0:Operation .
+oas3.0:HeadOperation rdfs:subClassOf oas3.0:Operation .
+oas3.0:OptionsOperation rdfs:subClassOf oas3.0:Operation .
+oas3.0:PatchOperation rdfs:subClassOf oas3.0:Operation .
+oas3.0:PostOperation rdfs:subClassOf oas3.0:Operation .
+oas3.0:PutOperation rdfs:subClassOf oas3.0:Operation .
+oas3.0:TraceOperation rdfs:subClassOf oas3.0:Operation .
+
+oas3.0:APIKeySecurityScheme rdfs:subClassOf oas3.0:SecurityScheme .
+oas3.0:HTTPSecurityScheme rdfs:subClassOf oas3.0:SecurityScheme .
+oas3.0:OAuth2SecurityScheme rdfs:subClassOf oas3.0:SecurityScheme .
+oas3.0:OpenIdConnectSecurityScheme rdfs:subClassOf oas3.0:SecurityScheme .
+
+oas3.0:AuthorizationCodeOAuthFlow rdfs:subClassOf oas3.0:OAuthFlow .
+oas3.0:ClientCredentialsFlow rdfs:subClassOf oas3.0:OAuthFlow .
+oas3.0:ImplicitOAuthFlow rdfs:subClassOf oas3.0:OAuthFlow .
+oas3.0:PasswordOAuthFlow rdfs:subClassOf oas3.0:OAuthFlow .
+oas3.0:ExtensionOAuthFlow rdfs:subClassOf oas3.0:OAuthFlow .
+

@@ -1,18 +1,17 @@
 import json
+from functools import cached_property
 from pathlib import Path
 from uuid import uuid4
-from typing import Any, Optional
+from typing import Any, Optional, Union
 import logging
 
-from jschon import (
-    create_catalog, JSON, JSONSchema, URI,
-    JSONPointer, RelativeJSONPointer, RelativeJSONPointerError,
-)
+import jschon
 import rdflib
 from rdflib.namespace import RDF
 import yaml
 
 from oascomply.oasgraph import OasGraph
+import oascomply.resourceid as rid
 
 __all__ = [
     'Annotation',
@@ -29,6 +28,12 @@ class Annotation:
             unit['keywordLocation'].rindex('/') + 1:
         ]
         self._value = unit['annotation']
+
+    def __repr__(self):
+        return (
+            f'Annotation({self._keyword}={self._value!r}, '
+            f'{self._location!r})'
+        )
 
     @property
     def location(self):
@@ -47,99 +52,92 @@ class Location:
     _cache = {}
 
     @classmethod
-    def _instance_base_uri(cls, base=None):
+    def _get_instance_base_uri(cls, base=None):
         if base:
-            return base
+            if isinstance(base, rid.IriWithJsonPtr):
+                return base
+            else:
+                return rid.IriWithJsonPtr(str(base))
         try:
-            return cls._dibu
+            return cls._default_instance_base
         except AttributeError:
-            cls._dibu = f'urn:uuid:{uuid4()}'
-        return cls._dibu
+            # NOTE: This ony works if there is only one instance document.
+            # TODO: Guard against messing it up?  Do we even need this?
+            cls._dibu = rid.Iri(f'urn:uuid:{uuid4()}')
+        return cls._default_instance_base
 
     @classmethod
-    def _eval_ptr(cls, unit):
-        kl = unit['keywordLocation']
-        return kl[:kl.rindex('/')]
+    def get(cls, unit: dict, instance_base: Union[str, rid.Iri] = None):
+        eval_ptr = rid.JsonPtr(unit['keywordLocation'])[:-1]
 
-    @classmethod
-    def get(cls, unit: dict, instance_base: str=None):
-        ep = cls._eval_ptr(unit)
         cache_key = (
-            cls._instance_base_uri(instance_base),
+            cls._get_instance_base_uri(instance_base),
             unit['instanceLocation'],
-            ep,
+            eval_ptr,
         )
         try:
             return cls._cache[cache_key]
         except KeyError:
-            l = Location(unit, eval_ptr=ep, instance_base=instance_base)
-            cls._cache[cache_key] = l
-            return l
+            loc = Location(
+                unit,
+                eval_ptr=eval_ptr,
+                instance_base=instance_base,
+            )
+            cls._cache[cache_key] = loc
+            return loc
 
     def __init__(
         self,
         unit,
         *,
-        eval_ptr,
+        eval_ptr=None,
         instance_base=None
     ):
-        self._instance_base = self._instance_base_uri(instance_base)
-        self._eval_ptr = eval_ptr
-
-        self._instance_resource_uri = URI(self._instance_base)
-        self._instance_ptr = JSONPointer(unit['instanceLocation'])
-        self._instance_uri = self._instance_resource_uri.copy(
-            fragment=self._instance_ptr.uri_fragment(),
+        self._unit = unit
+        self._given_base = instance_base
+        self._eval_ptr = (
+            rid.JsonPtr(unit['keywordLocation'])[:-1] if eval_ptr is None
+            else eval_ptr
         )
-
-        akl = unit['absoluteKeywordLocation']
-        # construct, splice off last JSON Pointer
-        self._schema_uri = URI(akl[:akl.rindex('/')])
-        self._schema_resource_uri = URI(akl[:akl.rindex('#')])
-
-        # extract JSON Pointer
-        self._schema_ptr = JSONPointer.parse_uri_fragment(self._schema_uri.fragment)
-
-        keyword_uri = URI(akl)
-        schema_keyword_ptr = JSONPointer.parse_uri_fragment(
-            keyword_uri.fragment,
-        )
-        self._schema_uri = keyword_uri.copy(
-            fragment=schema_keyword_ptr[:-1].uri_fragment(),
-        )
-        # remove fragment
-        self._schema_resource_uri = keyword_uri.copy(fragment=None)
 
     def __hash__(self):
         return hash((self._instance_uri, self._eval_ptr))
 
-    @property
-    def instance_resource_uri(self):
-        return self._instance_resource_uri
+    def __repr__(self):
+        return 'Location(' + repr({
+            'instance': str(self.instance_uri),
+            'schema': str(self.schema_uri),
+            'evaluationPath': str(self.evaluation_path_ptr),
+        }) + ')'
 
-    @property
-    def instance_uri(self):
-        return self._instance_uri
+    @cached_property
+    def instance_resource_uri(self) -> rid.Iri:
+        return self._get_instance_base_uri(self._given_base).copy_with(
+            rid.IriWithJsonPtr
+        )
 
-    @property
-    def instance_ptr(self):
-        return self._instance_ptr
+    @cached_property
+    def instance_uri(self) -> rid.Iri:
+        return self.instance_resource_uri.copy_with(
+            fragment=self.instance_ptr
+        )
 
-    @property
-    def evaluation_path_ptr(self):
+    @cached_property
+    def instance_ptr(self) -> rid.JsonPtr:
+        return rid.JsonPtr(self._unit['instanceLocation'])
+
+    @cached_property
+    def evaluation_path_ptr(self) -> rid.JsonPtr:
         return self._eval_ptr
 
-    @property
-    def schema_resource_uri(self):
-        return self._schema_resource_uri
+    @cached_property
+    def schema_resource_uri(self) -> rid.Iri:
+        return self.schema_uri.to_absolute()
 
-    @property
-    def schema_uri(self):
-        return self._schema_uri
-
-    @property
-    def schema_keyword_ptr(self):
-        return self._schema_keyword_ptr
+    @cached_property
+    def schema_uri(self) -> rid.Iri:
+        s_uri = rid.IriWithJsonPtr(self._unit['absoluteKeywordLocation'])
+        return s_uri.copy_with(fragment=s_uri.fragment[:-1])
 
 
 class SchemaParser:
@@ -178,57 +176,9 @@ class SchemaParser:
     def parse(self, data, oastype, output_format='basic'):
         raise NotImplementedError
 
-    def _process_output(output, output_format):
-        """
-        Restructure the standardized output into an instance-oriented tree.
-
-        JSON Schema standardized output formats are either flat or organized
-        by the schema evaluation path structure.  This method converts
-        supported output formats (currenty only 'basic', and presumably 'list'
-        when it becomes available) into tree based on instance structure.
-
-        :param output: The standardized output from a JSON Schema implementation
-
-        :raises ValueError: when the output format is not supported
-        """
-        if output_format != 'basic':
-            raise ValueError(
-                f'Unsupported JSON Schema output format {output_format!r}'
-            )
-
-        return _process_basic_output(output)
-
-    def _process_basic_output(output):
-        datakey = 'annotations' if output['valid'] else 'error'
-        infokey = 'annotations' if output['valid'] else 'errors'
-
-        new_output = set()
-        for unit in sorted(
-            output[infokey],
-            lambda x: (x['instanceLocation'], x['keywordLocation']),
-        ):
-            if datakey not in unit:
-                continue
-
-            if (
-                not self._filtered and
-                datakey == 'annotations' and
-                self._annotations
-            ):
-                if keyword not in self.annotations:
-                    continue
-
-            ann = Annotation(unit)
-            # TODO: TBD
-
 
 class JschonSchemaParser(SchemaParser):
-    _catalog = None
-
     def __init__(self, config, annotations=()):
-        if not self._catalog:
-            self._catalog = create_catalog('2020-12')
-
         super().__init__(config, annotations)
         self._filtered = True
         with open(
@@ -240,7 +190,7 @@ class JschonSchemaParser(SchemaParser):
                 'schema.json',
             encoding='utf-8',
         ) as schema_fp:
-            self._v30_schema = JSONSchema(json.load(schema_fp))
+            self._v30_schema = jschon.JSONSchema(json.load(schema_fp))
 
     def parse(self, data, oastype, output_format='basic'):
         schema = self._v30_schema
@@ -253,6 +203,8 @@ class JschonSchemaParser(SchemaParser):
                 # TODO: Better error handling
                 raise
 
+        # logger.error('\n\n\nDATA:\n' + str(data))
+        # logger.error('\n\nSCHEMA:\n' + str(schema.uri))
         result = schema.evaluate(data)
         if not result.valid:
             logger.critical(

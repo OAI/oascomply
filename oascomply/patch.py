@@ -8,7 +8,25 @@ from pathlib import Path
 
 import yaml
 import json_merge_patch
+from jschon import JSONSchema
+from jschon.vocabulary import Metaschema
 from jschon.jsonpatch import JSONPatch
+
+from oascomply import schema_catalog
+
+
+REPO_ROOT = (Path(__file__).parent / '..' ).resolve() 
+
+OAS_SCHEMA_DIR = \
+    REPO_ROOT / 'submodules' / 'OpenAPI-Specification' / 'schemas'
+OAS_V30_SCHEMA = OAS_SCHEMA_DIR / 'v3.0' / 'schema.json'
+
+COMPLIANCE_SCHEMA_DIR = REPO_ROOT / 'schemas'
+COMPLIANCE_DIALECT_METASCHEMA = \
+    COMPLIANCE_SCHEMA_DIR / 'dialect' / 'oas-ontology.json'
+COMPLIANCE_VOCAB_METASCHEMA = \
+    COMPLIANCE_SCHEMA_DIR / 'meta' / 'oas-ontology.json'
+
 
 PATCH_SCHEMAS_DESCRIPTION = """
 Load the standard OAS 3.x schemas from submodules/OpenAPI-Specification,
@@ -77,20 +95,43 @@ def yaml_to_json():
             json.dump(yaml.safe_load(in_fp), out_fp, **kwargs)
 
 
+def validate_schema(schema_data, *metaschema_data, error_format='detailed'):
+    """
+    Validate a schema against its metaschema
+
+    :param schema_data: The parsed schema data structure
+    :metaschema_data: Parsed metaschema data; this is only needed if
+        ``oascomply.schema_catalog`` has not been or cannot be configured
+        to load the metaschema in ``"$schema"`` and any additional metaschemas
+        that it references automatically; if metaschema A references
+        metaschema B, then B *must* appear first, and A second
+    :error_format: The standard JSON Schema output format to use for error
+        reporting; defaults to ``"detailed"``; other values are ``"basic"``
+        or ``"verbose"``
+    :returns: ``None`` if validaition is successful, or the error report
+        in the format given by ``error_format`` if unsuccessful
+    """
+    # Constructing the Metaschema instances registers them
+    # with the catalog, so we do not need to save the instances
+    for md in metaschema_data:
+        Metaschema(schema_catalog, md)
+
+    schema = JSONSchema(schema_data, catalog=schema_catalog)
+    result = schema.validate()
+
+    if not result.valid:
+        return result.output(error_format)
+    return None
+
+
 def patch():
     argparse.ArgumentParser(
         description=PATCH_SCHEMAS_DESCRIPTION,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     ).parse_args()
 
-    repo_root = (Path(__file__).parent / '..' ).resolve() 
-    oas_schema_dir = (
-        repo_root / 'submodules' / 'OpenAPI-Specification' / 'schemas'
-    )
-    oas_v30_schema = oas_schema_dir / 'v3.0' / 'schema.json'
-
     print(
-        f'Running alterschema (draft4 to 2020-12) on "{oas_v30_schema}", '
+        f'Running alterschema (draft4 to 2020-12) on "{OAS_V30_SCHEMA}", '
         'this may take a while...'
     )
     result = subprocess.run(
@@ -100,7 +141,7 @@ def patch():
             'draft4',
             '--to',
             '2020-12',
-            str(oas_v30_schema),
+            str(OAS_V30_SCHEMA),
         ],
         capture_output=True,
         encoding='utf-8',
@@ -114,7 +155,7 @@ def patch():
     schema = json.loads(result.stdout, object_hook=OrderedDict)
     schema.move_to_end('$id', last=False)
 
-    oas_patch_dir = repo_root / 'patches' / 'oas'
+    oas_patch_dir = REPO_ROOT / 'patches' / 'oas'
     prelim_patch = oas_patch_dir / 'v3.0' / 'preliminary-patch.json'
     print(f'Applying JSON Patch (RFC 6902) "{prelim_patch}" ...')
     with open(prelim_patch, encoding='utf-8') as prelim_fp:
@@ -134,7 +175,19 @@ def patch():
     del patched['$defs']
     patched['$defs'] = defs
 
-    patched_file = repo_root / 'schemas' / 'oas' / 'v3.0' / 'schema.json'
+    print('Vaidating patched schema against its metaschema ...')
+    with COMPLIANCE_VOCAB_METASCHEMA.open(encoding='utf-8') as vm_fp, \
+         COMPLIANCE_DIALECT_METASCHEMA.open(encoding='utf-8') as dm_fp:
+        vmeta = json.load(vm_fp)
+        dmeta = json.load(dm_fp)
+
+    if schema_errors := validate_schema(patched, vmeta, dmeta):
+        sys.stderr.write('Metaschema validation failed!\n\n')
+        json.dump(schema_errors, sys.stderr, indent=2, ensure_ascii=False)
+        sys.stderr.write('\n')
+        sys.exit(-1)
+
+    patched_file = REPO_ROOT / 'schemas' / 'oas' / 'v3.0' / 'schema.json'
     print(f'Writing patched schema to "{patched_file}" ...')
     with open(patched_file, 'w', encoding='utf-8') as patched_fp:
         # For some reason there is no option for json.dump() to
