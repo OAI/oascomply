@@ -733,5 +733,5 @@ class ApiDescription:
 
         if args.output_format is not None or args.test_mode is True:
             desc.serialize(output_format=args.output_format)
-        else:
-            print('Your API description is valid!')
+
+        sys.stderr.write('Your API description is valid!\n')
