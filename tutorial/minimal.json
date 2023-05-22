@@ -1,0 +1,9 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Minimal OAS 3.0 description",
+        "version": "1.0.0"
+    },
+    "paths": {
+    }
+}

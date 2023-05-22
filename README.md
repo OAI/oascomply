@@ -9,352 +9,296 @@ late 2023.  The current status of the project is
 
 Currently, only OAS 3.0 is supported, although OAS 3.1 support is planned.
 
-_**WARNING**: At this stage, this repository changes frequently
-and is not expected to be usable by anyone other than the author._
-
 ## Requirements and Installation
 
 `oascomply` is a Python package with several command-line interfaces:
 
 * `oascomply` parses and validates OAS 3.x API descriptions
 * `yaml-to-json` does what it says, as converting a YAML API description
-  to JSON will result in substantial performance improvements with `oascomply`
+  to JSON will result in
+  [substantial performance improvements](https://github.com/handrews/oasparser/issues/9) if running `oascomply` on the same document repeatedly
 * `patch-oas-schemas` is used by package maintainers to update the modified
   OAS 3.x JSON Schemas used by `oascomply`
 
-### Terminology and typographical conventions
-
-Examples in this documentation use MacOS conventions unless otherwise noted:
-
-* `directory-name %` is a command line prompt
-* `/Users/someone` is the home directory of user `someone`
-
-Terminology around URLs, URIs, and IRIs is distressingly confusing.
-Various sections below explain why each term is used in specific places,
-and why and how it matters.  In general:
-
-* ***URLs*** are for retrievable things
-* ***URIs*** are for identifiers not intended to be directly retrieved,
-             even if it is possible to retrieve them
-* ***IRIs*** indicate URIs or URLs with full unicode support; whether
-             a specific usage of "IRI" corresponds to a URL or a URI
-             should be clear from context.  ~~"IRL"~~ is not a term that
-             is defined or used by any standard.
-
-This documentation uses the term ***non-relative URL*** (or
-***non-relative URI*** or ***non-relative IRI***) to describe a URL/URI/IRI
-that MUST start with a scheme (e.g. `https:`, `file:`, `urn:`, etc.) and
-MAY include a fragment (e.g. `#3.0-PathItem`, `#/components/schemas/foo`).[^nonrel]
-
-The usage of ***URL*** (for things that are retrieved from the address) vs
-***URI*** (for identifiers not assumed to be retrievable, which may or
-may not actually _be_ retrievable) vs ***IRI*** (for either use case,
-but with full unicode support) are explained as needed in various sections
-below, with examples to clarify whether and why it matters in each case.
-
-Please note that URLs are assumed to comply with RFC 3986, and not
-WHATWG's URL "Living Standard"[^whatwg]
-
-### Installing Python
-
-`oascomply` requires Python 3.8 or later.  Python.org provides installation
-instructions for [Windows](https://docs.python.org/3.11/using/windows.html)
-(through either the Python site or the
-[Microsoft Store](https://devblogs.microsoft.com/python/python-in-the-windows-10-may-2019-update/))
-and [Mac OS](https://docs.python.org/3.11/using/mac.html)
-(through the Python site).
-
-If your system has an older version of Python, you can use
-[`pyenv`](https://github.com/pyenv/pyenv/blob/master/README.md),
-[`pyenv` for Windows](https://github.com/pyenv-win/pyenv-win/blob/master/README.md),
-or another similar tool to install an appropriate version.
-
-_Note: At this stage, `oascomply` has only been tested with Python 3.8 on
-Mac OS 12.6 on an Apple M1 chip.  Automated testing across Python 3.8-3.12
-will be added prior to publication.  No support for earlier Python versions
-will be added due to the requirements of various dependencies.  Please
-contact the maintainer if you can help with Windows testing._
-
-### Installing `oascomply` with `pip`
-
-`oascomply` is not yet available through pypi.org, and therefore
-not yet installable with `pip`
-
-### Installing `oascomply` from GitHub with `poetry`
-
-Currently, `oascomply` must be checked out from GitHub and installed
-using [`poetry`](https://python-poetry.org/docs/).
-
-```ShellSession
-src % curl -sSL https://install.python-poetry.org | python3 -
-src % git clone https://github.com//OAI/oascomply.git
-src % cd oascomply
-oascomply % poetry install
-```
-
-This keeps all of the `oascomply` dependencies in their own environment,
-which you can access with
-[`poetry shell`](https://python-poetry.org/docs/cli/#shell).  Alternatively,
-you can prefix each command that you want to run with
-[`poetry run`](https://python-poetry.org/docs/cli/#run), e.g.:
-
-```ShellSession
-oascomply % poetry run python oascomply -h
-```
-
-Note that all `poetry` commands need to be run from inside
-the repository directory, as `poetry` determines what environment
-to use by looking in the current directory and its parent
-directories for a `pyproject.toml` file.  Otherwise you will
-see an error like this:
-
-```ShellSession
-src % poetry run python oascomply -h
-
-Poetry could not find a pyproject.toml file in /Users/someone/src or its parents
-```
-
-## YAML vs JSON API descriptions
-
-`oascomply` supports both YAML and JSON description files.  However, performance
-is substantially better with JSON, and source file line and column mapping is
-more reliable.
-
-See [issue #9](https://github.com/handrews/oasparser/issues/9)
-to track performance improvements for YAML, and
-[issue #11](https://github.com/handrews/oasparser/issues/11)
-to track the status of the YAML source file line and column mapping feature.
-
-Note also that some public YAML OpenAPI files do not quote values properly,
-causing them to be interpreted as `datetime` objects or other types that do
-not fit the JSON data model.  Such API descriptions are not compliant with
-the OAS, and are not supported by `oascomply`.  Please file any issues with
-the API description file maintainers.
+`oascomply` requires Python 3.8 or later, and must be checked out from GitHub
+and installed using [`poetry`](https://python-poetry.org/docs/).  See the
+[Installation Guide](INSTALL.md) for more detailed instructions.
 
 ## Usage: Parsing API descriptions
 
-In the simplest case of a single API description file in either YAML or
-JSON, where all references (`$ref` or `operationRef`) start with `#`
-(e.g. `"$ref": "#/components/schemas/foo"`), you can just pass the
-file to `oascomply` and everything will work fine:
+API descriptions consist of one or more documents.
 
-```ShellSession
-oascomply % oascomply -f openapi.yaml
+A single, self-contained document can be validated like this:
+
+```
+~/src/oascomply % oascomply -f tutorial/minimal.json
+Your API description is valid!
 ```
 
-The `oascomply` output format will refer to this file using the corresponding
-`file:` URL.  If this file is in the directory `/Users/someone/src/`,
-then the URL will be `file:///Users/someone/src/openapi.yaml`[^fileurls]
+### Multi-document API descriptions
 
-Currently `oascomply` only works on local files; this may change in the future.
+For a multi-document API description where the files have file extensions
+(`schemas/foo.json`) but the references do not (`"$ref": "schemas/foo"`),
+we need to make a distinction between two concepts for each document:
 
-### Showing more useful output: URLs vs URIs
+* its _**URL**_ (for local files, the `file:` URL from which it was read)
+* its _**URI**_ (the identifier used to resolve references and in the parsed graph discussed further down)
 
-Your local `file:` URL might not be useful when sharing output with others.
-In the example above, `openapi.yaml` is not informative, and if your team
-is working on multiple APIs, it's not clear what repository or branch
-you have checked out under `/Users/someone/src`.  Or even whether it's
-a source control repository or just a local copy of some file.
+By default, `oascomply` assumes that the URI is the same as the URL.
+If we try that default behavior with our referencing exampe, it won't work:
 
-`oascomply` lets you set a URI for use in output in place of the URL.  If
-your API description document is normally deployed at a network URL
-(which `oascomply` doesn't yet understand how to load directly), you can
-pass it that URI after the file name:
+```
+~/src/oascomply % oascomply -f tutorial/references/openapi.json -f tutorial/references/pathitems/foo.json -f tutorial/references/schemas/bar.json
+ERROR:oascomply.oas30dialect:FOUND: file:///Users/handrews/src/oascomply/tutorial/references/schemas/bar
+ERROR:oascomply.apidescription:Reference without suffix attempted despite target resource being registered under a URI with suffix
 
-```ShellSession
-oascomply % oascomply -f openapi.yaml https://example.com/coolapi/openapi
+The above error can be fixed either by using -x:
+
+	-x -f tutorial/references/schemas/bar.json
+
+... or by using the two-argument form of -f:
+
+	-f tutorial/references/schemas/bar.json file:///Users/handrews/src/oascomply/tutorial/references/schemas/bar
 ```
 
-`oascomply` understands that location and identification are often separate.
-It will use the **URI** (in the above example, an `https:` URL) in most places.  
-However, that URI will be associated with the loaded **URL** through
-a `locatedAt` relationship for debugging convenience.
+Let's try the `-x` option, which creates URIs by just stripping the suffix off, since that's a common pattern:
 
-This also allows assigning situation-specific URIs, such as a URL for a
-specific revision of a file in git rather than the publicly deployed version.
+```
+~/src/oascomply % oascomply -x -f tutorial/references/openapi.json -f tutorial/references/pathitems/foo.json -f tutorial/references/schemas/bar.json
+ERROR:oascomply.apidescription:JSON Schema documents must pass "Schema" (without quotes) as an additional -f argument:
 
-### Loading multi-document API descriptions
-
-Referencing and multi-document API descriptions are fully supported
-by `oascomply` (3.0 currently supported, 3.1 support in progress).
-
-For security reasons, `oascomply` will not automatically fetch
-referenced documents (see
-[issue #1](https://github.com/handrews/oasparser/issues/1) for progress
-on security features).  Instead, it must be informed of all relevant
-documents up front, which in most cases can be done simply by repeating
-the '-f' option:
-
-```ShellSession
-oascomply % oascomply -f openapi.yaml -f schemas/foo.yaml -f schemas/bar.yaml
+	 -x -f tutorial/references/schemas/bar.json Schema
 ```
 
-URLs vs URIs are important for reference resolution:  `oascomply` expects
-references to point to each document's ***URI***, for several reasons:
+OK, we're closer.  This example has a standalone schema file, and for Reasons™
+(meaning that the author ran out of time to fix it before this milestone),
+`oascomply` gets a bit confused.  But at least it tells you how to fix it!
+So let's try that:
 
-* Best practices for referencing should omit any file extension to ensure
-  that the same file contents work in both JSON and YAML
-* `oascomply` supports setting the URI on the command line, but always
-  sets the URL based on the document location
-
-So if our `openapi.yaml` file has references like `"$ref": "schemas/foo"`
-and `"$ref": "schemas/bar"`, and all of the files are normally found
-under `https://example.com/coolapi` without file extensions, then we'll
-want to do the following:
-
-```ShellSession
-oascomply % oascomply \
-    -f openapi.yaml https://example.com/coolapi/openapi \
-    -f schemas/foo.yaml https://example.com/coolapi/schemas/foo \
-    -f schemas/bar.yaml https://example.com/coolapi/schemas/bar
+```
+~/src/oascomply % oascomply -x -f tutorial/references/openapi.json -f tutorial/references/pathitems/foo.json -f tutorial/references/schemas/bar.json Schema
+Your API description is valid!
 ```
 
-That's awfully wordy, so the '-d' option lets you map a directory to
-a URI prefix[^iriprefix], and all files under that directory will have their
-URIs constructed by replacing the directory with the prefix and removing any
-file extension.  Note that the URI prefix MUST end with a path ending in '/'
-to match the directory behavior.  So this command line has the same effect
-as the one above:
+### Verbose validation and nicer URIs
 
-```ShellSession
-oascomply % oascomply -d . https://example.com/coolapi/ \
-    -f openapi.yaml -f schemas/foo.yaml -f schemas/bar.yaml
+Now it works!  But as you can see in the errors from earlier, the URI is just
+a `file:` URL with the `.json` chopped off, which is... kinda misleading.
+The reason API description authors usually leave off the `.json` or `.yaml`
+is because the documents will be made available over HTTPS, and the JSON
+vs YAML format will be handled in content negotiation.  We can assign
+`https:` URIs instead of `file:` ones (but the URLs will always be `file:`
+URLs, at least until support for validating remote descriptions is added).
+
+The simplest way to do that is to put the URI after the file as part
+of the `-f` option.  Let's also increase the verbosity by passing `-v`,
+which will show us the URIs without needing to provoke an error message:
+
+```
+~/src/oascomply % oascomply -f tutorial/minimal.json https://example.com/minimal -v
+INFO:oascomply.apidescription:Adding document "tutorial/minimal.json" ...
+INFO:oascomply.apidescription:...URL <file:///Users/handrews/src/oascomply/tutorial/minimal.json>
+INFO:oascomply.apidescription:...URI <https://example.com/minimal>
+INFO:oascomply.apidescription:...instantiating OAS Document <https://example.com/minimal>
+INFO:oascomply.apidescription:Checking JSON Schema references in <https://example.com/minimal#>...
+INFO:oascomply.apidescription:...resolving with OasJson.resolve_references()
+Your API description is valid!
 ```
 
-_The following feature will be added in the future:_
+Here we get some information, including how URLs and URIs are associated.
 
-_Since all of our files use the same prefix mapping, as long as they are the
-only `.json`, `.yaml`, or `.yml` files anywhere under that directory, we can
-reduce this further with '-D', which automatically loads everything it can find
-under the mapped directory:_
+Setting the URI for each file like that is fine when you only have one file,
+but it can get annoying with more.  The `-d` option lets you associate
+a directory with a URI prefix.  `oascomply` will replace the directory with
+the prefix to create the URI, and strip off any file extension automatically.
+There is no need to pass `-x` with `-d`, and the format is similar to `-f` —
+first the filesystem path, then the URI (or URI prefix in this case):
 
-```ShellSession
-oascomply % oascomply -D . https://example.com/coolapi/  # NOT YET SUPPORTED
+```
+~/src/oascomply % oascomply -d tutorial/references https://example.com -f tutorial/references/openapi.json -f tutorial/references/pathitems/foo.json -f tutorial/references/schemas/bar.json Schema -v
+ERROR:oascomply.apidescription:URI prefixes must include a path that ends with '/': <tutorial/references>
 ```
 
-### Handling complex multi-document referencing
+Oops!  URI prefixes need to end with a `/` to match the directory, otherwise
+the behavior gets a little confusing.  But that's easily fixed:
 
-Certain use cases that are most likely to come up with bundled external schemas
-with OAS 3.1, require passing some extra information to `oascomply` in order to
-handle them correctly.
-
-When parsing multiple documents, `oascomply` looks for the file that has an
-`openapi` property at the root and starts there.  As it finds `$ref`s to other
-documents, it knows what sort of OpenAPI object (e.g. Schema Object,
-Parameter Object, etc.) to parse and validate in that document based on where
-it found the `$ref`.
-
-In OAS 3.0, this should be sufficient _(I think... TBD)_, because even though
-there are other types of references, such as using `operationId` to target
-callbacks, the structures containing those reference targets also need to be
-linked into the main structure through `$ref`.
-
-However, in OAS 3.1, Schema Objects can use the `$anchor`, `$dynamicAnchor`,
-and `$id` keywords to define URIs that do not match the URL _or_ URI for the
-document, no matter how you set the document's URI.  If there is _also_
-a `$ref` using the document's assigned URI, then `oascomply` will find and
-use these keyword-defined URIs correctly.  But if not, we need to tell
-`oascomply` how to interpret these documents on the command line.
-
-Let's add another schema document, `schemas/things.yaml`, to our example
-from before, with the following contents:
-
-```YAML
-$schema: https://json-schema.org/draft/2020-12/schema
-$id: https://example.com/coolapi/schemas/things
-$defs:
-    thing1:
-        $id: thing1
-        type: integer
-    thing2:
-        $id: thing2
-        type: string
+```
+~/src/oascomply % oascomply -d tutorial/references https://example.com/ -f tutorial/references/openapi.json -f tutorial/references/pathitems/foo.json -f tutorial/references/schemas/bar.json Schema -v
+INFO:oascomply.apidescription:Adding document "tutorial/references/openapi.json" ...
+INFO:oascomply.apidescription:...URL <file:///Users/handrews/src/oascomply/tutorial/references/openapi.json>
+INFO:oascomply.apidescription:...URI <https://example.com/openapi>
+INFO:oascomply.apidescription:...instantiating OAS Document <https://example.com/openapi>
+INFO:oascomply.apidescription:Adding document "tutorial/references/pathitems/foo.json" ...
+INFO:oascomply.apidescription:...URL <file:///Users/handrews/src/oascomply/tutorial/references/pathitems/foo.json>
+INFO:oascomply.apidescription:...URI <https://example.com/pathitems/foo>
+INFO:oascomply.apidescription:...instantiating OAS Document <https://example.com/pathitems/foo>
+INFO:oascomply.apidescription:Adding document "tutorial/references/schemas/bar.json" ...
+INFO:oascomply.apidescription:...URL <file:///Users/handrews/src/oascomply/tutorial/references/schemas/bar.json>
+INFO:oascomply.apidescription:...URI <https://example.com/schemas/bar>
+INFO:oascomply.apidescription:...instantiating JSON Schema <https://example.com/schemas/bar>
+INFO:oascomply.apidescription:Checking JSON Schema references in <https://example.com/openapi#>...
+INFO:oascomply.apidescription:...resolving with OasJson.resolve_references()
+INFO:oascomply.apidescription:Checking JSON Schema references in <https://example.com/pathitems/foo#>...
+INFO:oascomply.apidescription:...resolving with OasJson.resolve_references()
+INFO:oascomply.apidescription:Checking JSON Schema references in <https://example.com/schemas/bar>...
+INFO:oascomply.apidescription:...already resolved by jschon.JSONSchema()
+INFO:oascomply.oasgraph:Validating "example" https://example.com/openapi#/example against schema https://example.com/openapi#/components/responses/foo/content/application~1json/schema, metaschema https://spec.openapis.org/oas/v3.0/dialect/base
+INFO:oascomply.oasgraph:Validating "example" https://example.com/schemas/bar#/example against schema https://example.com/schemas/bar, metaschema https://spec.openapis.org/oas/v3.0/dialect/base
+INFO:oascomply.oasgraph:Validating "default" https://example.com/schemas/bar#/default against schema https://example.com/schemas/bar, metaschema https://spec.openapis.org/oas/v3.0/dialect/base
+INFO:oascomply.oasgraph:Validating "example" https://example.com/openapi#/example against schema https://example.com/openapi#/components/responses/foo/content/application~1json/schema, metaschema https://spec.openapis.org/oas/v3.0/dialect/base
+Your API description is valid!
 ```
 
-This is the sort of schema you get when you bundle several individual schemas,
-each with their own `$id`, into a single document.  The root schema is not
-useful as it doesn't define any constraints.  It's just a container for `$defs`.
+This multi-document example also uses the `example` and `default` keywords, so we get informed that the values of those keywords are being validated against their schemas.  This validation supports OAS 3.0-specific keywords like `nullable`, and also validates some `format`s (currently only certain string formats, but more will be added).  Validation of examples and defaults can be disabled by passing `-e false`.
 
-Usually, when you bundle schemas, you want to keep using the same `$id`s that
-were present in the un-bundled schemas, because bundling and un-bundling
-shouldn't require you to update your references.  It's just an implementation
-detail of the file structure.  So in our main document (the one with the
-`openapi` field), our references would look like `"$ref": "schemas/thing1"`
-and `"$refs": "schemas/thing2`.
+_**TODO:** by May 25 - show examples with errors and discuss error output.  Two ways to provoke an error are to have an example that is invalid according to its schema, and to have a reference (Reference Object, `$ref` in a Path Item Object, or `operationRef` in a Link Object) that references the wrong type of object.  If the wrong object is in the same file, this will cause an error in semantic validation.  Sometimes if it references a wrong object in another file, that will be caught during JSON Schema validation instead._
 
-If we just use the `-D` option, it will notice `schemas/things.yaml` but
-never attempt to parse it because it's never referenced directly.  Even though
-`oascomply` knows it is relevant, it doesn't know what part of the OAS 3.0
-schema to use to validate it.  It could make an assumption based on the
-presence of `"$schema"`, but since `oascomply` is all about compliance, it
-avoids making "helpful" guesses that might hide an error.
+## Displaying the parsed graph
 
-So let's go back to using `-f` for each file, and add semantic type information
-to this file:
+That's nice, but what else does this tool do?  It constructs an
+RDF (Resource Description Framework 1.1) graph out of the API description.
+This is somewhat analogous to how compilers parse programming languages
+into an abstract syntax tree.  Don't worry, you don't need to go read
+the RDF spec (or the endless number of related semantic web specs) to
+benefit from this graph!
 
-```ShellSession
-oascomply % oascomply \
-    -f openapi.yaml https://example.com/coolapi/openapi \
-    -f schemas/foo.yaml https://example.com/coolapi/schemas/foo \
-    -f schemas/bar.yaml https://example.com/coolapi/schemas/bar \
-    -f schemas/things.yaml https://example.com/coolapi/schemas/things 3.1-Schema
+We need to build a graph rather than a tree in order to show how references
+connect different pieces of the description documents.  In later milestones
+we will also use this graph to do much more sophisticated validation.
+
+There are many ways to write an RDF graph to a file, and `oascomply` can
+produce any of the ones supported by the Pyton `rdflib` package.  But the
+default, which you get by passing `-o` without an argument, is a simple
+line-oriented format known as
+[N-Triples 1.1](https://www.w3.org/TR/n-triples/).  It is supported by
+most RDF-bsaed tools, but is also simple enough to be parsed directly.
+
+_TODO: by May 25 – simple regex-based parsing tool to render a more human-friendly version of the NT output._
+
+To print the graph to stdout, use the `-o` option without an argument
+(diagnostic messages such as "Your API description is valid!" are printed
+to stderr).  We'll set a short HTTPS URI as it's less noisy than full
+fileystem paths.
+
+```
+~/src/oascomply % oascomply -f tutorial/minimal.json https://example.com/minimal -o
+<https://example.com/minimal#> <https://spec.openapis.org/compliance/ontology#paths> <https://example.com/minimal#/paths> .
+<https://example.com/minimal#/info> <http://www.w3.org/2000/01/rdf-schema#label> "Info" .
+<https://example.com/minimal> <http://www.w3.org/2000/01/rdf-schema#label> "minimal.json" .
+<https://example.com/minimal> <https://spec.openapis.org/compliance/ontology#locatedAt> "file:///Users/handrews/src/oascomply/tutorial/minimal.json"^^<http://www.w3.org/2001/XMLSchema#anyURI> .
+<https://example.com/minimal> <https://spec.openapis.org/compliance/ontology#root> <https://example.com/minimal#> .
+<https://example.com/minimal#/info> <https://spec.openapis.org/compliance/ontology#allowsExtensions> "true"^^<http://www.w3.org/2001/XMLSchema#boolean> .
+<https://example.com/minimal#/info> <https://spec.openapis.org/compliance/ontology#parent> <https://example.com/minimal#> .
+<https://example.com/minimal#/info> <https://spec.openapis.org/compliance/ontology#title> "Minimal OAS 3.0 description" .
+<https://example.com/minimal#/info> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://spec.openapis.org/compliance/ontology#3.0-Info> .
+<https://example.com/minimal#> <https://spec.openapis.org/compliance/ontology#allowsExtensions> "true"^^<http://www.w3.org/2001/XMLSchema#boolean> .
+<https://example.com/minimal#/paths> <http://www.w3.org/2000/01/rdf-schema#label> "Paths" .
+<https://example.com/minimal#/paths> <https://spec.openapis.org/compliance/ontology#allowsExtensions> "true"^^<http://www.w3.org/2001/XMLSchema#boolean> .
+<https://example.com/minimal#/info> <https://spec.openapis.org/compliance/ontology#apiDescriptionVersion> "1.0.0" .
+<https://example.com/minimal> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://schema.org/DigitalDocument> .
+<https://example.com/minimal#> <http://www.w3.org/2000/01/rdf-schema#label> "OpenAPI" .
+<https://example.com/minimal#/paths> <https://spec.openapis.org/compliance/ontology#parent> <https://example.com/minimal#> .
+<https://example.com/minimal#> <https://spec.openapis.org/compliance/ontology#info> <https://example.com/minimal#/info> .
+<https://example.com/minimal#> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://spec.openapis.org/compliance/ontology#3.0-OpenAPI> .
+<https://example.com/minimal#/paths> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://spec.openapis.org/compliance/ontology#3.0-Paths> .
+<https://example.com/minimal#> <https://spec.openapis.org/compliance/ontology#oasVersion> "3.0.3" .
+Your API description is valid!
 ```
 
-That `3.1-Schema` comes from the semantic types that you see in the output from
-`oascomply`.  The full type is a URI,
-`https://openapis.org/compliance/ontology#3.1-Schema`, but we just need the
-fragment (the part after the `#`) here.  This tells `oascomply` to parse
-the document with the OAS 3.1 Schema Object (meta-)schema, without waiting
-for a `$ref` to reference it first.
+## Reading the output
 
-Since the document URIs are still regular, we can still shorten this with `-d`:
+That may look like a bit of a mess, but it's really pretty straightforward.
+Each line represents an edge connecting two nodes in the graph:
 
-```ShellSession
-oascomply % oascomply -d . https://example.com/coolapi/ \
-    -f openapi.yaml -f schemas/foo.yaml -f schemas/bar.yaml \
-    -f schemas/things.yaml 3.1-Schema
+* Concepts, including data types, relationships, OAS object types (Path Item Object, Schema Object, etc.), and the actual typed objects from your API description, are represented by URIs in angle brackets.
+* Literal values, such as OAS object properties from your API description, are quoted strings.
+* Literals with a data type other than a plain string are followed by `^^` and a URI in angle brackets indicating the type.
+
+Edges are unidirectional, from the concept on the left (the _subject_)
+to the concept or literal on the right (the _object_).  The URI in the
+middle is called the _predicate_, and describes the relationship
+represented by the edge (I'll just call it the _relationship_ from here on).
+
+This will likely make more sense with a picture.
+Here is an image showing the exact data displayed above:
+
+![visualization of minimal.json graph](tutorial/minimal.png)
+
+This visualization does not show the literal values (the tool used to
+generate it shows them in a side panel when you click on a node).
+
+### Line by line
+
+Every N-Triples line looks like one of the following three structures:[^lang]
+
+```
+<subject concept> <relationship> <object concept> .
+<subject concept> <relationship> "string literal value" .
+<subject concept> <relationship> "literal value"^^<data type> .
 ```
 
-Here, it's a good thing that `3.1-Schema` can't be mistaken for a non-relative
-URI!
+The `.` terminates the line, and is mostly there to make this format
+a valid subset of several more complex formats.
 
-_In the future, it should be possible to use this with `-D` as well, and
-only use `-f` for the one file that needs semantic type information:_
+Since the same node can appear in either the subject or object position in
+many triples, these lines in the output connect through shared nodes to form
+a graph:
 
-```ShellSession
-oascomply % oascomply -D . https://example.com/coolapi/ \  # NOT YET SUPPORTED
-    -f schemas/things.yaml 3.1-Schema                      # NOT YET SUPPORTED
 ```
+<a> <x> <b>
+<b> <y> <c>
+<a> <z> "d"
+```
+
+This is a graph with three nodes, `<a>`, `<b>`, and `<c>`, with edges
+`<x>` connecting `<a>` to `<b>`, and `<y>` connecting `<b>` to `<c>`.
+Node `<a>` is also connected to a literal string "d" by edge `<z>`.[^prop]
+
+### Seeing through the URI clutter
+
+RDF-aware tools are good at making use of the full URIs behind the scenes,
+but if you're reading the output directly, it's a bit much.
+
+In most cases, the absolute URI (the part before the `#`) serves as
+a namespace, and the URI fragment (the part after the `#`)
+identifies a specific thing within that namespace.
+
+Here are the namespaces you will see in in `oascomply` output
+in addition to the URI (which is by default the `file:` URL for local files)
+of your own document.  It is typical to include the trailing `#` as part of
+the namespace.[^namespaces]
+
+First, the namespaces defined outside of OpenAPI:
+
+* `http://www.w3.org/2001/XMLSchema#` – XSD, which is used for its datatype definitions; no actual understanding of XML Schema is required!
+* `http://www.w3.org/1999/02/22-rdf-syntax-ns#` – RDF, which defines fundamental concepts and relationships such as the `type` relationship; you will notice this relationship connecting locations in your file to their OAS Object types
+* `http://www.w3.org/2000/01/rdf-schema#` – RDFS (RDF Schema), which includes a few more fairly fundamental concepts and relationships; the distinction between RDF and RDFS is not very important here, and `oascomply` mostly just uses the `label` relationship which informs tools how to display nodes for humans
+* `https://schema.org/` – Schema.org defines many common concepts; currently `oascomply` just uses the "DigitalDocument" concept (note that values in this namespace are part of the URI path, not the fragment)
+
+OpenAPI concepts use the following namespace:
+
+* `https://spec.openapis.org/compliance/ontology#`
+
+For OpenAPI object types, a version prefix, e.g. `3.0-Schema`, is part of the fragment.  For relationships, including object fields with string, number, or boolean values, there is no version prefix.  _(This may not remain the case, it will depend on feedback).
 
 -----
 
-[^nonrel]: The choice of "non-relative URL/URI/IRI" is to avoid confusion
-around the terms "URL", "URI", and "IRI" (which are all imprecise in everyday
-usage), and the term "absolute URL/URI/IRI" (which probably doesn't mean what
-you think it means — it is non-relative, but also forbids fragments).
-This documentation does _not_ use the more technically
-correct term "URL/URI/IRI reference" because it is unfamiliar to most people,
-and a bit unwieldy.  For those who know the standards terminology, this
-documentation uses ***relative URL***/***URI***/***IRI*** in place of the
-more technically correct "relative URL/URI/IRI reference".
+[^namespaces]: In more complex RDF formats, namespaces are displayed
+as short names that substitute for a URI prefix (technically an IRI
+prefix, but that just means URI with unicode support).  You can see
+this by passing `-o ttl` which produces the relatively human-readable
+Turtle format.  It will include things like `rdfs:label` in place of
+`<http://www.w3.org/2000/01/rdf-schema#label>`.  Unfortunately, when
+using these short prefixes, many characters used in JSON Pointer
+fragments, including `/` and `$`, are not allowed.  This means most URIs
+for your API description end up written out in full, making the prefix
+concept less useful than it really should be.  N-Triples was selected
+in part to avoid confusion around this.
 
-[^whatwg]: WHATWG's URL standard is a parsing/serialization specification
-for web browsers.  Despite its claims, it does not address everytihng covered
-by RFC 3986, much less "obsolete" it.  If you are curious about the details,
-[Roy Fielding weighed in on the mess](https://lists.w3.org/Archives/Public/ietf-http-wg/2022AprJun/0173.html)
-in 2022.
+[^lang]: There is a fourth structure used for language-tagged strings, but
+`oascomply` is not currenlty aware of what (human, not programming) language
+an API description uses, so this structure does not appear in the output.
 
-[^fileurls]: As explained in
-[RFC 8089 Appendix B](https://datatracker.ietf.org/doc/html/rfc8089#appendix-B),
-`file:/foo/bar` and `file:///foo/bar` indicate the same filesytem path.
-As the empty authority (`file:///`) form is more common, and some libraries
-might not handle the no-authority (`file:/`) form correctly, `oascomply`
-endeavors to use `file:///` consistently.
-
-[^iriprefix]: The URI prefix can be an IRI prefix as far as `oascomply` is
-concerned, but OAS 3.x and JSON Schema 2020-12 do not allow IRIs to appear
-directly.  If your references incorporate the base URI, then it cannot
-be an IRI and must be encoded down to a URI as described in
-[RFC 3987 §3](https://datatracker.ietf.org/doc/html/rfc3987#section-3).
-IRIs are accepted mostly as future-proofing for presumed eventual IRI
-support in OAS.
+[^prop]: If you are familiar with property graphs, which are another type of
+graph database, literal nodes are roughly equivalent to properties
+in property graphs (although RDF refers to all edges as properties).
