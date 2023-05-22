@@ -262,10 +262,14 @@ class ApiDescription:
                 graph_result = method_callable(*args)
                 for err in graph_result.errors:
                     errors.append(err)
-                    logger.error(json.dumps(err['error'], indent=2))
                 for uri, oastype in graph_result.refTargets:
                     to_validate[uri] = oastype
 
+        return errors
+
+    def validate_graph(self):
+        errors = []
+        errors.extend(self._g.validate_json_references())
         return errors
 
     def serialize(
@@ -670,7 +674,11 @@ class ApiDescription:
         try:
             desc.resolve_references()
             errors = desc.validate()
+            errors.extend(desc.validate_graph())
             if errors:
+                for err in errors:
+                    logger.error(json.dumps(err['error'], indent=2))
+
                 sys.stderr.write('\nAPI description contains errors\n\n')
                 sys.exit(-1)
 
@@ -699,6 +707,7 @@ class ApiDescription:
 
             # TODO: This isn't always quite right depending on -d / -D
             #       when strip_suffix is None
+            path_and_uri = None
             if strip_suffix in (True, None):
                 uri_len = len(str(e.uri))
                 truncated_url = str(url)[:uri_len]

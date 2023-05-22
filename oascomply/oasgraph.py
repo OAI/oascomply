@@ -59,7 +59,7 @@ OUTPUT_FORMATS_STRUCTURED = frozenset({
 
 
 OasGraphResult = namedtuple('Graphresult', ['errors', 'refTargets'])
-
+Triple = namedtuple('Triple', ['subject', 'predicate', 'object'])
 
 class OasGraph:
     """
@@ -453,12 +453,21 @@ class OasGraph:
                         datatype=XSD.anyURI,
                     ),
                 ))
+                self._g.add((
+                    rdf_ref_source_uri,
+                    self.oas['targetType'],
+                    rdflib.Literal(reftype),
+                ))
+
                 # TODO: elide the reference with a new edge w/correct predicate
 
                 # compare absolute forms
                 if ref_source_uri.to_absolute() != ref_target_uri.to_absolute():
                     # TODO: Schema validation even if local?
-                    logger.debug(f'REMOTE: <{ref_target_uri}> a {reftype} .')
+                    #       Currently checking with semantic validation
+                    logger.debug(
+                        f'Reference target: <{ref_target_uri}> a {reftype} .',
+                    )
                     remote_resources.append((ref_target_uri, reftype))
                 if sourcemap:
                     self.add_sourcemap(
@@ -510,34 +519,18 @@ class OasGraph:
                     metaschema_uri=m_uri,
                 ))
 
-        # for result in self._flatten_template_array(
-        #     location,
-        #     annotation.value['schemas'],
-        #     parent_obj,
-        # ):
-        #     assert result.data.path == result.pointer
-        # schemas = [
-        #     # TODO: Handle failed schema building
-        #     schema if isinstance(schema, jschon.JSONSchema)
-        #     else jschon.JSONSchema(
-        #         schema.value,
-        #         uri=location.instance_resource_uri.copy_with(
-        #             fragment=result.data.path,
-        #         ),
-        #         metaschema_uri=m_uri,
-        #     )
-        #     for schema in (
-        #         (result.data for result in self._flatten_template_array(
-        #             location,
-        #             annotation.value['schemas'],
-        #             parent_obj,
-        #         ))
-        #         if 'schemas' in annotation.value
-        #         else [parent_obj]
-        #     )
-        # ]
-
         # TODO: Handle encoding objects
+        if 'encodings' in annotation.value and len(list(
+            self._flatten_template_array(
+                location, annotation.value['encodings'], parent_obj,
+            )
+        )):
+            logger.warning(
+                'Validating examples/defaut with Encoding Objects '
+                'not yet supported',
+            )
+            return OasGraphResult(errors=errors, refTargets=[])
+
         try:
             for result in self._flatten_template_array(
                 location,
@@ -588,3 +581,132 @@ class OasGraph:
                 rdflib.Literal(True),
             ))
             return OasGraphResult(errors=[], refTargets=[])
+
+    def _check_oastype(self, subject, oastype, label):
+        errors = []
+        expected = (subject, RDF.type, self.oas_v[oastype])
+        if expected not in self._g:
+            errors.append({
+                'location': 'TODO',
+                'error': {
+                    'expected': [expected],
+                    'actual': list(self._g.triples((subject, RDF.type, None))),
+                }
+            })
+        return errors
+
+    def _extract_core_type(self, node):
+        logger.debug(f'Extracting core type of <{node}> ...')
+        oastype = self._g.value(node, RDF.type, None)
+        logger.debug(f'...Initial type: <{oastype}>')
+
+        if oastype == rdflib.URIRef('https://schema.org/DigitalDocument'):
+            root_node = self._g.value(node, self.oas.root, None)
+            return self._extract_core_type(root_node)
+
+        core_type = oastype.fragment
+        if core_type.startswith('3.'):
+            core_type = core_type[core_type.index('-') + 1:]
+
+        if core_type.endswith('Components'):
+            core_type = core_type[:core_type.rindex('Components')]
+            if core_type.endswith('s'):
+                # de-pluralize
+                core_type = (
+                    'RequestBody' if core_type == 'RequestBodies'
+                    else core_type[:-1]
+                )
+        elif core_type.endswith('Operation'):
+            core_type = 'Operation'
+
+        elif core_type.endswith('Parameter'):
+            core_type = 'Parameter'
+
+        if core_type == 'Reference':
+            path = rid.IriWithJsonPtr(node).fragment
+            if len(path) == 3 and path[0] == 'components':
+                core_type = path[1].title()
+                if core_type == 'Requestbodies':
+                    core_type = 'RequestBody'
+                elif core_type.endswith('s'):
+                    core_type = core_type[:-1]
+
+        logger.debug(f'...final type: "{core_type}"')
+        return core_type
+
+    def validate_json_references(self):
+        errors = []
+        for json_ref_node, p, target_node in self._g.triples(
+            (None, self.oas.references, None)
+        ):
+            context_node, context_rel, expected = None, None, None
+            if ref_node := self._g.value(
+                None, self.oas['$ref'], json_ref_node,
+            ):
+                if reference_error := self._check_oastype(
+                    ref_node, 'Reference', '$ref'
+                ):
+                    path_item_error = self._check_oastype(
+                        ref_node, 'PathItem', '$ref'
+                    )
+                    # TODO: figure out which error to report better
+                    #       for now just use Reference as it is more common
+                    if path_item_error:
+                        errors.append(reference_error)
+                    else:
+                        # "$ref" embedded directy in Path Item node
+                        context_node = ref_node
+
+            elif ref_node := self._g.value(
+                None, self.oas.operationRef, json_ref_node
+            ):
+                errors.extend(
+                    self._check_oastype(ref_node, 'Link', 'operationRef')
+                )
+                # operationRef embedded directly in Link node, to Operation
+                context_node = ref_node
+                expected = 'Operation'
+
+            else:
+                errors.append({
+                    'location': 'TODO',
+                    'error': f'unexpected reference type for {json_ref_node}',
+                })
+
+            if context_node is None:
+                # Reference Objects sit in place of the context node,
+                # so use the target type from the schema annotation.
+                # TODO: This is a bit circular as that annotation type
+                #       is how we choose the validation schema.  Is there
+                #       a better way to check this?
+                parent_node = self._g.value(ref_node, self.oas.parent, None)
+                context_rel = self._g.value(parent_node, None, ref_node)
+                expected = self._g.value(json_ref_node, self.oas.targetType, None)
+            elif expected is None:
+                expected = self._extract_core_type(context_node)
+
+            context = {}
+            if context_rel:
+                context['relation'] = context_rel
+            if context_node:
+                context['node'] = context_node
+
+            actual = self.oas_v[self._extract_core_type(target_node)]
+            expected = self.oas_v[expected]
+            if expected != actual:
+                errors.append({
+                    'location': 'TODO',
+                    'error': {
+                        'json_reference': json_ref_node,
+                        'reference_context': context,
+                        'reference_target': target_node,
+                        'expected': (
+                                target_node, RDF.type, self.oas_v[expected],
+                        ),
+                        'actual': (
+                                target_node, RDF.type, self.oas_v[actual],
+                        ),
+                    }
+                })
+
+        return errors
