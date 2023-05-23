@@ -20,6 +20,7 @@ Currently, only OAS 3.0 is supported, although OAS 3.1 support is planned.
 
 * `oascomply` parses and validates OAS 3.x API descriptions
 * `oas-reparse` converts the default output to a more human-friendly form
+* `oas30-schema` validates instances against JSON Schemas that use the OpenAPI 3.0 schema dialect, including `"format" validation
 * `yaml-to-json` does what it says, as converting a YAML API description
   to JSON will result in
   [substantial performance improvements](https://github.com/handrews/oasparser/issues/9) if running `oascomply` on the same document repeatedly
@@ -500,6 +501,48 @@ The subject of each triple is the reference target location, the predicate
 gives the type in the OAS namespace.  Here we can see that we expected
 as `3.0-PathItem` but found a `3.0-Schema`.
 
+## Standalone validation with OAS 3.0-dialect JSON Schemas
+
+The `oascomply.oas30dialect` package adds support for the OAS 3.0
+schema dialect for the Python package `jschon`.  The `oas30-schema`
+command line tool uses that module to validate a given instance
+against an OAS 3.0-compliant Schema Object schema, and optionally
+produce annotation output in any of the JSON Schema draft 2020-12
+standard output formats (even though the OAS 3.0 dialect is
+based on JSON Schema draft-04):
+
+```
+~/src/oascomply % oas30-schema -h
+usage: oas30-schema [-h] [-r REFS] [-o [{basic,detailed,verbose}]]
+                    [-e {basic,detailed,verbose}]
+                    instance schema
+
+Validates the instance against schemas using the OAS 3.0 Schema Object dialect
+described by the metaschema "{OAS30_DIALECT_METASCHEMA}"
+
+positional arguments:
+  instance              The JSON or YAML file to validate
+  schema                The schema, in JSON or YAML format, to use
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -r REFS, --referenced-schema REFS
+                        NOT YET SUPPORTED! An additional schema from which to
+                        resolve references; can be passed multiple times; note that
+                        schema documents that reference each other are not currently
+                        supported; currently, if schema A references schema B, then
+                        schema B must be passed with -r *BEFORE* schema A
+  -o [{basic,detailed,verbose}], --output [{basic,detailed,verbose}]
+                        On success, print the annotation output to stdout using the
+                        given standard format; the default annotation format is
+                        'basic'
+  -e {basic,detailed,verbose}, --error-format {basic,detailed,verbose}
+                        Set the output format to use for error reporting; the
+                        default format is 'detailed'
+
+Note that the schema "https://spec.openapis.org/oas/v3.0/dialect/base" is *NOT*
+provided by the OpenAPI Initiative, but is part of the oascomply package
+```
 -----
 
 [^namespaces]: In more complex RDF formats, namespaces are displayed
