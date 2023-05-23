@@ -1,0 +1,28 @@
+openapi: "3.0.3"
+info:
+  version: 1.0.0
+  title: Description with invalid examples and defaults
+  license:
+    name: MIT
+paths:
+  /things:
+    get:
+      summary: LIST ALL THE THINGS!
+      parameters:
+        - name: hyperbole
+          in: query
+          description: How much hyperbole
+          required: false
+          schema:
+            type: integer
+            format: uint8
+            default: -1         # INVALID - outside of uint8 range
+      responses:
+        '200':
+          description: A bunch of things
+          content:
+            application/json:
+              schema:
+                type: string
+                format: uri
+              example: /foo/bar # INVALID - a URI-reference, not a URI

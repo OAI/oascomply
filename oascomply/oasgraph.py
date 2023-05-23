@@ -639,6 +639,9 @@ class OasGraph:
         for json_ref_node, p, target_node in self._g.triples(
             (None, self.oas.references, None)
         ):
+            logger.info(
+                f"Validating reference <{json_ref_node}> to <{target_node}>",
+            )
             context_node, context_rel, expected = None, None, None
             if ref_node := self._g.value(
                 None, self.oas['$ref'], json_ref_node,
@@ -701,10 +704,10 @@ class OasGraph:
                         'reference_context': context,
                         'reference_target': target_node,
                         'expected': (
-                                target_node, RDF.type, self.oas_v[expected],
+                                target_node, RDF.type, expected,
                         ),
                         'actual': (
-                                target_node, RDF.type, self.oas_v[actual],
+                                target_node, RDF.type, actual,
                         ),
                     }
                 })

@@ -23,7 +23,9 @@ from oascomply import schema_catalog
 from oascomply.oasgraph import (
     OasGraph, OasGraphResult, OUTPUT_FORMATS_LINE, OUTPUT_FORMATS_STRUCTURED,
 )
-from oascomply.schemaparse import Annotation, SchemaParser
+from oascomply.schemaparse import (
+    Annotation, SchemaParser, JsonSchemaParseError,
+)
 from oascomply.oas30dialect import (
     OasJson, OasJsonTypeError, OasJsonRefSuffixError, OAS30_DIALECT_METASCHEMA,
 )
@@ -239,7 +241,15 @@ class ApiDescription:
         document, data, sourcemap = self.get_resource(resource_uri)
         assert None not in (document, data)
 
-        output = sp.parse(data, oastype)
+        try:
+            output = sp.parse(data, oastype)
+        except JsonSchemaParseError as e:
+            logger.critical(
+                f'JSON Schema validation of {resource_uri} failed!\n\n' +
+                json.dumps(e.error_detail, indent=2),
+            )
+            sys.exit(-1)
+
         to_validate = {}
         by_method = defaultdict(list)
         for unit in output['annotations']:

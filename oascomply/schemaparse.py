@@ -21,6 +21,15 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 
+class JsonSchemaParseError(ValueError):
+    def __init__(self, error_detail):
+        super().__init__('JSON Schema valiation failed!', error_detail)
+
+    @property
+    def error_detail(self):
+        return self.args[1]
+
+
 class Annotation:
     def __init__(self, unit, instance_base=None):
         self._location = Location.get(unit, instance_base)
@@ -207,12 +216,7 @@ class JschonSchemaParser(SchemaParser):
         # logger.error('\n\nSCHEMA:\n' + str(schema.uri))
         result = schema.evaluate(data)
         if not result.valid:
-            logger.critical(
-                "Schema validation failed!\n\n" +
-                json.dumps(result.output('detailed'), indent=2)
-            )
-            # TODO: better exit strategy
-            raise Exception("Schema vaidation failed!")
+            raise JsonSchemaParseError(result.output('detailed'))
 
         return result.output(
             output_format,
