@@ -10,6 +10,7 @@ oascomply = 'oascomply.apidescription:ApiDescription.load'
 patch-oas-schemas = 'oascomply.patch:patch'
 yaml-to-json = 'oascomply.patch:yaml_to_json'
 oas-reparse = 'oascomply.reparse:regex_parse'
+oas30-schema = 'oascomply.oas30dialect:validate_with_oas30'
 
 [tool.poetry.dependencies]
 python = "^3.8"
