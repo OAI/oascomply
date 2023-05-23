@@ -24,7 +24,7 @@ Currently, only OAS 3.0 is supported, although OAS 3.1 support is planned.
 and installed using [`poetry`](https://python-poetry.org/docs/).  See the
 [Installation Guide](INSTALL.md) for more detailed instructions.
 
-## Usage: Parsing API descriptions
+## Parsing API descriptions
 
 API descriptions consist of one or more documents.
 
@@ -146,17 +146,24 @@ INFO:oascomply.oasgraph:Validating "example" https://example.com/openapi#/exampl
 INFO:oascomply.oasgraph:Validating "example" https://example.com/schemas/bar#/example against schema https://example.com/schemas/bar, metaschema https://spec.openapis.org/oas/v3.0/dialect/base
 INFO:oascomply.oasgraph:Validating "default" https://example.com/schemas/bar#/default against schema https://example.com/schemas/bar, metaschema https://spec.openapis.org/oas/v3.0/dialect/base
 INFO:oascomply.oasgraph:Validating "example" https://example.com/openapi#/example against schema https://example.com/openapi#/components/responses/foo/content/application~1json/schema, metaschema https://spec.openapis.org/oas/v3.0/dialect/base
+INFO:oascomply.oasgraph:Validating reference <https://example.com/openapi#/paths/~1foo/$ref> to <https://example.com/pathitems/foo>
+INFO:oascomply.oasgraph:Validating reference <https://example.com/openapi#/components/responses/foo/content/application~1json/schema/$ref> to <https://example.com/openapi#/components/schemas/bar>
+INFO:oascomply.oasgraph:Validating reference <https://example.com/openapi#/components/responses/foo/links/self/operationRef> to <https://example.com/pathitems/foo#/get>
+INFO:oascomply.oasgraph:Validating reference <https://example.com/openapi#/components/schemas/bar/$ref> to <https://example.com/schemas/bar#>
+INFO:oascomply.oasgraph:Validating reference <https://example.com/pathitems/foo#/get/responses/200/$ref> to <https://example.com/openapi#/components/responses/foo>
 Your API description is valid!
 ```
 
 This multi-document example also uses the `example` and `default` keywords, so we get informed that the values of those keywords are being validated against their schemas.  This validation supports OAS 3.0-specific keywords like `nullable`, and also validates some `format`s (currently only certain string formats, but more will be added).  Validation of examples and defaults can be disabled by passing `-e false`.
 
-_**TODO:** by May 25 - show examples with errors and discuss error output.  Two ways to provoke an error are to have an example that is invalid according to its schema, and to have a reference (Reference Object, `$ref` in a Path Item Object, or `operationRef` in a Link Object) that references the wrong type of object.  If the wrong object is in the same file, this will cause an error in semantic validation.  Sometimes if it references a wrong object in another file, that will be caught during JSON Schema validation instead._
+We also see at the end that there is some additional validation of references, which checks that the type of the reference target matches what the reference source expects.
 
 ## Displaying the parsed graph
 
-That's nice, but what else does this tool do?  It constructs an
-RDF (Resource Description Framework 1.1) graph out of the API description.
+Getting a yes or no for validation is nice, and we'll look at the error
+output for the "no" case further down.  But what else does this tool do?
+
+It constructs an RDF (Resource Description Framework 1.1) graph out of the API description.
 This is somewhat analogous to how compilers parse programming languages
 into an abstract syntax tree.  Don't worry, you don't need to go read
 the RDF spec (or the endless number of related semantic web specs) to
@@ -280,6 +287,154 @@ OpenAPI concepts use the following namespace:
 * `https://spec.openapis.org/compliance/ontology#`
 
 For OpenAPI object types, a version prefix, e.g. `3.0-Schema`, is part of the fragment.  For relationships, including object fields with string, number, or boolean values, there is no version prefix.  _(This may not remain the case, it will depend on feedback).
+
+## Understanding error messages
+
+User-friendly error reporting is the focuse of Milestone 2, which is
+planned to be complete in mid-July, 2023.  Currently, errors are
+reported in whatever structure is returned by whatever library
+encountered the error, or whatever structure seemed most convenient.
+And sometimes there's just a stack trace.
+
+Rest assured that this is not considered good UX/DX.  In the
+meantime, here are some current ways errors are reported.
+
+### No `openapi` field
+
+`oascomply` looks for an `openapi` field in the root object of
+at least one of the documents it is passed.  The first document
+in the argument list containing the field is the API description
+that is validated.  If no documents contain an `openapi` field,
+the program ends after logging an error:
+
+```
+~/src/oascomply -f tutorial/invalid/no-openapi.json
+ERROR:oascomply.apidescription:No document contains an 'openapi' field!
+```
+
+### JSON Schema validation errors
+
+The first step `oascomply` performs is validation with the patched
+version of the OAS JSON Schema.  The patches can be found in the
+`patches/oas/v3.0` directory in this repository.  They are applied
+to the OAS schema found under
+`submodules/OpenAPI-Specification/schemas/v3.0` prior to each
+milestone release, and the results checked in under the
+`schemas/oas/v3.0` directory.
+
+JSON Schema validation errors are reporting using the
+["detailed" standard output format](https://www.ietf.org/archive/id/draft-bhutton-json-schema-01.html#name-detailed):
+
+```
+~/src/oascomply % oascomply -f tutorial/invalid/no-info.json
+CRITICAL:oascomply.apidescription:JSON Schema validation of file:///Users/handrews/src/oascomply/tutorial/invalid/no-info.json failed!
+
+{
+  "valid": false,
+  "instanceLocation": "",
+  "keywordLocation": "",
+  "absoluteKeywordLocation": "https://spec.openapis.org/compliance/schemas/oas/3.0/2023-06#",
+  "errors": [
+    {
+      "instanceLocation": "",
+      "keywordLocation": "/required",
+      "absoluteKeywordLocation": "https://spec.openapis.org/compliance/schemas/oas/3.0/2023-06#/required",
+      "error": "The object is missing required properties ['info']"
+    }
+  ]
+}
+```
+
+### Examples and defaults validation errors
+
+Example and default values are validated against the relevant schemas,
+and report any errors in those validations in the same format.  In this
+example, there are errors from two distinct validation processes:
+one for a `"default"` in a Parameter Object, and one for an `"example"`
+in a Media Type Object:
+
+```
+~/src/oascomply % oascomply -f tutorial/invalid/examples.yaml
+ERROR:oascomply.apidescription:{
+  "valid": false,
+  "instanceLocation": "/paths/~1things/get/parameters/0/schema/default",
+  "keywordLocation": "",
+  "absoluteKeywordLocation": "file:/Users/handrews/src/oascomply/tutorial/invalid/examples.yaml#/paths/~1things/get/parameters/0/schema",
+  "errors": [
+    {
+      "instanceLocation": "/paths/~1things/get/parameters/0/schema/default",
+      "keywordLocation": "/format",
+      "absoluteKeywordLocation": "file:/Users/handrews/src/oascomply/tutorial/invalid/examples.yaml#/paths/~1things/get/parameters/0/schema/format",
+      "error": "The instance is invalid against the \"uint8\" format: -1 is outside of uint8 range"
+    }
+  ]
+}
+ERROR:oascomply.apidescription:{
+  "valid": false,
+  "instanceLocation": "/paths/~1things/get/responses/200/content/application~1json/example",
+  "keywordLocation": "",
+  "absoluteKeywordLocation": "file:/Users/handrews/src/oascomply/tutorial/invalid/examples.yaml#/paths/~1things/get/responses/200/content/application~1json/schema",
+  "errors": [
+    {
+      "instanceLocation": "/paths/~1things/get/responses/200/content/application~1json/example",
+      "keywordLocation": "/format",
+      "absoluteKeywordLocation": "file:/Users/handrews/src/oascomply/tutorial/invalid/examples.yaml#/paths/~1things/get/responses/200/content/application~1json/schema/format",
+      "error": "The instance is invalid against the \"uri\" format: '/foo/bar' is not a valid 'URI'."
+    }
+  ]
+}
+
+API description contains errors
+```
+
+Note that these errors come from the `"format"` keyword.  While not all standard
+format values are supported yet, many are, and the remainder will be added
+during Milestone 2.
+
+### Errors from semantic validation of references
+
+Semantic validation using the RDF graph produce by the parser
+is the focus of Milestone 3, which is expected in late August 2023.
+Currently, a very simple example of using the graph for validation
+is implemented in the form of checking that reference targets
+are of the correct type.
+
+In this example, a $ref for a Path Item Object points to
+a Schema Object.  This cannot be detected just by validating the
+reference target against a JSON Schema because both a Path Item Object
+and a Schema Object can be empty objects.  However, the parsed graph
+includes the information that objects under `#/components/schemas`
+are Schema Objects:
+
+```
+~/src/oascomply % oascomply -f tutorial/invalid/wrong-ref-type.yaml
+ERROR:oascomply.apidescription:{
+  "json_reference": "file:///Users/handrews/src/oascomply/tutorial/invalid/wrong-ref-type.yaml#/paths/~1stuff/$ref",
+  "reference_context": {
+    "node": "file:///Users/handrews/src/oascomply/tutorial/invalid/wrong-ref-type.yaml#/paths/~1stuff"
+  },
+  "reference_target": "file:///Users/handrews/src/oascomply/tutorial/invalid/wrong-ref-type.yaml#/components/schemas/stuff",
+  "expected": [
+    "file:///Users/handrews/src/oascomply/tutorial/invalid/wrong-ref-type.yaml#/components/schemas/stuff",
+    "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+    "https://spec.openapis.org/compliance/ontology#3.0-PathItem"
+  ],
+  "actual": [
+    "file:///Users/handrews/src/oascomply/tutorial/invalid/wrong-ref-type.yaml#/components/schemas/stuff",
+    "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+    "https://spec.openapis.org/compliance/ontology#3.0-Schema"
+  ]
+}
+
+API description contains errors
+```
+
+Here we see information about which reference has the error, and then the
+expected and actual type information as semantic triples.
+The subject of each triple is the reference target location, the predicate
+(relationship) is the standard RDF:type relationship, and the object
+gives the type in the OAS namespace.  Here we can see that we expected
+as `3.0-PathItem` but found a `3.0-Schema`.
 
 -----
 

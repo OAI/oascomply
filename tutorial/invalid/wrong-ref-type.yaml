@@ -1,0 +1,12 @@
+openapi: "3.0.3"
+info:
+  version: 1.0.0
+  title: Path Item that attempts to $ref a Schema
+  license:
+    name: MIT
+paths:
+  /stuff:
+    $ref: "#/components/schemas/stuff"
+components:
+  schemas:
+    stuff: {}
