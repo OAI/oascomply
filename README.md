@@ -7,6 +7,11 @@ The OAS Compliance Parser is expected to reach 1.0 status by
 late 2023.  The current status of the project is
 [pre-Milestone 1](https://tinyurl.com/4kth84k8).
 
+* Milestone 1: (June 1, 2023) Basic parsing and syntax validation; RDF graph construction
+* Milestone 2: (mid-July, 2023) User-friendly error reporting, reasonably complete and extensible syntax validation
+* Milestone 3: (late August, 2023) Basic semantic validation using the RDF graph
+* Milestone 4: (October 2023) Reasonably complete and extensible semantic validation, fully documented 1.0 release publishable on PyPI
+
 Currently, only OAS 3.0 is supported, although OAS 3.1 support is planned.
 
 ## Requirements and Installation
@@ -14,6 +19,7 @@ Currently, only OAS 3.0 is supported, although OAS 3.1 support is planned.
 `oascomply` is a Python package with several command-line interfaces:
 
 * `oascomply` parses and validates OAS 3.x API descriptions
+* `oas-reparse` converts the default output to a more human-friendly form
 * `yaml-to-json` does what it says, as converting a YAML API description
   to JSON will result in
   [substantial performance improvements](https://github.com/handrews/oasparser/issues/9) if running `oascomply` on the same document repeatedly
@@ -45,7 +51,7 @@ we need to make a distinction between two concepts for each document:
 * its _**URI**_ (the identifier used to resolve references and in the parsed graph discussed further down)
 
 By default, `oascomply` assumes that the URI is the same as the URL.
-If we try that default behavior with our referencing exampe, it won't work:
+If we try that default behavior with our referencing example, it won't work:
 
 ```
 ~/src/oascomply % oascomply -f tutorial/references/openapi.json -f tutorial/references/pathitems/foo.json -f tutorial/references/schemas/bar.json
@@ -174,18 +180,17 @@ connect different pieces of the description documents.  In later milestones
 we will also use this graph to do much more sophisticated validation.
 
 There are many ways to write an RDF graph to a file, and `oascomply` can
-produce any of the ones supported by the Pyton `rdflib` package.  But the
+produce any of the ones supported by the Python `rdflib` package.  But the
 default, which you get by passing `-o` without an argument, is a simple
 line-oriented format known as
 [N-Triples 1.1](https://www.w3.org/TR/n-triples/).  It is supported by
-most RDF-bsaed tools, but is also simple enough to be parsed directly.
-
-_TODO: by May 25 – simple regex-based parsing tool to render a more human-friendly version of the NT output._
+most RDF-based tools, but is also simple enough to be parsed directly
+by a regular expression, which can be found in the `oascomply.reparse` module.
 
 To print the graph to stdout, use the `-o` option without an argument
 (diagnostic messages such as "Your API description is valid!" are printed
 to stderr).  We'll set a short HTTPS URI as it's less noisy than full
-fileystem paths.
+filesystem paths.
 
 ```
 ~/src/oascomply % oascomply -f tutorial/minimal.json https://example.com/minimal -o
@@ -212,10 +217,59 @@ fileystem paths.
 Your API description is valid!
 ```
 
+That's easy for machines to parse but a bit hard for people to read, so this
+package provides a script, `oas-reparse` that uses the `oascomply.reparse`
+module to read this format on `stdin` and write a simplified form to `stdout`
+using namespaces.  So let's pipe the output through that script (and send
+`stderr` to `/dev/null` to keep the API validity message out of the way):
+
+```
+~/src/oascomply % oascomply -f tutorial/minimal.json https://example.com/minimal -o  2>/dev/null | oas-reparse
+API_1{#/info} OAS{allowsExtensions} "true" XSD{boolean}
+API_1{} RDFS{label} "minimal.json"
+API_1{#} OAS{info} API_1{#/info}
+API_1{#/info} OAS{apiDescriptionVersion} "1.0.0"
+API_1{#} OAS{oasVersion} "3.0.3"
+API_1{#/info} OAS{parent} API_1{#}
+API_1{#} RDF{type} OAS{3.0-OpenAPI}
+API_1{} RDF{type} SCHEMA.ORG{DigitalDocument}
+API_1{#} OAS{allowsExtensions} "true" XSD{boolean}
+API_1{#} OAS{paths} API_1{#/paths}
+API_1{#/paths} OAS{allowsExtensions} "true" XSD{boolean}
+API_1{#/info} RDF{type} OAS{3.0-Info}
+API_1{} OAS{locatedAt} "file:///Users/handrews/src/oascomply/tutorial/minimal.json" XSD{anyURI}
+API_1{} OAS{root} API_1{#}
+API_1{#/paths} OAS{parent} API_1{#}
+API_1{#/info} OAS{title} "Minimal OAS 3.0 description"
+API_1{#} RDFS{label} "OpenAPI"
+API_1{#/paths} RDFS{label} "Paths"
+API_1{#/info} RDFS{label} "Info"
+API_1{#/paths} RDF{type} OAS{3.0-Paths}
+
+XSD = http://www.w3.org/2001/XMLSchema#
+RDF = http://www.w3.org/1999/02/22-rdf-syntax-ns#
+RDFS = http://www.w3.org/2000/01/rdf-schema#
+SCHEMA.ORG = https://schema.org/
+OAS = https://spec.openapis.org/compliance/ontology#
+API_1 = https://example.com/minimal
+```
+
+This format is a bit experimental and subject to change, and you can run
+`oas-reparse -h` to see some other options under consideration.
+
+Keep in mind that for programmatic use, libraries like Python's
+[`rdflib`](https://rdflib.readthedocs.io/en/stable/) can parse N-Triples
+directly and offer far more powerful features for working with the data.
+The `oas-reparse` tool is intended for quick help with human-readability only.
+
+We'll talk more about namespaces and how this condensed format works further
+down, but lets dig into the N-Triples format first.
+
 ## Reading the output
 
-That may look like a bit of a mess, but it's really pretty straightforward.
-Each line represents an edge connecting two nodes in the graph:
+N-Triples may look like a bit of a mess with all of the URIs, but it's
+really pretty straightforward.  Each line represents an RDF triple, which
+is an edge connecting two nodes in the graph:
 
 * Concepts, including data types, relationships, OAS object types (Path Item Object, Schema Object, etc.), and the actual typed objects from your API description, are represented by URIs in angle brackets.
 * Literal values, such as OAS object properties from your API description, are quoted strings.
@@ -288,9 +342,19 @@ OpenAPI concepts use the following namespace:
 
 For OpenAPI object types, a version prefix, e.g. `3.0-Schema`, is part of the fragment.  For relationships, including object fields with string, number, or boolean values, there is no version prefix.  _(This may not remain the case, it will depend on feedback).
 
+The format that `oas-reparse` produces assigns labels to these namespaces
+and uses a `LABEL{SUFFIX}` format to display concept URIs.  Literals are
+still quoted strings, and each field, including the optional fourth
+datatype field, is separated from the previous one by a single space.
+
+As noted earlier, `oas-reparse` and the `oascomply.reparse` module are
+experimental ideas and subject to change based on feedback, so please
+do file an issue with any ideas on what output and tools would be most
+useful.
+
 ## Understanding error messages
 
-User-friendly error reporting is the focuse of Milestone 2, which is
+User-friendly error reporting is the focus of Milestone 2, which is
 planned to be complete in mid-July, 2023.  Currently, errors are
 reported in whatever structure is returned by whatever library
 encountered the error, or whatever structure seemed most convenient.
@@ -451,7 +515,7 @@ concept less useful than it really should be.  N-Triples was selected
 in part to avoid confusion around this.
 
 [^lang]: There is a fourth structure used for language-tagged strings, but
-`oascomply` is not currenlty aware of what (human, not programming) language
+`oascomply` is not currently aware of what (human, not programming) language
 an API description uses, so this structure does not appear in the output.
 
 [^prop]: If you are familiar with property graphs, which are another type of

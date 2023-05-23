@@ -9,6 +9,7 @@ readme = "README.md"
 oascomply = 'oascomply.apidescription:ApiDescription.load'
 patch-oas-schemas = 'oascomply.patch:patch'
 yaml-to-json = 'oascomply.patch:yaml_to_json'
+oas-reparse = 'oascomply.reparse:regex_parse'
 
 [tool.poetry.dependencies]
 python = "^3.8"
