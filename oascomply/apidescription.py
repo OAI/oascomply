@@ -123,7 +123,7 @@ class ApiDescription:
 
         self._contents = {}
         self._sources = {}
-        self._validated = set()
+        self._validated = []
 
         self.add_resource(
             document=document,
@@ -262,7 +262,7 @@ class ApiDescription:
                 by_method[method].append((ann, document, data, sourcemap))
             else:
                 raise ValueError(f"Unexpected annotation {ann.keyword!r}")
-        self._validated.add(resource_uri)
+        self._validated.append(resource_uri)
 
         for annot in ANNOT_ORDER:
             if annot == 'oasExamples':
@@ -334,10 +334,11 @@ class ApiDescription:
             'encoding': 'utf-8',
             'base': self._base_uri,
             'output_format': output_format,
+            'order': self._validated,
         }
         new_kwargs.update(kwargs)
 
-        if destination in (sys.stdout, sys.stderr):
+        if destination in (sys.stdout, sys.stderr) and output_format != 'toml':
             # rdflib serializers write bytes, not str if destination
             # is not None, which doesn't work with sys.stdout / sys.stderr
             destination.flush()

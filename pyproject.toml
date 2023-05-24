@@ -32,6 +32,7 @@ yaml-source-map = { git = "https://github.com/handrews/yaml-source-map.git", bra
 regex = "^2023.5.5"
 idna = "^3.4"
 tonyg-rfc3339 = "^0.1"
+toml = "^0.10.2"
 
 [build-system]
 requires = ["poetry-core"]
