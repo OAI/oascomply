@@ -19,7 +19,6 @@ Currently, only OAS 3.0 is supported, although OAS 3.1 support is planned.
 `oascomply` is a Python package with several command-line interfaces:
 
 * `oascomply` parses and validates OAS 3.x API descriptions
-* `oas-reparse` converts the default output to a more human-friendly form
 * `oas30-schema` validates instances against JSON Schemas that use the OpenAPI 3.0 schema dialect, including `"format" validation
 * `yaml-to-json` does what it says, as converting a YAML API description
   to JSON will result in
@@ -218,50 +217,56 @@ filesystem paths.
 Your API description is valid!
 ```
 
-That's easy for machines to parse but a bit hard for people to read, so this
-package provides a script, `oas-reparse` that uses the `oascomply.reparse`
-module to read this format on `stdin` and write a simplified form to `stdout`
-using namespaces.  So let's pipe the output through that script (and send
-`stderr` to `/dev/null` to keep the API validity message out of the way):
+That's easy for machines to parse but a bit hard for people to read.
+While there are RDF serialization formats that try to be human-friendly,
+they don't work well with JSON Pointer fragments.  The `-o` option can
+take a format identifer (such as `-o ttl` for Turtle or `-o json-ld` for
+JSON-LD) for any format supported by
+[`rdflib`](https://rdflib.readthedocs.io/en/stable/).  But it also offers
+a custom TOML format (`-o toml`) meant for human-friendly output:
 
+```toml
+[namespaces]
+rdf = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+rdfs = "http://www.w3.org/2000/01/rdf-schema#"
+xsd = "http://www.w3.org/2001/XMLSchema#"
+schema = "https://schema.org/"
+oas = "https://spec.openapis.org/compliance/ontology#"
+"oas3.0" = "https://spec.openapis.org/compliance/ontology#3.0-"
+
+["https://example.com/minimal"]
+"rdf:type" = "schema:DigitalDocument"
+"rdfs:label" = [ "minimal.json",]
+"oas:locatedAt" = [ "file:///Users/handrews/src/oascomply/tutorial/minimal.json", "xsd:anyURI",]
+"oas:root" = "https://example.com/minimal#"
+
+["https://example.com/minimal#"]
+"rdf:type" = "oas3.0:OpenAPI"
+"rdfs:label" = [ "OpenAPI",]
+"oas:allowsExtensions" = [ "true", "xsd:boolean",]
+"oas:info" = "https://example.com/minimal#/info"
+"oas:oasVersion" = [ "3.0.3",]
+"oas:paths" = "https://example.com/minimal#/paths"
+
+["https://example.com/minimal#/info"]
+"rdf:type" = "oas3.0:Info"
+"rdfs:label" = [ "Info",]
+"oas:allowsExtensions" = [ "true", "xsd:boolean",]
+"oas:apiDescriptionVersion" = [ "1.0.0",]
+"oas:parent" = "https://example.com/minimal#"
+"oas:title" = [ "Minimal OAS 3.0 description",]
+
+["https://example.com/minimal#/paths"]
+"rdf:type" = "oas3.0:Paths"
+"rdfs:label" = [ "Paths",]
+"oas:allowsExtensions" = [ "true", "xsd:boolean",]
+"oas:parent" = "https://example.com/minimal#"
 ```
-~/src/oascomply % oascomply -f tutorial/minimal.json https://example.com/minimal -o  2>/dev/null | oas-reparse
-API_1{#/info} OAS{allowsExtensions} "true" XSD{boolean}
-API_1{} RDFS{label} "minimal.json"
-API_1{#} OAS{info} API_1{#/info}
-API_1{#/info} OAS{apiDescriptionVersion} "1.0.0"
-API_1{#} OAS{oasVersion} "3.0.3"
-API_1{#/info} OAS{parent} API_1{#}
-API_1{#} RDF{type} OAS{3.0-OpenAPI}
-API_1{} RDF{type} SCHEMA.ORG{DigitalDocument}
-API_1{#} OAS{allowsExtensions} "true" XSD{boolean}
-API_1{#} OAS{paths} API_1{#/paths}
-API_1{#/paths} OAS{allowsExtensions} "true" XSD{boolean}
-API_1{#/info} RDF{type} OAS{3.0-Info}
-API_1{} OAS{locatedAt} "file:///Users/handrews/src/oascomply/tutorial/minimal.json" XSD{anyURI}
-API_1{} OAS{root} API_1{#}
-API_1{#/paths} OAS{parent} API_1{#}
-API_1{#/info} OAS{title} "Minimal OAS 3.0 description"
-API_1{#} RDFS{label} "OpenAPI"
-API_1{#/paths} RDFS{label} "Paths"
-API_1{#/info} RDFS{label} "Info"
-API_1{#/paths} RDF{type} OAS{3.0-Paths}
-
-XSD = http://www.w3.org/2001/XMLSchema#
-RDF = http://www.w3.org/1999/02/22-rdf-syntax-ns#
-RDFS = http://www.w3.org/2000/01/rdf-schema#
-SCHEMA.ORG = https://schema.org/
-OAS = https://spec.openapis.org/compliance/ontology#
-API_1 = https://example.com/minimal
-```
-
-This format is a bit experimental and subject to change, and you can run
-`oas-reparse -h` to see some other options under consideration.
 
 Keep in mind that for programmatic use, libraries like Python's
 [`rdflib`](https://rdflib.readthedocs.io/en/stable/) can parse N-Triples
 directly and offer far more powerful features for working with the data.
-The `oas-reparse` tool is intended for quick help with human-readability only.
+This TOML format is intended purely for human convenience.
 
 We'll talk more about namespaces and how this condensed format works further
 down, but lets dig into the N-Triples format first.
@@ -343,15 +348,7 @@ OpenAPI concepts use the following namespace:
 
 For OpenAPI object types, a version prefix, e.g. `3.0-Schema`, is part of the fragment.  For relationships, including object fields with string, number, or boolean values, there is no version prefix.  _(This may not remain the case, it will depend on feedback).
 
-The format that `oas-reparse` produces assigns labels to these namespaces
-and uses a `LABEL{SUFFIX}` format to display concept URIs.  Literals are
-still quoted strings, and each field, including the optional fourth
-datatype field, is separated from the previous one by a single space.
-
-As noted earlier, `oas-reparse` and the `oascomply.reparse` module are
-experimental ideas and subject to change based on feedback, so please
-do file an issue with any ideas on what output and tools would be most
-useful.
+_**TODO:** Document human-friendly TOML format properly._
 
 ## Understanding error messages
 

@@ -11,6 +11,7 @@ import logging
 import jschon
 import rdflib
 from rdflib.namespace import RDF, RDFS, XSD
+import toml
 import yaml
 
 import oascomply.resourceid as rid
@@ -101,6 +102,8 @@ class OasGraph:
 
     def serialize(self, *args, base=None, output_format=None, **kwargs):
         """Serialize the graph using the given output format."""
+        if output_format == 'toml':
+            return self.to_toml(*args, **kwargs)
         kw = kwargs.copy()
         if output_format not in OUTPUT_FORMATS_LINE and base is not None:
             kw['base'] = base
@@ -110,6 +113,60 @@ class OasGraph:
             format=output_format,
             **kwargs,
         )
+
+    def to_toml(self, *args, destination, order, **kwargs):
+        data = {
+            'namespaces': {
+                'rdf': str(RDF),
+                'rdfs': str(RDFS),
+                'xsd': str(XSD),
+                'schema': 'https://schema.org/',
+                'oas': str(self.oas),
+                f'oas{self._version}': str(self.oas_v),
+            },
+        }
+        nm = self._g.namespace_manager
+        for s in sorted(self._g.subjects(unique=True)):
+            s_name = self._pseudo_qname(s)
+
+            p_set = set(self._g.predicates(s, unique=True))
+            p_list = []
+            for term in (RDF.type, RDFS.label):
+                if term in p_set:
+                    p_list.append(term)
+                    p_set.remove(term)
+            p_list.extend(sorted(p_set))
+
+            for p in p_list:
+                p_name = self._pseudo_qname(p)
+                data.setdefault(s_name, {})[p_name] = \
+                    self._objects_to_toml(s, p)
+
+        toml.dump(data, destination)
+
+    def _pseudo_qname(self, term): #, namespaces):
+        try:
+            pn_prefix, _, pn_local = \
+                self._g.namespace_manager.compute_qname(term, generate=False)
+            return f'{pn_prefix}:{pn_local}'
+        except (ValueError, KeyError):
+            return str(term)
+
+    def _objects_to_toml(self, subject, predicate):
+        objects = list(self._g.objects(subject, predicate))
+        if len(objects) > 1:
+            return [self._object_to_toml(o) for o in objects]
+        return self._object_to_toml(objects[0])
+
+    def _object_to_toml(self, obj):
+        nm = self._g.namespace_manager
+        if isinstance(obj, rdflib.Literal):
+            retval = [str(obj)]
+            if obj.datatype:
+                retval.append(self._pseudo_qname(obj.datatype))
+            return retval
+        return self._pseudo_qname(obj)
+
 
     def add_resource(self, url, uri, filename=None):
         rdf_node = rdflib.URIRef(str(uri))
