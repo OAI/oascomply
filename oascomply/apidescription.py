@@ -566,8 +566,9 @@ class ApiDescription:
             '-x',
             '--strip-suffix',
             nargs='?',
-            choices=('auto', 'yes', 'no'),
+            choices=('auto', 'true', 'false'),
             default='auto',
+            const='true',
             help="Assign URIs to documents by stripping the file extension "
                  "from their URLs if they have not been assigned URIs by "
                  "-d or the two-argument form of -f; can be set to false "
@@ -650,15 +651,10 @@ class ApiDescription:
         else:
             logging.basicConfig(level=logging.WARN)
 
-        if args.strip_suffix is None:
-            # TODO: Write a custom arg action
-            #       For now this simulates '-x' without an arg
-            #       as equivalent to '-x yes' in the debug log.
-            args.strip_suffix = 'yes'
         strip_suffix = {
             'auto': None,
-            'yes': True,
-            'no': False,
+            'true': True,
+            'false': False,
         }[args.strip_suffix]
         logger.debug(f'Processed arguments:\n{args}')
 
