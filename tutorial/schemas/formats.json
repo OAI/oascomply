@@ -1,0 +1,81 @@
+{
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "uri": {
+            "additionalProperties": {
+                "format": "uri"
+            }
+        },
+        "uri-reference": {
+            "additionalProperties": {
+                "format": "uri-reference"
+            }
+        },
+        "iri": {
+            "additionalProperties": {
+                "format": "iri"
+            }
+        },
+        "iri-reference": {
+            "additionalProperties": {
+                "format": "iri-reference"
+            }
+        },
+        "date": {
+            "additionalProperties": {
+                "format": "date"
+            }
+        },
+        "time": {
+            "additionalProperties": {
+                "format": "time"
+            }
+        },
+        "date-time": {
+            "additionalProperties": {
+                "format": "date-time"
+            }
+        },
+        "uint8": {
+            "additionalProperties": {
+                "format": "uint8"
+            }
+        },
+        "uint16": {
+            "additionalProperties": {
+                "format": "uint8"
+            }
+        },
+        "uint32": {
+            "additionalProperties": {
+                "format": "uint8"
+            }
+        },
+        "uint64": {
+            "additionalProperties": {
+                "format": "uint8"
+            }
+        },
+        "int8": {
+            "additionalProperties": {
+                "format": "int8"
+            }
+        },
+        "int16": {
+            "additionalProperties": {
+                "format": "int8"
+            }
+        },
+        "int32": {
+            "additionalProperties": {
+                "format": "int8"
+            }
+        },
+        "int64": {
+            "additionalProperties": {
+                "format": "int8"
+            }
+        }
+    }
+}
