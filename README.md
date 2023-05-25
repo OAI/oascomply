@@ -3,6 +3,12 @@
 This repository contains the OpenAPI Compliance Project, the first
 piece of which is the OpenAPI Specification Compliance Parser.
 
+The `oascomply` command-line tool takes an API description, as a single document or as several documents linked by JSON References (`$ref`) and indicates whether or not it is syntactically and semantically valid.  It can optionally serialize an RDF graph of the parsed API description to `stdout` in any format supported by `rdflib`, as well as a custom format intended to be more human-readable.
+
+The `oas30-schema` command-line tool is an OAS 3.0-specific JSON Schema implementation, based on the `jschon` implementation.
+
+## Status
+
 The OAS Compliance Parser is expected to reach 1.0 status by
 late 2023.  The current status of the project is
 [pre-Milestone 1](https://tinyurl.com/4kth84k8).
@@ -187,13 +193,20 @@ line-oriented format known as
 most RDF-based tools, but is also simple enough to be parsed directly
 by a regular expression, which can be found in the `oascomply.reparse` module.
 
-To print the graph to stdout, use the `-o` option without an argument
-(diagnostic messages such as "Your API description is valid!" are printed
-to stderr).  We'll set a short HTTPS URI as it's less noisy than full
-filesystem paths.
+To print the graph to stdout, use the `-o` option without an argument.
+Here, we redirect it to a `.nt` file, which is the standard N-Triples
+file extension (diagnostic messages such as
+"Your API description is valid!" are printed to stderr).  We'll set a short
+HTTPS URI as it's less noisy than full filesystem paths:
 
 ```
-~/src/oascomply % oascomply -f tutorial/minimal.json https://example.com/minimal -o
+~/src/oascomply % oascomply -f tutorial/minimal.json https://example.com/minimal -o > minimal.nt
+Your API description is valid!
+```
+
+Let's take a look at that output file:
+
+```TTL
 <https://example.com/minimal#> <https://spec.openapis.org/compliance/ontology#paths> <https://example.com/minimal#/paths> .
 <https://example.com/minimal#/info> <http://www.w3.org/2000/01/rdf-schema#label> "Info" .
 <https://example.com/minimal> <http://www.w3.org/2000/01/rdf-schema#label> "minimal.json" .
@@ -214,7 +227,6 @@ filesystem paths.
 <https://example.com/minimal#> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://spec.openapis.org/compliance/ontology#3.0-OpenAPI> .
 <https://example.com/minimal#/paths> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://spec.openapis.org/compliance/ontology#3.0-Paths> .
 <https://example.com/minimal#> <https://spec.openapis.org/compliance/ontology#oasVersion> "3.0.3" .
-Your API description is valid!
 ```
 
 That's easy for machines to parse but a bit hard for people to read.
@@ -225,7 +237,7 @@ JSON-LD) for any format supported by
 [`rdflib`](https://rdflib.readthedocs.io/en/stable/).  But it also offers
 a custom TOML format (`-o toml`) meant for human-friendly output:
 
-```toml
+```TOML
 [namespaces]
 rdf = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 rdfs = "http://www.w3.org/2000/01/rdf-schema#"
@@ -266,12 +278,14 @@ oas = "https://spec.openapis.org/compliance/ontology#"
 Keep in mind that for programmatic use, libraries like Python's
 [`rdflib`](https://rdflib.readthedocs.io/en/stable/) can parse N-Triples
 directly and offer far more powerful features for working with the data.
-This TOML format is intended purely for human convenience.
+
+This TOML format is intended purely for human convenience, and is somewhat
+experimental.  Feedback is encouraged!
 
 We'll talk more about namespaces and how this condensed format works further
 down, but lets dig into the N-Triples format first.
 
-## Reading the output
+## Reading the N-Triples output
 
 N-Triples may look like a bit of a mess with all of the URIs, but it's
 really pretty straightforward.  Each line represents an RDF triple, which
@@ -298,10 +312,10 @@ generate it shows them in a side panel when you click on a node).
 
 Every N-Triples line looks like one of the following three structures:[^lang]
 
-```
-<subject concept> <relationship> <object concept> .
-<subject concept> <relationship> "string literal value" .
-<subject concept> <relationship> "literal value"^^<data type> .
+```TTL
+<subject_concept> <relationship> <object_concept> .
+<subject_concept> <relationship> "string literal value" .
+<subject_concept> <relationship> "literal value"^^<datatype> .
 ```
 
 The `.` terminates the line, and is mostly there to make this format
@@ -311,10 +325,10 @@ Since the same node can appear in either the subject or object position in
 many triples, these lines in the output connect through shared nodes to form
 a graph:
 
-```
-<a> <x> <b>
-<b> <y> <c>
-<a> <z> "d"
+```TTL
+<a> <x> <b> .
+<b> <y> <c> .
+<a> <z> "d" .
 ```
 
 This is a graph with three nodes, `<a>`, `<b>`, and `<c>`, with edges
@@ -348,7 +362,37 @@ OpenAPI concepts use the following namespace:
 
 For OpenAPI object types, a version prefix, e.g. `3.0-Schema`, is part of the fragment.  For relationships, including object fields with string, number, or boolean values, there is no version prefix.  _(This may not remain the case, it will depend on feedback).
 
-_**TODO:** Document human-friendly TOML format properly._
+## Reading the experimental TOML output
+
+The TOML output format is an experiment in providing something a little
+more intuitive.  Here's a portion of the earlier example for reference:
+
+```TOML
+[namespaces]
+rdf = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+rdfs = "http://www.w3.org/2000/01/rdf-schema#"
+xsd = "http://www.w3.org/2001/XMLSchema#"
+schema = "https://schema.org/"
+oas = "https://spec.openapis.org/compliance/ontology#"
+"oas3.0" = "https://spec.openapis.org/compliance/ontology#3.0-"
+
+["https://example.com/minimal"]
+"rdf:type" = "schema:DigitalDocument"
+"rdfs:label" = [ "minimal.json",]
+"oas:locatedAt" = [ "file:///Users/handrews/src/oascomply/tutorial/minimal.json", "xsd:anyURI",]
+"oas:root" = "https://example.com/minimal#"
+```
+
+Currently the format is as follows:
+
+* The first section, `[namespaces]`, defines the short names for each namespace, and the URI prefix the short name represents
+* The remaining section headings are subjects in the RDF triples
+* Under each heading, the keys are predicates (relationships) and the values are objects, forming a triple with the subject in the heading
+* String literal object values are one-element arrays
+* Typed literal object values are two-element arrays, with the datatype as the second element
+* Multiple objects for the same subject and predicate appear as arrays
+
+While the two different uses of arrays is somewhat ambiguous for the two-element array case, in practice datatypes tend to be very recognizable.  However, feedback on this is encouraged.
 
 ## Understanding error messages
 

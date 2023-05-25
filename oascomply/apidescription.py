@@ -521,6 +521,7 @@ class ApiDescription:
         parser = CustomArgumentParser(
             formatter_class=argparse.RawDescriptionHelpFormatter,
             epilog=HELP_EPILOG,
+            fromfile_prefix_chars='@',
         )
         parser.add_argument(
             '-f',
