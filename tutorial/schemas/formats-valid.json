@@ -1,0 +1,24 @@
+{
+    "iri": {
+        "https": "http://اب.تث.جح/خد/ذر/زس?شص=ضط;ظع=غف#قك",
+        "not-a-string": 42
+    },
+    "uri": {
+        "encoded-iri": "https://xn--mgbc.xn--pgbc.xn--rgbc/%D8%AE%D8%AF/%D8%B0%D8%B1/%D8%B2%D8%B3?%D8%B4%D8%B5=%D8%B6%D8%B7;%D8%B8%D8%B9=%D8%BA%D9%81#%D9%82%D9%83",
+        "https": "https://example.com/foo?bar=stuff#fragment",
+        "file": "file:/home/somebody",
+        "urn": "urn:example:foo-bar-baz-qux?+CCResolve:cc=uk",
+        "tag": "tag:timothy@hpl.hp.com,2001:web/externalHome"
+    },
+    "uri-reference": {
+        "authority": "//hostname.com",
+        "path": "foo/bar",
+        "query": "?foo=bar",
+        "fragment": "#frag"
+    },
+    "uint8": {
+        "0": 0,
+        "255": 255,
+        "not-a-number": "text"
+    }
+}
