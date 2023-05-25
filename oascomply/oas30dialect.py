@@ -594,6 +594,7 @@ def validate_with_oas30():
         epilog=f'Note that the schema "{OAS30_DIALECT_METASCHEMA}" is '
                 '*NOT* provided by the OpenAPI Initiative, but is part of the '
                 'oascomply package (oascomply.schemas/oas/v3.0/base.json)',
+        fromfile_prefix_chars='@',
     )
     parser.add_argument(
         'instance',

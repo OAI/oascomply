@@ -12,6 +12,7 @@ import jschon
 import rdflib
 from rdflib.namespace import RDF, RDFS, XSD
 import toml
+import dom_toml
 import yaml
 
 import oascomply.resourceid as rid
@@ -142,7 +143,7 @@ class OasGraph:
                 data.setdefault(s_name, {})[p_name] = \
                     self._objects_to_toml(s, p)
 
-        toml.dump(data, destination)
+        toml.dump(data, destination, dom_toml.TomlEncoder())
 
     def _pseudo_qname(self, term): #, namespaces):
         try:
@@ -396,7 +397,11 @@ class OasGraph:
             ):
                 literal = result.data
                 literal_path = rid.JsonPtr(literal.path)
-                literal_node = rdflib.Literal(literal.value)
+                literal_node = (
+                    rdflib.Literal(literal.value, datatype=RDF.JSON)
+                    if literal.type in ('object', 'array')
+                    else rdflib.Literal(literal.value)
+                )
                 self._g.add((
                     parent_uri,
                     self.oas[relname],
