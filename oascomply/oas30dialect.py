@@ -43,7 +43,12 @@ OAS30_EXTENSION_VOCAB = "https://spec.openapis.org/oas/v3.0/vocab/extension"
 OAS30_DIALECT_METASCHEMA = "https://spec.openapis.org/oas/v3.0/dialect/base"
 
 
-class OasJsonTypeError(TypeError):
+class OasJsonError(Exception):
+    def __str__(self):
+        return self.args[0]
+
+
+class OasJsonTypeError(OasJsonError, TypeError):
     """Indicates an attempt to treat an OasJson as a jschon.JSONSchema"""
     def __init__(self, uri, url):
         super().__init__('Cannot evaluate OasJson as JSONSchema', uri, url)
@@ -59,7 +64,19 @@ class OasJsonTypeError(TypeError):
         return self.args[2]
 
 
-class OasJsonRefSuffixError(ValueError):
+class OasJsonUnresolvableRefError(OasJsonError, ValueError):
+    def __init__(self, ref_uri):
+        super().__init__(
+            f"Could not resolve reference to {ref_uri}",
+            ref_uri,
+        )
+
+    @property
+    def ref_uri(self):
+        return self.args[1]
+
+
+class OasJsonRefSuffixError(OasJsonError, ValueError):
     def __init__(
         self,
         source_schema_uri,
@@ -228,7 +245,7 @@ class OasJson(JSON):
             if not isinstance(schema, JSONSchema):
                 if isinstance(schema, OasJson):
                     # TODO: manage empty fragments better in general
-                    # TODO: duplication withother raise OasJsonTypeError
+                    # TODO: duplication with other raise OasJsonTypeError
                     uri = self.uri.copy_with(
                         fragment=None,
                     ) if self.uri.fragment == '' else self.uri
@@ -246,20 +263,32 @@ class OasJson(JSON):
                 ):
                     ref_uri = rid.Iri(m.groups()[0])
                     ref_resource_uri = ref_uri.to_absolute()
-                    logger.error(f'FOUND: {ref_uri}')
+                    logger.warning(
+                        f'Could not load referenced schema {ref_uri}, '
+                        'checking for common configuration errors...',
+                    )
                     for suffix in ('.json', '.yaml', '.yml'):
                         uri_with_suffix = f'{ref_resource_uri}{suffix}'
-                        if ref_schema := schema.catalog.get_schema(
-                            URI(uri_with_suffix),
-                            cacheid=schema.cacheid,
-                        ):
-                            raise OasJsonRefSuffixError(
-                                source_schema_uri=rid.Iri(str(schema.uri)),
-                                ref_uri=ref_uri,
-                                ref_resource_uri=ref_resource_uri,
-                                target_resource_uri=rid.Iri(uri_with_suffix),
-                                suffix=suffix,
-                            ) from e
+                        try:
+                            if ref_schema := schema.catalog.get_schema(
+                                URI(uri_with_suffix),
+                                cacheid=schema.cacheid,
+                            ):
+                                raise OasJsonRefSuffixError(
+                                    source_schema_uri=rid.Iri(
+                                        str(schema.uri)
+                                    ),
+                                    ref_uri=ref_uri,
+                                    ref_resource_uri=ref_resource_uri,
+                                    target_resource_uri=rid.Iri(
+                                        uri_with_suffix
+                                    ),
+                                    suffix=suffix,
+                                ) from e
+                        except CatalogError:
+                            pass
+                    raise OasJsonUnresolvableRefError(ref_uri)
+
                 elif m := re.search(' ([^ ]*) is not a JSON Schema', str(e)):
                     uri = rid.Iri(m.groups()[0]).copy_with(
                         fragment=None,

@@ -27,7 +27,8 @@ from oascomply.schemaparse import (
     Annotation, SchemaParser, JsonSchemaParseError,
 )
 from oascomply.oas30dialect import (
-    OasJson, OasJsonTypeError, OasJsonRefSuffixError, OAS30_DIALECT_METASCHEMA,
+    OasJson, OasJsonTypeError, OasJsonRefSuffixError,
+    OasJsonUnresolvableRefError, OAS30_DIALECT_METASCHEMA,
 )
 import oascomply.resourceid as rid
 
@@ -400,7 +401,7 @@ class ApiDescription:
         filetype = path.suffix[1:] or 'yaml'
         if filetype == 'yml':
             filetype = 'yaml'
-        logger.debug('...determined filetype={filetype}')
+        logger.debug(f'...determined filetype={filetype}')
 
         if uri is None:
             if strip_suffix:
@@ -711,6 +712,10 @@ class ApiDescription:
 
                 sys.stderr.write('\nAPI description contains errors\n\n')
                 sys.exit(-1)
+
+        except OasJsonUnresolvableRefError as e:
+            logger.error(str(e))
+            sys.exit(-1)
 
         except OasJsonRefSuffixError as e:
             path = Path(e.target_resource_uri.path).relative_to(Path.cwd())
