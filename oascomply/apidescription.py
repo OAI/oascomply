@@ -571,14 +571,14 @@ class ApiDescription:
         _add_verbose_option(verbosity_parser)
         v_args, remaining_args = verbosity_parser.parse_known_args()
 
+        oascomply_logger = logging.getLogger('oascomply')
         if v_args.verbose:
-            oascomply_logger = logging.getLogger('oascomply')
             if v_args.verbose == 1:
-                logging.basicConfig(level=logging.INFO)
+                oascomply_logger.setLevel(logging.INFO)
             else:
-                logging.basicConfig(level=logging.DEBUG)
+                oascomply_logger.setLevel(logging.DEBUG)
         else:
-            logging.basicConfig(level=logging.WARN)
+            oascomply_logger.setLevel(logging.WARN)
 
         strip_suffixes_parser = argparse.ArgumentParser(add_help=False)
         _add_strip_suffixes_option(strip_suffixes_parser)

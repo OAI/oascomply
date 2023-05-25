@@ -152,6 +152,18 @@ files = [
 ]
 
 [[package]]
+name = "coloredlog"
+version = "0.2.5"
+description = "Colorize your console output."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "coloredlog-0.2.5-py3-none-any.whl", hash = "sha256:9334d73103cad8cb296248961710a8ce5a09ab63905905a81635fd7980538bb9"},
+    {file = "coloredlog-0.2.5.tar.gz", hash = "sha256:f17d3b4ed8acb4df346edb4a5b3c619769cdc88d2b2f3c5023e3f9d0b869d732"},
+]
+
+[[package]]
 name = "coverage"
 version = "7.3.0"
 description = "Code coverage measurement for Python"
@@ -1263,4 +1275,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "5a0bcaf896a950961b570cf743c3abfaece7639f12d90928a8e632763f4161ca"
+content-hash = "ae3ce4ff75f03f79351bda85d857ec7d2e624b0f1213bb5834c368d9468c6466"

@@ -4,7 +4,10 @@
 Resources with no clear point of first use for initialization
 are initialized here.
 """
+import sys
 import pathlib
+import logging
+import coloredlog
 import jschon
 import jschon.catalog
 from jschon.catalog import _2020_12
@@ -27,6 +30,16 @@ __all__ = [
     'catalog'
 ]
 
+_oascomply_logger = logging.getLogger('oascomply')
+_log_formatter = logging.Formatter(
+    '%(asctime)s %(filename)s:%(lineno)d [%(levelname)s] %(message)s',
+)
+_log_handler = (
+    coloredlog.ConsoleHandler(stream=sys.stderr) if sys.stderr.isatty()
+    else logging.StreamHandler()
+)
+_log_handler.setFormatter(_log_formatter)
+_oascomply_logger.addHandler(_log_handler)
 
 catalog = OASCatalog('oascomply', resolve_references=False)
 """The default shared ``jschon``-derived resource loader and cache"""
