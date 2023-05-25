@@ -412,7 +412,7 @@ class ApiDescription:
                 f'...assigning URI <{uri}> from URL <{full_path.as_uri()}>',
             )
 
-        content = path.read_text()
+        content = path.read_text(encoding='utf-8')
         sourcemap = None
         if filetype == 'json':
             data = json.loads(content)
