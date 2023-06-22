@@ -35,6 +35,11 @@ tonyg-rfc3339 = "^0.1"
 toml = "^0.10.2"
 dom-toml = "^0.6.1"
 
+[tool.poetry.group.docs.dependencies]
+sphinx = "<7"
+sphinx-rtd-theme = "^1.2.2"
+sphinx-autodoc-typehints = "<1.23"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
