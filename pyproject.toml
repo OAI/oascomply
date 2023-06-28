@@ -38,7 +38,6 @@ dom-toml = "^0.6.1"
 [tool.poetry.group.docs.dependencies]
 sphinx = "<7"
 sphinx-rtd-theme = "^1.2.2"
-sphinx-autodoc-typehints = "<1.23"
 
 [build-system]
 requires = ["poetry-core"]
