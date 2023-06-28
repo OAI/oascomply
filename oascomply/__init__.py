@@ -1,9 +1,8 @@
-"""Root oascomply package
+"""
+:mod:`oascomply` package initialization
 
-Ths package initializes libraries such as ``jschon`` that are always
-or almost always used, and may be first accessed from any of several
-code paths.  Wherever possible, library initialization should be
-placed near the library's first use.
+Resources with no clear point of first use for initialization
+are initialized here.
 """
 import pathlib
 import jschon

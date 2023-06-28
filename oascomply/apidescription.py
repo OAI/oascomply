@@ -62,7 +62,7 @@ ANNOT_ORDER = (
 
 
 UriPrefix = namedtuple('UriPrefix', ['directory', 'prefix'])
-
+"""Utility class for option data mapping URI prefixes."""
 
 class ApiDescription:
     """
@@ -72,6 +72,16 @@ class ApiDescription:
     resource.  This resource MUST contain an ``openapi`` field setting
     the version.  Currently, 3.0.x descriptions are supported, with 3.1.x
     support intended for a later version.
+
+    Note that at most one of ``path`` or ``url`` can be passed.
+
+    :param document: The primary OAS document data
+    :param uri: The URI for the primary OAS document
+    :param path: The local filesystem path of the OAS document
+    :param url: The URL from which the primary OAS document was retrieved
+    :param sourcemap: A data structure mapping JSON pointer to lines and columns
+    :param test_mode: If true, ensures that output can be used for repeatable
+        testing by removing environment-specific information such as file names
     """
 
     def __init__(
@@ -146,6 +156,17 @@ class ApiDescription:
         """
         Add a resource as part of the API description, and set its URI
         for use in resolving references and in the parser's output.
+
+        Note that at most one of ``path`` or ``url`` can be passed.
+
+        :param document: The parsed OAS document data
+        :param uri: The URI of the OAS document
+        :param path: The local filesystem path of the OAS document
+        :param url: The URL from which the OAS document was retrieved
+        :param sourcemap: Structure mapping JSON Pointers to lines and columns
+        :param oastype: The semantic type of the document, typically
+            used to indicate that a document is a stand-alone JSON Schema
+            and must be parsed as such
         """
         assert url is None, "Remote URLs not yet supported"
         assert path is not None, "Must provide path for local document"
@@ -186,6 +207,7 @@ class ApiDescription:
         self._g.add_resource(url, uri, filename=path.name)
 
     def resolve_references(self):
+        """Resolve all ``"$ref"`` occurrences in the OAS document"""
         for document in self._contents.values():
             logger.info(
                 f'Checking JSON Schema references in <{document.uri}>...',

@@ -5,6 +5,7 @@ import subprocess
 from collections import OrderedDict
 from io import StringIO
 from pathlib import Path
+from typing import Mapping, Sequence, Union
 
 import yaml
 import json_merge_patch
@@ -47,6 +48,7 @@ if present.
 """
 
 def yaml_to_json():
+    """Entry point for the ``yaml-to-json`` command-line utility."""
     parser = argparse.ArgumentParser(
         description=YAML_TO_JASON_DESCRIPTION,
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -95,17 +97,17 @@ def yaml_to_json():
             json.dump(yaml.safe_load(in_fp), out_fp, **kwargs)
 
 
-def validate_schema(schema_data, *metaschema_data, error_format='detailed'):
+def validate_schema(schema_data: Union[Mapping, bool], *metaschema_data: Sequence[Mapping], error_format='detailed'):
     """
     Validate a schema against its metaschema
 
     :param schema_data: The parsed schema data structure
-    :metaschema_data: Parsed metaschema data; this is only needed if
-        ``oascomply.schema_catalog`` has not been or cannot be configured
+    :param metaschema_data: Parsed metaschema data; this is only needed if
+        :attr:`oascomply.schema_catalog` has not been or cannot be configured
         to load the metaschema in ``"$schema"`` and any additional metaschemas
-        that it references automatically; if metaschema A references
-        metaschema B, then B *must* appear first, and A second
-    :error_format: The standard JSON Schema output format to use for error
+        that it references automatically; note that if metaschema A references
+        metaschema B, then B *must* appear before A in the list
+    :param error_format: The standard JSON Schema output format to use for error
         reporting; defaults to ``"detailed"``; other values are ``"basic"``
         or ``"verbose"``
     :returns: ``None`` if validaition is successful, or the error report
@@ -125,6 +127,7 @@ def validate_schema(schema_data, *metaschema_data, error_format='detailed'):
 
 
 def patch():
+    """Entry point for generating a patche OAS 3.0 schema (3.1 forthcoming)."""
     argparse.ArgumentParser(
         description=PATCH_SCHEMAS_DESCRIPTION,
         formatter_class=argparse.RawDescriptionHelpFormatter,
