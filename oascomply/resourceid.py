@@ -16,6 +16,7 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 class ResourceIdentifier:
+    """Abstract base class for RFC 3986/7 resource identifiers"""
     def __init__(self, identifier):
         # cast to str to support ResourceIdentifier identifier values
         self._parsed = rfc3987.parse(str(identifier), rule=self._rule)
@@ -111,18 +112,22 @@ class ResourceIdentifier:
 
 
 class IriReference(ResourceIdentifier):
+    """RFC 3987 IRI-reference production"""
     _rule = 'IRI_reference'
 
 
 class Iri(IriReference):
+    """RFC 3987 IRI production"""
     _rule = 'IRI'
 
 
 class UriReference(IriReference):
+    """RFC 3986 URI-reference production"""
     _rule = 'URI_reference'
 
 
 class Uri(Iri, UriReference):
+    """RFC 3986 URI production"""
     _rule = 'URI'
 
 

@@ -44,6 +44,7 @@ OAS30_DIALECT_METASCHEMA = "https://spec.openapis.org/oas/v3.0/dialect/base"
 
 
 class OasJsonError(Exception):
+    """Base class for errors raised by :class:`OasJson`"""
     def __str__(self):
         return self.args[0]
 
@@ -65,6 +66,7 @@ class OasJsonTypeError(OasJsonError, TypeError):
 
 
 class OasJsonUnresolvableRefError(OasJsonError, ValueError):
+    """Indicates that a reference target could not be found."""
     def __init__(self, ref_uri):
         super().__init__(
             f"Could not resolve reference to {ref_uri}",
@@ -77,6 +79,7 @@ class OasJsonUnresolvableRefError(OasJsonError, ValueError):
 
 
 class OasJsonRefSuffixError(OasJsonError, ValueError):
+    """Indicates misuse of filesystem suffixes in retrieving a resource."""
     def __init__(
         self,
         source_schema_uri,
@@ -120,6 +123,7 @@ class OasJsonRefSuffixError(OasJsonError, ValueError):
 #       currently available through the git repository as shown
 #       in pyproject.toml.
 class OasJson(JSON):
+    """Representation of an OAS document based on :class:`jschon.json.JSON`"""
     def __init__(
         self,
         value,

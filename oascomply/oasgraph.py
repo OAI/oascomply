@@ -67,7 +67,7 @@ class OasGraph:
     """
     Graph representing an OAS API description
 
-    :param version: The X.Y OAS version string for the description
+    :param version: The ``X.Y`` OAS version string for the description
     """
     def __init__(self, version: str, *, test_mode=False):
         if version not in ('3.0', '3.1'):
