@@ -199,7 +199,10 @@ class JschonSchemaParser(SchemaParser):
                 'schema.json',
             encoding='utf-8',
         ) as schema_fp:
-            self._v30_schema = jschon.JSONSchema(json.load(schema_fp))
+            self._v30_schema = jschon.JSONSchema(
+                json.load(schema_fp),
+                catalog='oascomply',
+            )
 
     def parse(self, data, oastype, output_format='basic'):
         schema = self._v30_schema

@@ -14,7 +14,7 @@ oas30-schema = 'oascomply.oas30dialect:validate_with_oas30'
 
 [tool.poetry.dependencies]
 python = "^3.8"
-# jschon changes submitted upstream as jschon PRs #100 and #101
+# changes on branch submitted upstream as jschon PRs #83 and #105
 jschon = { git = "https://github.com/handrews/jschon.git", branch = "oas3"}
 pyyaml = "^6.0"
 rdflib = "^6.3.2"

@@ -5,7 +5,7 @@ from pathlib import Path
 import urllib
 from uuid import uuid4
 from collections import defaultdict, namedtuple
-from typing import Any, Iterator, Mapping, Optional, Tuple, Union
+from typing import Any, Iterator, Mapping, Optional, Tuple, Type, Union
 import logging
 import os
 import sys
@@ -26,10 +26,11 @@ from oascomply.oasgraph import (
 from oascomply.schemaparse import (
     Annotation, SchemaParser, JsonSchemaParseError,
 )
-from oascomply.oas30dialect import (
+from oascomply.oasjson import (
     OasJson, OasJsonTypeError, OasJsonRefSuffixError,
-    OasJsonUnresolvableRefError, OAS30_DIALECT_METASCHEMA,
+    OasJsonUnresolvableRefError,
 )
+from oascomply.oas30dialect import OAS30_DIALECT_METASCHEMA
 import oascomply.resourceid as rid
 
 __all__ = [
@@ -186,6 +187,7 @@ class ApiDescription:
                 document,
                 uri=jschon.URI(str(uri)),
                 metaschema_uri=jschon.URI(OAS30_DIALECT_METASCHEMA),
+                catalog='oascomply',
             )
             # assert isinstance(
         else:
@@ -206,44 +208,18 @@ class ApiDescription:
             self._sources[uri] = sourcemap
         self._g.add_resource(url, uri, filename=path.name)
 
-    def resolve_references(self):
-        """Resolve all ``"$ref"`` occurrences in the OAS document"""
-        for document in self._contents.values():
-            logger.info(
-                f'Checking JSON Schema references in <{document.uri}>...',
-            )
-            if isinstance(document, OasJson):
-                logger.info(
-                    '...resolving with OasJson.resolve_references()',
-                )
-                document.resolve_references()
-            elif isinstance(document, jschon.JSONSchema):
-                logger.info(
-                    '...already resolved by jschon.JSONSchema()',
-                )
-            else:
-                logger.warning(
-                    f'Unknown type "{type(document)}" '
-                    f'for document <{document.uri}>',
-                )
+    def get_resource(self, uri: Union[str, rid.Iri], cacheid: str = 'default') -> Optional[Any]:
+        logger.debug(f"Retrieving '{uri}' from cache '{cacheid}'")
+        # TODO: URI library confusion
+        return schema_catalog.get_resource(jschon.URI(str(uri)), cacheid=cacheid)
 
-    def get_resource(self, uri: Union[str, rid.Iri]) -> Optional[Any]:
+    def get_sourcemap(self, uri: Union[str, rid.Iri]):
         if not isinstance(uri, rid.IriWithJsonPtr):
             # TODO: IRI vs URI
             # TODO: Non-JSON Pointer fragments in 3.1
             uri = rid.IriWithJsonPtr(uri)
-        document_uri = uri.to_absolute()
-        data_ptr = uri.fragment
-        try:
-            document = self._contents[document_uri]
-            return (
-                document,
-                document if data_ptr is None else data_ptr.evaluate(document),
-                self._sources.get(uri),
-            )
-        except (KeyError, jschon.JSONPointerError):
-            logger.warning(f"Could not find resource {uri}")
-            raise # return None, None, None
+
+        return self._sources.get(uri.to_absolute())
 
     def validate(
         self,
@@ -261,8 +237,10 @@ class ApiDescription:
             # TODO: Non-JSON Pointer fragments in 3.1
             resource_uri = rid.IriWithJsonPtr(resource_uri)
 
-        document, data, sourcemap = self.get_resource(resource_uri)
-        assert None not in (document, data)
+        data = self.get_resource(resource_uri, cacheid='3.0')
+        assert data is not None
+        document = data.document_root
+        sourcemap = self.get_sourcemap(resource_uri)
 
         try:
             output = sp.parse(data, oastype)
@@ -725,68 +703,14 @@ class ApiDescription:
                     sourcemap=r['sourcemap'],
                     oastype=r['oastype'],
                 )
-        try:
-            desc.resolve_references()
-            errors = desc.validate(validate_examples=(args.examples == 'true'))
-            errors.extend(desc.validate_graph())
-            if errors:
-                for err in errors:
-                    logger.error(json.dumps(err['error'], indent=2))
 
-                sys.stderr.write('\nAPI description contains errors\n\n')
-                sys.exit(-1)
+        errors = desc.validate(validate_examples=(args.examples == 'true'))
+        errors.extend(desc.validate_graph())
+        if errors:
+            for err in errors:
+                logger.error(json.dumps(err['error'], indent=2))
 
-        except OasJsonUnresolvableRefError as e:
-            logger.error(str(e))
-            sys.exit(-1)
-
-        except OasJsonRefSuffixError as e:
-            path = Path(e.target_resource_uri.path).relative_to(Path.cwd())
-            logger.error(
-                f'{e.args[0]}\n\n'
-                'The above error can be fixed either by using -x:'
-                f'\n\n\t-x -f {path}\n\n'
-                '... or by using the two-argument form of -f:'
-                f'\n\n\t-f {path} {e.ref_resource_uri}\n'
-            )
-            sys.exit(-1)
-
-        except OasJsonTypeError as e:
-            url = cls._url_for(e.uri) if e.url is None else e.url
-            if url is None:
-                logger.error(
-                    f'Cannot determine URL and path for URI <{e.uri}>, '
-                    f'run with -v and check the logs',
-                )
-                url = rid.Iri('about:unknown-url')
-                path = '<unknown-path>'
-            else:
-                path = Path(url.path).relative_to(Path.cwd())
-
-            # TODO: This isn't always quite right depending on -d / -D
-            #       when strip_suffix is None
-            path_and_uri = None
-            if strip_suffix in (True, None):
-                uri_len = len(str(e.uri))
-                truncated_url = str(url)[:uri_len]
-                missing_suffix = str(url)[uri_len:]
-                if  (
-                    truncated_url == str(e.uri) and
-                    missing_suffix in ('.json', '.yaml', '.yml')
-                ):
-                    path_and_uri = f'-x -f {path}'
-
-            if path_and_uri is None:
-                path_and_uri = (
-                    f'-f {path}' if e.uri == url
-                    else f'-f {path} {e.uri}'
-                )
-
-            logger.error(
-                f'JSON Schema documents must pass "Schema" (without quotes) '
-                f'as an additional -f argument:\n\n'
-                f'\t {path_and_uri} Schema\n'
-            )
+            sys.stderr.write('\nAPI description contains errors\n\n')
             sys.exit(-1)
 
         if args.output_format is not None or args.test_mode is True:
