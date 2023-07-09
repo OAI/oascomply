@@ -3,7 +3,7 @@ import logging
 import pathlib
 from os import PathLike
 from collections import defaultdict
-from typing import Hashable, Mapping, Sequence, Type, Union
+from typing import Hashable, Mapping, Sequence, Tuple, Type, Union
 
 from jschon import JSON, JSONCompatible, JSONSchema, Result, URI
 from jschon.exc import CatalogError
@@ -14,9 +14,14 @@ from jschon.vocabulary import (
     Keyword, KeywordClass, Metaschema, ObjectOfSubschemas, Subschema,
     Vocabulary, format as format_, annotation, applicator, validation,
 )
+import jschon.utils
 
+import yaml
 import rfc3339
 import rfc3987
+import json_source_map as jmap
+import yaml_source_map as ymap
+from yaml_source_map.errors import InvalidYamlError
 
 from oascomply.ptrtemplates import (
     JSON_POINTER_TEMPLATE, RELATIVE_JSON_POINTER_TEMPLATE,
@@ -31,24 +36,174 @@ __all__ = [
     'OasJsonTypeError',
     'OasJsonUnresolvableRefError',
     'OasJsonRefSuffixError',
+
+    # Temporary while refactoring:
+    '_json_loadf',
+    '_yaml_loadf',
 ]
 
 logger = logging.getLogger(__name__)
 
 
-class UrlMappingSource(Source):
+class UrlMappingSourceMixin:
     @property
     def uri_url_map(self):
-        """Return a shared map from requested URI to located URL"""
+        """A map from requested URI to located URL, shared among sources"""
         return self._uri_url_map
 
     @uri_url_map.setter
     def uri_url_map(self, mapping: Mapping[str, str]):
-        """Set a shared map from requested URI to located URL"""
         self._uri_url_map = mapping
 
+    @property
+    def base_uri(self):
+        """The base URI / URI prefix under which this source is registered."""
+        return self._base_uri
 
-class LocalMultiSuffixSource(UrlMappingSource):
+    @base_uri.setter
+    def base_uri(self, bu):
+        self._base_uri = bu
+
+    def set_url(self, uri, source):
+        raise NotImplementedError
+
+
+def _loadf(full_path: str) -> Tuple[str, str]:
+    """Load a JSON file, optionally producing a source line and column map."""
+    path = pathlib.Path(full_path)
+    try:
+        content = path.read_text(encoding='utf-8')
+        return content, path.as_uri()
+    except FileNotFoundError as e:
+        raise CatalogError(f'{e.strerror}: {e.filename!r}')
+
+    
+def _json_loadf(full_path, create_source_map=False):
+    sourcemap = None
+    content, url = _loadf(full_path)
+    data = jschon.utils.json_loads(content)
+    if create_source_map:
+        logger.info(
+            f'Creating JSON sourcemap for {path}, '
+            '(can disable with -n if slow)',
+        )
+        sourcemap = jmap.calculate(content)
+    return data, url, sourcemap
+
+def _yaml_loadf(full_path, create_source_map=False):
+    """Load a YAML file, optionally producing a source line and column map."""
+    sourcemap = None
+    content, url = _loadf(full_path)
+    data = yaml.safe_load(content)
+    if create_source_map:
+        # The YAML source mapper gets confused sometimes,
+        # so just log a warning and work without the map.
+        try:
+            logger.info(
+                f'Creating YAML sourcemap for {path}, '
+                '(can disable with -n if slow)',
+            )
+            sourcemap = ymap.calculate(content)
+        except InvalidYamlError:
+            logger.warn(
+                f"Unable to calculate source map for {path}",
+            )
+    return data, path.as_uri(), sourcemap
+
+
+class MultiSuffixSource(Source):
+    suffix_map: dict = NotImplemented
+
+    def __init__(self, *, suffixes: str = ('', '.json', '.yaml')):
+        self.suffixes = suffixes
+        super().__init__()
+
+    def search_suffixes(self, no_suffix_path):
+        for suffix in self.suffixes:
+            full_path = no_suffix_path + suffix
+            try:
+                data = self.suffix_map[suffix](full_path)
+                return data, full_path
+            
+            except Exception as e:
+                # TODO: Ideally not base Exception, but conditional import
+                #       of requests for remote source is challenging
+                logger.debug(
+                    f"Checked {self.base_dir!r} for {relative_path!r}, "
+                    f"got exception:\n\t{e}"
+                )
+        raise CatalogError(
+            f"Could not find '{no_suffix_path}', "
+            f"checked extensions {self.suffixes}"
+        )
+
+
+class FileMapMultiSuffixSource(MultiSuffixSource, UrlMappingSourceMixin):
+    suffix_map: dict = {
+        '': jschon.utils.json_loadf,
+        '.json': jschon.utils.json_loadf,
+        '.yaml': yaml.safe_load,
+        '.yml': yaml.safe_load,
+    }
+    def __init__(
+        self,
+        file_map: dict,
+        *,
+        suffixes=(None, '.json', '.yaml', '.yml'),
+    ) -> None:
+
+        super().__init__(suffixes=suffixes)
+        self._map = file_map.copy()
+
+    def __call__(self, relative_path):
+        data, full_path = self.search_suffixes(self._map[relative_path])
+        self.set_url(pathlib.Path(full_path).as_uri())
+
+
+class FileMultiSuffixSource(MultiSuffixSource, UrlMappingSourceMixin):
+    suffix_map: dict = {
+        '': jschon.utils.json_loadf,
+        '.json': jschon.utils.json_loadf,
+        '.yaml': yaml.safe_load,
+        '.yml': yaml.safe_load,
+    }
+
+    def _yaml_loadf(self, full_path):
+        with open(full_path) as fd:
+            return yaml.safe_load_
+
+    def __call__(self, relative_path):
+        data, full_path = self.search_suffixes(relative_path)
+        # self.uri_url_map[full_path] = self.to_url(
+
+    def do_the_thing(self, full_path, suffix):
+        with open(full_path) as fd:
+            return suffix_map[suffix](fd)
+
+    def to_url(self, relative_path):
+        return (pathlib.Path(self.base_dir) / relative_path).as_uri()
+            
+
+class HttpsMultiSuffixSource(MultiSuffixSource, UrlMappingSourceMixin):
+    suffix_map: {
+        None: jschon.utils.json_loadr,
+        '.json': jschon.utils.json_loadr,
+        '.yaml': NotImplemented,
+    }
+
+    def to_url(self, relative_path):
+        return self.base_url + relative_path
+
+
+class DirectMultiSuffixSource(UrlMappingSourceMixin):
+    def __init__(self, direct_map):
+        self._map = direct_map
+
+    def __call__(self, relative_path):
+        self.uri_url_map[relative_path] = self._map[relative_path]
+        return self._map[relative_path]
+
+class LocalMultiSuffixSource(UrlMappingSourceMixin):
     """
     Resource loader that searches for local files using a list of suffixes.
 
@@ -73,7 +228,7 @@ class LocalMultiSuffixSource(UrlMappingSource):
     ) -> None:
         if 'suffix' in kwargs:
             raise ValueError("Cannot pass both 'suffix' and 'suffixes'")
-        self._suffixes = tuple(suffixes)
+        self.suffixes = tuple(suffixes)
         self._sources = [
             LocalSource(base_dir, suffix=s, **kwargs) for s in suffixes
         ]
@@ -83,15 +238,7 @@ class LocalMultiSuffixSource(UrlMappingSource):
         for source in self._sources:
             try:
                 resource = source(relative_path)
-                uri = str(self._base_uri) + relative_path
-                # LocalSource concatenates rather than using Path.with_suffix()
-                if source.suffix:
-                    relative_path += source.suffix
-                url = str(
-                    (pathlib.Path(source.base_dir) / relative_path).as_uri(),
-                )
-                # TODO: Normalize file:///?  Use rid.Iri?
-                self.uri_url_map[uri] = url
+                self.set_url(relative_path, source)
                 return resource
 
             except (OSError, CatalogError) as e:
@@ -103,24 +250,50 @@ class LocalMultiSuffixSource(UrlMappingSource):
 
         raise CatalogError(
             f"Could not find source for {relative_path!r} with any of "
-            f"suffixes {self._suffixes}",
+            f"suffixes {self.suffixes}",
         )
+
+    def set_url(self, relative_path, source):
+        uri = str(self.base_uri) + relative_path
+        # LocalSource concatenates rather than using Path.with_suffix(),
+        # and also RemoteSource concatenates.
+        if source.suffix:
+            relative_path += source.suffix
+        url = str(
+            (pathlib.Path(source.base_dir) / relative_path).as_uri(),
+        )
+        # TODO: Normalize file:///?  Use rid.Iri?
+        self.uri_url_map[uri] = url
 
 
 class RemoteMultiSuffixSource(Source):
     """
     Resource loader that searches for HTTPS resources using a list of suffixes.
 
-    :param base_url: A base URL that is used as a prefix, and MUST end
-        with a ``"/"`` so that base URL and URL prefix behavior matches
-    :param base_uri: The base URI / URI prefix under which this source
+    This source maps resources referenced under a base URI (registerd with the
+    :class:`OasCatalog`) to the same relative location under a base URL
+    from which they can be retrieved.
+
+    The :param:`base_url` is used as a prefix, and therefore **must**
+    end with a ``/``.
+
+    This source can search for URL matches using suffixes that are not present
+    in the referenced URI.  Non-empty suffixes **must** include the ``"."``
+    character, for example ``".json"``.
+
+    The empty string (``""``) can be used to load a non-suffixed resource,
+    in which case the media type in the ``Content-Type`` header is used
+    to determine how to parse the resource.
+
+    :param base_url: A base URL that ends with a ``/``
+    :param base_uri: The base URI (ending with a ``/``) that 
         will be registered with the :class:`OasCatalog`.  This MUST
         match the registered prefix so that mappings between resource
         URLs and URIs can be determined.
     :param suffixes: A list of suffixes, inlcuding the leading ``"."``,
         to try in order to find a match; the list MUST have at least one
-        entry, but ``None`` is a valid entry for loading a non-suffixed file;
-        the default is ``[None, ".json", ".yaml"]``
+        entry, but the empty string (``""``) is a valid entry for loading
+        a non-suffixed file; the default is ``["", ".json", ".yaml"]``
     :param uri_url_map: A map from the URI used to request the resource
         to the URL from which the resource was loaded, which is expected
         to be shared among multiple source instances.
@@ -130,7 +303,7 @@ class RemoteMultiSuffixSource(Source):
         base_url: URI,
         *,
         base_uri: URI,
-        suffixes: Sequence[Union[str, None]] = [None, '.json', '.yaml'],
+        suffixes: Sequence[str] = ['', '.json', '.yaml'],
         uri_url_map: Mapping[str, str],
         **kwargs,
     ) -> None:
@@ -233,7 +406,8 @@ class OasCatalog(Catalog):
         # TODO: Check OasJson-ness?
         return resource
 
-    def add_uri_source(self, base_uri: URI, source: UrlMappingSource) -> None:
+    def add_uri_source(self, base_uri: URI, source: UrlMappingSourceMixin) -> None:
+        source.base_uri = base_uri
         source.uri_url_map = self._uri_url_map
         super().add_uri_source(base_uri, source)
 

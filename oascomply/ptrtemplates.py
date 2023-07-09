@@ -1,7 +1,8 @@
-from typing import Generator, Sequence, Tuple, Union
+from typing import Generator, Literal, Sequence, Tuple, Union
 from collections import namedtuple
 import re
 import jschon
+import jschon.exc
 
 from oascomply.resourceid import JsonPtr, RelJsonPtr
 
@@ -19,6 +20,8 @@ RELATIVE_JSON_POINTER_TEMPLATE = (
     f'{PARENT_COUNT}{INDEX_MANIPULATION}(#|{JSON_POINTER_TEMPLATE})'
 )
 
+
+TemplateComponent = Union[JsonPtr, str, Literal[True]]
 
 TemplateResult = namedtuple(
     'TemplateResult',
@@ -60,7 +63,8 @@ class JsonPtrTemplate:
         # * Boolean True to request the name of the key or number
         #   of the index matching the previous variable; this can
         #   only occur as the last component
-        self._components= []
+        self._components: Sequence[TemplateComponent] = []
+
         currptr = JsonPtr()
         for s in segments:
             if s.startswith('{'):
@@ -96,7 +100,7 @@ class JsonPtrTemplate:
         _variables=None,
         _previous_variable=None,
     ) -> Generator[
-        Tuple[JsonPtr, jschon.JSON, Union[None, str, int]],
+        TemplateResult,
         None,
         None,
     ]:
@@ -112,7 +116,7 @@ class JsonPtrTemplate:
             new_resolved = _resolved / next_c
             try:
                 new_instance = next_c.evaluate(instance)
-            except jschon.JSONPointerError as e:
+            except jschon.exc.JSONPointerError as e:
                 if not require_match:
                     return
                 raise JsonPtrTemplateEvaluationError(
@@ -210,8 +214,7 @@ class RelJsonPtrTemplate:
                 self._relptr = RelJsonPtr(template)
                 self._jptemplate = None
         except (
-            jschon.JSONPointerError,
-            jschon.RelativeJSONPointerError,
+            jschon.exc.JSONPointerError,
             InvalidJsonPtrTemplateError,
         ) as e:
             raise InvalidRelJsonPtrTemplateError(
@@ -231,7 +234,7 @@ class RelJsonPtrTemplate:
     def evaluate(self, instance, *, require_match=False):
         try:
             base = self._relptr.evaluate(instance)
-        except jschon.RelativeJSONPointerError as e:
+        except jschon.exc.JSONPointerError as e:
             raise RelJsonPtrTemplateEvaluationError(
                 f"Could not evaluate origin adjustment of {self._template}",
             ) from e

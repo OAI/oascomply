@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from functools import cached_property
 import logging
-from typing import overload
+from typing import overload, Iterable
 import urllib
 
 import rfc3987
@@ -162,7 +164,15 @@ class JsonPtr(jschon.JSONPointer):
         return super().__hash__()
 
     @overload
-    def __truediv__(self, suffix: RelJsonPtr):
+    def __truediv__(self, suffix: str) -> JsonPtr:
+        ...
+
+    @overload
+    def __truediv__(self, suffix: Iterable[str]) -> JsonPtr:
+        ...
+
+    @overload
+    def __truediv__(self, suffix: RelJsonPtr) -> JsonPtr:
         ...
 
     def __truediv__(self, suffix):
