@@ -2,36 +2,56 @@ from __future__ import annotations
 
 from functools import cached_property
 import logging
-from typing import overload, Iterable
+from typing import overload, Iterable, Union
 import urllib
 
 import rfc3987
 import jschon
 
 __all__ = [
-    'JsonPtr', 'RelJsonPtr',
-    'Iri', 'IriReference', 'Uri', 'UriReference',
-    'IriWithJsonPtr', 'IriReferenceWithJsonPtr',
-    'UriWithJsonPtr', 'UriReferenceWithJsonPtr',
+    'JsonPtr',
+    'RelJsonPtr',
+    'Iri',
+    'IriReference',
+    'Uri',
+    'UriReference',
+    'IriWithJsonPtr',
+    'IriReferenceWithJsonPtr',
+    'UriWithJsonPtr',
+    'UriReferenceWithJsonPtr',
+    'URIString',
+    'URIReferenceString',
+    'AnyURI',
+    'AnyURIReference',
+    'AnyURIManager',
 ]
 
 logger = logging.getLogger(__name__)
 
-class ResourceIdentifier:
+
+URIString = str
+URIReferenceString = str
+AnyURI = Union[URIString, jschon.URI, 'Iri']
+AnyURIRef = Union[URIString, jschon.URI, 'IriReference']
+
+
+class ResourceIdentifier(jschon.URI):
     """Abstract base class for RFC 3986/7 resource identifiers"""
     def __init__(self, identifier):
         # cast to str to support ResourceIdentifier identifier values
-        self._parsed = rfc3987.parse(str(identifier), rule=self._rule)
+        try:
+            self._parsed = rfc3987.parse(str(identifier), rule=self._rule)
+        except ValueError as e:
+            raise self._uri_exc(str(e)) from e
 
         # keep file:/ vs file:/// renderings consistent
-        # TODO: This uses file:/// as more familiar, but would it
-        #       be better to use file:/ as more correct per RFC 8089?
-        #       Older code might not like file:/ so use file:/// for now.
+        # TODO: Using file:/, but file:/// is more familiar?
+        #       jschon.URI seems to like file:/ ?
         if (
             self.scheme == 'file' and
-            self.authority is None
+            self.authority == ''
         ):
-            self._parsed['authority'] = ''
+            self._parsed['authority'] = None
             self._parsed = rfc3987.parse(rfc3987.compose(**self._parsed))
 
     def __eq__(self, other):
@@ -51,7 +71,15 @@ class ResourceIdentifier:
         return f"{type(self).__name__}({self._parsed})"
 
     def __hash__(self):
-        return hash(str(self))
+        # This is for compatibility with jschon.URI
+        # TODO: Ensure that we don't need strict compatibility as it is fragile.
+        return hash(tuple(
+            self.scheme,
+            self.authority,
+            self.path,
+            self.query,
+            self.fragment,
+        ))
 
     @cached_property
     def scheme(self):
@@ -73,14 +101,20 @@ class ResourceIdentifier:
     def fragment(self):
         return self._parsed['fragment']
 
+    def is_absolute(self):
+        return self.scheme is not None and self.fragment is None
+
+    def has_absolute_base(self):
+        return self.scheme is not None
+
     def to_absolute(self):
         if not self.scheme:
             abstype = self._rule[:4]
-            raise ValueError(
+            raise self._uri_exc(
                 'Cannot convert relative {abstype}-reference to absolute; '
                 'call resolve() with a base {bastype} instead',
             )
-        return self if self.fragment is None else self.copy_with(fragment=None)
+        return self if self.fragment is None else self.copy(fragment=None)
 
     def resolve(self, base, return_parts=False):
         result = rfc3987.resolve(
@@ -90,7 +124,7 @@ class ResourceIdentifier:
         )
         return result if return_parts else type(self)(result)
 
-    def copy_with(
+    def copy(
         self,
         cls=None,
         *,
@@ -100,6 +134,18 @@ class ResourceIdentifier:
         query=True,
         fragment=True,
     ):
+        # TODO: revisit jschon.URI compatibility hack
+        if scheme is False:
+            scheme = None
+        if authority is False:
+            authority = None
+        if path in (False, None):
+            raise ValueError('Cannot delete path!')
+        if query is False:
+            query = None
+        if fragment is False:
+            fragment = None
+
         if cls is None:
             cls = type(self)
         return cls(
@@ -111,6 +157,23 @@ class ResourceIdentifier:
                 fragment=self._parsed['fragment'] if fragment is True else fragment,
             ),
         )
+
+    def validate(
+        self,
+        **kwargs,
+        # require_scheme: bool = False,
+        # require_normalized: bool = False,
+        # allow_fragment: bool = True,
+        # allow_non_empty_fragment: bool = True,
+    ) -> None:
+        # This is for jschon.uri.URI compatibility and not wanting
+        # to re-implement it in rfc3987 package terms.  It is somewhat
+        # redundant given the class hierarchy here, but it works for now.
+        # TODO: better.
+        if not hasattr(self, '_uriref'):
+            import rfc3986
+            self._uriref = rfc3986.uri_reference(str(self))
+        super().validate(**kwargs)
 
 
 class IriReference(ResourceIdentifier):
@@ -134,35 +197,10 @@ class Uri(Iri, UriReference):
 
 
 class RelJsonPtr(jschon.RelativeJSONPointer):
-    def __eq__(self, other):
-        # TODO: See similar note on ResourceIdentifier.str
-        #       Doing this allows x.fragment to be equal
-        #       for normal vs WithJsonPtr classes.  Is that
-        #       ideal?  Should it be handled another way?
-        return str(self) == str(other)
-
-    def __repr__(self):
-        return f"RelJsonPtr({str(self)!r})"
+    pass
 
 
 class JsonPtr(jschon.JSONPointer):
-    @classmethod
-    def parse_uri_fragment(cls, value):
-        return JsonPtr(urllib.parse.unquote(value))
-
-    def __eq__(self, other):
-        # TODO: See similar note on ResourceIdentifier.str
-        #       Doing this allows x.fragment to be equal
-        #       for normal vs WithJsonPtr classes.  Is that
-        #       ideal?  Should it be handled another way?
-        return str(self) == str(other)
-
-    def __repr__(self):
-        return f"JsonPtr({str(self)!r})"
-
-    def __hash__(self):
-        return super().__hash__()
-
     @overload
     def __truediv__(self, suffix: str) -> JsonPtr:
         ...
@@ -208,12 +246,6 @@ class JsonPtr(jschon.JSONPointer):
 
         return JsonPtr(str(super().__truediv__(suffix)))
 
-    def __getitem__(self, index):
-        if isinstance(index, int):
-            return self._keys[index]
-        if isinstance(index, slice):
-            return JsonPtr(str(super().__getitem__(index)))
-
 
 # TODO: Would it be better to have this independent of IriReference
 #       due to the different type of the fragment property?
@@ -222,26 +254,12 @@ class IriReferenceWithJsonPtr(IriReference):
     def __init__(self, identifier):
         super().__init__(identifier)
 
-    def __repr__(self):
-        return f"{type(self).__name__}({self._parsed}, {self.fragment!r})"
-
     @cached_property
-    def fragment(self):
+    def fragment_ptr(self):
         return (
             None if self._parsed['fragment'] is None
             else JsonPtr.parse_uri_fragment(self._parsed['fragment'])
         )
-
-    def copy_with(
-        self,
-        cls=None,
-        *,
-        fragment=True,
-        **kwargs,
-    ):
-        if isinstance(fragment, JsonPtr):
-            fragment = fragment.uri_fragment()
-        return super().copy_with(cls, fragment=fragment, **kwargs)
 
 
 class IriWithJsonPtr(IriReferenceWithJsonPtr, Iri):

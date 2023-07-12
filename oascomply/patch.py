@@ -13,7 +13,7 @@ from jschon import JSONSchema
 from jschon.vocabulary import Metaschema
 from jschon.jsonpatch import JSONPatch
 
-from oascomply import schema_catalog
+from oascomply import catalog
 
 
 REPO_ROOT = (Path(__file__).parent / '..' ).resolve() 
@@ -103,7 +103,7 @@ def validate_schema(schema_data: Union[Mapping, bool], *metaschema_data: Sequenc
 
     :param schema_data: The parsed schema data structure
     :param metaschema_data: Parsed metaschema data; this is only needed if
-        :attr:`oascomply.schema_catalog` has not been or cannot be configured
+        :attr:`oascomply.catalog` has not been or cannot be configured
         to load the metaschema in ``"$schema"`` and any additional metaschemas
         that it references automatically; note that if metaschema A references
         metaschema B, then B *must* appear before A in the list
@@ -116,9 +116,9 @@ def validate_schema(schema_data: Union[Mapping, bool], *metaschema_data: Sequenc
     # Constructing the Metaschema instances registers them
     # with the catalog, so we do not need to save the instances
     for md in metaschema_data:
-        Metaschema(schema_catalog, md)
+        Metaschema(catalog, md)
 
-    schema = JSONSchema(schema_data, catalog=schema_catalog)
+    schema = JSONSchema(schema_data, catalog=catalog)
     result = schema.validate()
 
     if not result.valid:

@@ -15,12 +15,14 @@ import toml
 import dom_toml
 import yaml
 
+import oascomply
 import oascomply.resourceid as rid
 from oascomply.ptrtemplates import (
     RelJsonPtrTemplate,
     RelJsonPtrTemplateError,
 )
 from oascomply.oas30dialect import OAS30_DIALECT_METASCHEMA
+from oascomply.oasjson import OASJSON, OASJSONSchema
 
 __all__ = [
     'OasGraph',
@@ -359,8 +361,8 @@ class OasGraph:
                 child_obj = result.data
                 child_path = rid.JsonPtr(child_obj.path)
                 iu = location.instance_uri
-                child_uri = rdflib.URIRef(str(iu.copy_with(
-                    fragment=child_path,
+                child_uri = rdflib.URIRef(str(iu.copy(
+                    fragment=child_path.uri_fragment(),
                 )))
                 self._g.add((
                     parent_uri,
@@ -468,8 +470,10 @@ class OasGraph:
                 data,
             ):
                 ref_keyword = template_result.pointer.path[-1]
-                ref_source_uri = location.instance_uri.copy_with(
-                    fragment=rid.JsonPtr(template_result.data.path),
+                ref_source_uri = location.instance_uri.copy(
+                    fragment=rid.JsonPtr(
+                        template_result.data.path,
+                    ).uri_fragment(),
                 )
                 ref_uri_ref = rid.UriReference(template_result.data.value)
                 ref_target_uri = ref_uri_ref.resolve(location.instance_uri)
@@ -566,22 +570,24 @@ class OasGraph:
         else:
             schema_data = [parent_obj]
 
+        # TODO: Access OAS dialect metaschema through OASJSON document instance
         m_uri = jschon.URI(OAS30_DIALECT_METASCHEMA)
         for sd in schema_data:
-            if isinstance(sd, jschon.JSONSchema):
+            if isinstance(sd, OASJSONSchema):
                 schemas.append(sd)
+            elif isinstance(sd, OASJSON):
+                schemas.append(
+                    oascomply.catalog.get_schema(sd.uri, metaschema_uri=m_uri),
+                )
+                # raise ValueError(
+                #     f'Got non-schema where schema expected: <{sd.uri}> '
+                #     f'of type {type(sd).__name__}',
+                # )
             else:
-                schemas.append(jschon.JSONSchema(
-                    sd.value,
-                    uri=jschon.URI(
-                        str(location.instance_resource_uri.copy_with(
-                            fragment=sd.path.uri_fragment(),
-                        )),
-                    ),
-                    metaschema_uri=m_uri,
-                    catalog='oascomply',
-                    cacheid=document.oasversion,
-                ))
+                raise ValueError(
+                    f"Unknown document type '{type(sd).__name__}' "
+                    f"for resource <{sd.uri}>",
+                )
 
         # TODO: Handle encoding objects
         if 'encodings' in annotation.value and len(list(
@@ -612,7 +618,7 @@ class OasGraph:
                     rdflib.Literal(str(example), datatype=RDF.JSON),
                 ))
                 for schema in schemas:
-                    ex_uri = location.instance_resource_uri.copy_with(
+                    ex_uri = location.instance_resource_uri.copy(
                         fragment=result.pointer.path.uri_fragment(),
                     )
                     logger.info(
@@ -687,7 +693,7 @@ class OasGraph:
             core_type = 'Parameter'
 
         if core_type == 'Reference':
-            path = rid.IriWithJsonPtr(node).fragment
+            path = rid.IriWithJsonPtr(node).fragment_ptr
             if len(path) == 3 and path[0] == 'components':
                 core_type = path[1].title()
                 if core_type == 'Requestbodies':

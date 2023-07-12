@@ -121,14 +121,14 @@ class Location:
 
     @cached_property
     def instance_resource_uri(self) -> rid.Iri:
-        return self._get_instance_base_uri(self._given_base).copy_with(
+        return self._get_instance_base_uri(self._given_base).copy(
             rid.IriWithJsonPtr
         )
 
     @cached_property
     def instance_uri(self) -> rid.Iri:
-        return self.instance_resource_uri.copy_with(
-            fragment=self.instance_ptr
+        return self.instance_resource_uri.copy(
+            fragment=self.instance_ptr.uri_fragment(),
         )
 
     @cached_property
@@ -146,7 +146,7 @@ class Location:
     @cached_property
     def schema_uri(self) -> rid.Iri:
         s_uri = rid.IriWithJsonPtr(self._unit['absoluteKeywordLocation'])
-        return s_uri.copy_with(fragment=s_uri.fragment[:-1])
+        return s_uri.copy(fragment=s_uri.fragment_ptr[:-1].uri_fragment())
 
 
 class SchemaParser:

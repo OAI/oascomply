@@ -17,17 +17,15 @@ import jschon
 import rdflib
 from rdflib.namespace import RDF
 
-from oascomply import schema_catalog
+import oascomply
 from oascomply.oasgraph import (
     OasGraph, OasGraphResult, OUTPUT_FORMATS_LINE, OUTPUT_FORMATS_STRUCTURED,
 )
 from oascomply.schemaparse import (
     Annotation, SchemaParser, JsonSchemaParseError,
 )
-from oascomply.oasjson import (
-    OasJson, OasJsonTypeError, OasJsonRefSuffixError,
-    OasJsonUnresolvableRefError,
-    _json_loadf, _yaml_loadf,
+from oascomply.oassource import (
+    DirectMapSource, FileMultiSuffixSource, HttpMultiSuffixSource,
 )
 from oascomply.oas30dialect import OAS30_DIALECT_METASCHEMA
 import oascomply.resourceid as rid
@@ -106,7 +104,7 @@ def _add_strip_suffixes_option(parser):
         '-x',
         '--strip-suffixes',
         nargs='*',
-        default=('.json', '.yaml', '.yml'),
+        default=('.json', '.yaml', '.yml', ''),  # TODO: not sure about ''
         help="For documents loaded with -f or -u without an explict URI "
             "assigned on the command line, assign a URI by stripping any "
             "of the given suffixes from the document's URL; passing this "
@@ -118,6 +116,19 @@ def _add_strip_suffixes_option(parser):
 
 # TODO: URI vs IRI confusion... again...
 class ThingToUri:
+    """
+    Helper class for mapping URIs to URLs and back.
+
+    In addition to being more convenient than a tuple or dict, this class
+    hierarchy handles calculating URIs from things based on various factors.
+
+    :param values: A string or sequence of strings as in the
+        :class:`argparse.Action` interface
+    :param strip_suffixes: The suffixes, if any, to strip when determining
+        a URI from the thing
+    :param uri_is_prefix: Indicates that the URI will be used as a prefix,
+        which currently requires it to have a path ending in "/".
+    """
     def __init__(
         self,
         values: Union[str, Sequence[str]],
@@ -125,7 +136,7 @@ class ThingToUri:
         uri_is_prefix: bool = False,
     ) -> None:
         logger.debug(
-            f'Parsing ThingToUri option with argument {values!r}, '
+            f'Parsing location+uri option with argument {values!r}, '
             f'stripping suffixes: {strip_suffixes}',
         )
         try:
@@ -138,7 +149,7 @@ class ThingToUri:
             self._to_strip = strip_suffixes
             self._uri_is_prefix = uri_is_prefix
 
-            thing = self.set_thing(values[0])
+            thing = self._set_thing(values[0])
             if len(values) == 2:
                 iri_str = values[1]
                 logger.debug(
@@ -165,8 +176,10 @@ class ThingToUri:
                     "a query or fragment",
                 )
 
+            logger.info(str(self))
+
         except Exception:
-            # argparse suppresses any exceptions that are raised
+            # argparse suppresses any exceptions that are raised, so log them
             import traceback
             from io import StringIO
 
@@ -179,17 +192,26 @@ class ThingToUri:
     def __repr__(self):
         return f'{self.__class__.__name__}({self._values!r})'
 
+    @property
+    def thing(self):
+        """
+        Generic thing accessor; subclasses should offer a more specific one.
+
+        See non-public :meth:`_set_thing` for modifications.
+        """
+        return self.thing
+
     def __str__(self):
         return f'(thing: {self._values[0]}, uri: <{self.uri}>)'
 
     def strip_suffixes(self, thing: Any) -> str:
         thing_string = str(thing)
         for suffix in self._to_strip:
-            if thing_string.ends_with(suffix):
-                return thing_string[:len(suffix)]
+            if thing_string.endswith(suffix):
+                return thing_string[:-len(suffix)]
         return thing_string
 
-    def set_thing(self, thing_str) -> Any:
+    def _set_thing(self, thing_str) -> Any:
         self.thing = thing_str
         return thing_str
 
@@ -218,10 +240,12 @@ class ThingToUri:
 
 
 class PathToUri(ThingToUri):
+    """Local filesystem path to URI utility class."""
+
     def __str__(self):
         return f'(path: {self.path}, uri: <{self.uri}>)'
 
-    def set_thing(self, thing_str: str) -> None:
+    def _set_thing(self, thing_str: str) -> None:
         self.path = Path(thing_str).resolve()
         if self._uri_is_prefix and not self.path.is_dir():
             raise ValueError(
@@ -235,13 +259,40 @@ class PathToUri(ThingToUri):
         # doesn't care what suffix is removed, so we couldn't use it anyway
         return Path(stripped_thing_str).resolve().as_uri()
 
+    @property
+    def path(self) -> Path:
+        """Accessor for ``path``, the "thing" of this ThingToUri subclass."""
+        return self._path
+
+    @path.setter
+    def path(self, p: Path) -> None:
+        self._path = p
+
+    @property
+    def thing(self) -> Any:
+        return self.path
+
 
 class UrlToUri(ThingToUri):
+    """URL to URI utility class; does not check URL scheme or usability."""
     def __str__(self):
         return f'(url: {self.url}, uri: <{self.uri}>)'
 
-    def set_thing(self, thing_str: str) -> None:
+    def _set_thing(self, thing_str: str) -> None:
         self.set_iri(thing_str, attrname='url')
+        return self.url
+
+    @property
+    def url(self) -> rid.Iri:
+        """Accessor for ``url``, the "thing" of this ThingToUri subclass."""
+        return self._url
+
+    @url.setter
+    def url(self, u: rid.Iri) -> None:
+        self._url = u
+
+    @property
+    def thing(self):
         return self.url
 
 
@@ -306,15 +357,10 @@ class ActionAppendThingToUri(argparse.Action):
         super().__init__(option_strings, dest, nargs=nargs, **kwargs)
 
     def __call__(self, parser, namespace, values, option_string=None):
-        if (
-            not hasattr(namespace, self.dest) or
-            getattr(namespace, self.dest) is None
-        ):
-            logger.debug('Initializing arg attr for {self.dest}')
-            setattr(namespace, self.dest, [])
-
         arg_list = getattr(namespace, self.dest)
-        arg_list.append(self._arg_cls(values))
+        arg_list.append(
+            self._arg_cls(values, strip_suffixes=self._strip_suffixes),
+        )
 
 
 class ApiDescription:
@@ -340,21 +386,10 @@ class ApiDescription:
     def __init__(
         self,
         document: Any,
-        uri: str,
         *,
-        path: Optional[Path] = None,
-        url: Optional[str] = None,
-        sourcemap: Optional[Mapping] = None,
         test_mode: bool = False,
     ) -> None:
-        assert url is None, "Remote URLs not yet supported"
-        if uri is not None:
-            # TODO: URI vs IRI terminology
-            uri = rid.Iri(uri)
-            assert uri.fragment is None, \
-                "API description document URI cannot have a fragment"
-        self._primary_uri = uri
-
+        self._primary_resource = document
         self._test_mode = test_mode
 
         if 'openapi' not in document:
@@ -362,116 +397,32 @@ class ApiDescription:
                 "Initial API description must include `openapi` field!"
                 f"{path} <{uri}>"
             )
-        self._version = document['openapi']
-        if not self._version.startswith('3.0.'):
-            if self._version.startswith('3.1.'):
+        if document.oasversion != '3.0':
+            if document.oasversion == '3.1':
                 raise NotImplementedError("OAS v3.1 support stil in progress")
             raise ValueError(f"OAS v{self._version} not supported!")
 
-        if uri.path and '/' in uri.path and not uri.path.endswith('/'):
+        if (
+            document.uri.path and '/' in document.uri.path and
+            not document.uri.path.endswith('/')
+        ):
             # RDF serialization works better with a directory
             # as a base IRI, particularly for multi-document
             # API descriptions within a single directory.
             # Otherwise it fails to notice many opportunities to
             # shorten IRI-references.
-            self._base_uri = uri.copy_with(
-                path=uri.path[:uri.path.rindex('/') + 1]
+            self._base_uri = document.uri.copy(
+                path=document.uri.path[:document.uri.path.rindex('/') + 1]
             )
         else:
-            self._base_uri = uri
+            self._base_uri = document.uri
 
         self._g = OasGraph(
-            self._version[:self._version.rindex('.')],
+            document.oasversion,
             test_mode=test_mode,
         )
 
-        self._contents = {}
-        self._sources = {}
         self._validated = []
-
-        self.add_resource(
-            document=document,
-            uri=self._primary_uri,
-            path=path,
-            sourcemap=sourcemap,
-        )
-
-    def add_resource(
-        self,
-        document: Any,
-        uri: Union[str, rid.Iri],
-        *,
-        path: Optional[Path] = None,
-        url: Optional[str] = None,
-        sourcemap: Optional[Mapping] = None,
-        oastype: Optional[str] = None,
-    ) -> None:
-        """
-        Add a resource as part of the API description, and set its URI
-        for use in resolving references and in the parser's output.
-
-        Note that at most one of ``path`` or ``url`` can be passed.
-
-        :param document: The parsed OAS document data
-        :param uri: The URI of the OAS document
-        :param path: The local filesystem path of the OAS document
-        :param url: The URL from which the OAS document was retrieved
-        :param sourcemap: Structure mapping JSON Pointers to lines and columns
-        :param oastype: The semantic type of the document, typically
-            used to indicate that a document is a stand-alone JSON Schema
-            and must be parsed as such
-        """
-        assert url is None, "Remote URLs not yet supported"
-        assert path is not None, "Must provide path for local document"
-
-        url = rid.Iri(path.resolve().as_uri())
-        if not isinstance(uri, rid.Iri):
-            # TODO: URI vs IRI usage
-            uri = rid.Iri(uri)
-        assert uri.fragment is None, "Only complete documenets can be added."
-
-        logger.info(f'Adding document "{path}" ...')
-        logger.info(f'...URL <{url}>')
-        logger.info(f'...URI <{uri}>')
-        if oastype and oastype == 'Schema':
-            logger.info(f'...instantiating JSON Schema <{uri}>')
-            self._contents[uri] = jschon.JSONSchema(
-                document,
-                uri=jschon.URI(str(uri)),
-                metaschema_uri=jschon.URI(OAS30_DIALECT_METASCHEMA),
-                catalog='oascomply',
-            )
-            # assert isinstance(
-        else:
-            # The jschon.JSON class keeps track of JSON Pointer values for
-            # every data entry, as well as providing parent links and type
-            # information.  The OasJson subclass also automatically
-            # instantiates jschon.JSONSchema classes for Schema Objects
-            # and (in 3.0) for Reference Objects occupying the place of
-            # Schema Objects.
-            logger.info(f'...instantiating OAS Document <{uri}>')
-            self._contents[uri] = OasJson(
-                document,
-                uri=uri,
-                url=url,
-                oasversion=self._version[:3],
-            )
-        if sourcemap:
-            self._sources[uri] = sourcemap
-        self._g.add_resource(url, uri, filename=path.name)
-
-    def get_resource(self, uri: Union[str, rid.Iri], cacheid: str = 'default') -> Optional[Any]:
-        logger.debug(f"Retrieving '{uri}' from cache '{cacheid}'")
-        # TODO: URI library confusion
-        return schema_catalog.get_resource(jschon.URI(str(uri)), cacheid=cacheid)
-
-    def get_sourcemap(self, uri: Union[str, rid.Iri]):
-        if not isinstance(uri, rid.IriWithJsonPtr):
-            # TODO: IRI vs URI
-            # TODO: Non-JSON Pointer fragments in 3.1
-            uri = rid.IriWithJsonPtr(uri)
-
-        return self._sources.get(uri.to_absolute())
 
     def validate(
         self,
@@ -481,21 +432,23 @@ class ApiDescription:
     ):
         sp = SchemaParser.get_parser({}, annotations=ANNOT_ORDER)
         errors = []
+
+        # TODO: Probably don't need to track resource_uri separately
         if resource_uri is None:
             assert oastype == 'OpenAPI'
-            resource_uri = self._primary_uri
+            resource_uri = self._primary_resource.uri
         elif isinstance(resource_uri, str):
             # TODO: IRI vs URI
             # TODO: Non-JSON Pointer fragments in 3.1
             resource_uri = rid.IriWithJsonPtr(resource_uri)
 
-        data = self.get_resource(resource_uri, cacheid='3.0')
-        assert data is not None
-        document = data.document_root
-        sourcemap = self.get_sourcemap(resource_uri)
+        resource = oascomply.catalog.get_resource(resource_uri, cacheid='3.0')
+        assert resource is not None
+        document = resource.document_root
+        sourcemap = resource.sourcemap
 
         try:
-            output = sp.parse(data, oastype)
+            output = sp.parse(resource, oastype)
         except JsonSchemaParseError as e:
             logger.critical(
                 f'JSON Schema validation of {resource_uri} failed!\n\n' +
@@ -512,7 +465,7 @@ class ApiDescription:
             # Using a try/except here can result in confusion if something
             # else produces an AttributeError, so use hasattr()
             if hasattr(self._g, method):
-                by_method[method].append((ann, document, data, sourcemap))
+                by_method[method].append((ann, document, resource, sourcemap))
             else:
                 raise ValueError(f"Unexpected annotation {ann.keyword!r}")
         self._validated.append(resource_uri)
@@ -612,83 +565,6 @@ class ApiDescription:
         self._g.serialize(*args, destination=destination, **new_kwargs)
 
     @classmethod
-    def _process_file_arg(
-        cls,
-        filearg,
-        prefixes,
-        create_source_map,
-        strip_suffix,
-    ):
-        path = filearg.path
-        full_path = path.resolve()
-        oastype = None
-        uri = None
-        logger.debug(
-            f'Processing {full_path!r}, strip_suffix={strip_suffix}...'
-        )
-        if filearg.uri is not None:
-            try:
-                uri = rid.IriWithJsonPtr(str(filearg.uri))
-                logger.debug(f'...assigning URI <{uri}> from 2nd arg')
-            except ValueError:
-                assert False, 'should not be using TYPE in URI slot'
-                # TODO: Verify OAS type
-                oastype = filearg.uri
-                logger.debug(f'...assigning OAS type "{oastype}" from 2nd arg')
-
-        for p in prefixes:
-            try:
-                rel = full_path.relative_to(p.path)
-                uri = rid.Iri(str(p.uri) + str(rel.with_suffix('')))
-                logger.debug(
-                    f'...assigning URI <{uri}> using prefix <{p.uri}>',
-                )
-            except ValueError:
-                pass
-
-        filetype = path.suffix[1:] or 'yaml'
-        if filetype == 'yml':
-            filetype = 'yaml'
-        logger.debug(f'...determined filetype={filetype}')
-
-        if uri is None:
-            if strip_suffix:
-                uri = rid.Iri(full_path.with_suffix('').as_uri())
-            else:
-                uri = rid.Iri(full_path.as_uri())
-            logger.debug(
-                f'...assigning URI <{uri}> from URL <{full_path.as_uri()}>',
-            )
-
-        if filetype == 'json':
-            data, url, sourcemap = _json_loadf(full_path)
-        elif filetype == 'yaml':
-            data, url, sourcemap = _yaml_loadf(full_path)
-        else:
-            raise ValueError(f"Unsupported file type {filetype!r}")
-
-        return {
-            'data': data,
-            'sourcemap': sourcemap,
-            'path': path,
-            'uri': uri,
-            'oastype': oastype,
-        }
-
-    @classmethod
-    def _url_for(cls, uri):
-        if uri.scheme != 'file':
-            return None
-        path = Path(uri.path)
-        if path.exists():
-            return uri
-        for suffix in ('.json', '.yaml', '.ym'):
-            ps = path.with_suffix(suffix)
-            if ps.exists():
-                return rid.Iri(ps.as_uri())
-        return None
-
-    @classmethod
     def load(cls):
         verbosity_parser = argparse.ArgumentParser(add_help=False)
         _add_verbose_option(verbosity_parser)
@@ -697,10 +573,8 @@ class ApiDescription:
         if v_args.verbose:
             oascomply_logger = logging.getLogger('oascomply')
             if v_args.verbose == 1:
-                # oascomply_logger.setLevel(logging.INFO)
                 logging.basicConfig(level=logging.INFO)
             else:
-                # oascomply_logger.setLevel(logging.DEBUG)
                 logging.basicConfig(level=logging.DEBUG)
         else:
             logging.basicConfig(level=logging.WARN)
@@ -739,6 +613,7 @@ class ApiDescription:
                 arg_cls=PathToUri,
                 strip_suffixes=ss_args.strip_suffixes,
             ),
+            default=[],
             dest='files',
             help="An APID document as a local file, optionally followed by "
                  "a URI to use for reference resolution in place of the "
@@ -753,6 +628,7 @@ class ApiDescription:
                 arg_cls=UrlToUri,
                 strip_suffixes=ss_args.strip_suffixes,
             ),
+            default=[],
             dest='urls',
             help="A URL for an APID document, optionally followed by a URI "
                  "to use for reference resolution; by default only 'http:' "
@@ -768,7 +644,8 @@ class ApiDescription:
             action=ActionAppendThingToUri.make_action(arg_cls=PathToUri),
             default=[],
             dest='directories',
-            help="Resolve references matching the URI prefix from the given " "directory; if no URI prefix is provided, use the 'file:' URL "
+            help="Resolve references matching the URI prefix from the given "
+                "directory; if no URI prefix is provided, use the 'file:' URL "
                 "corresponding to the directory as the prefix; this option "
                 "can be repeated; see also -D",
         )
@@ -778,7 +655,7 @@ class ApiDescription:
             nargs='+',
             action=ActionAppendThingToUri.make_action(arg_cls=UrlToUri),
             default=[],
-            dest='prefixes',
+            dest='url_prefixes',
             help="Resolve references the URI prefix by replacing it with "
                 "the given URL prefix, or directly from URLs matching the "
                 "URL prefix if no URI prefix is provided; this option can be "
@@ -861,8 +738,6 @@ class ApiDescription:
 
         args = parser.parse_args(remaining_args)
 
-        # TODO: Fix temporary hack
-        strip_suffix = not bool(args.strip_suffixes)
         logger.debug(f'Processed arguments:\n{args}')
 
         # Note that if -P or -D are actually passed with
@@ -872,7 +747,7 @@ class ApiDescription:
         for attr, opt, check in (
             ('initial_document', '-i', lambda arg: True),
             ('urls', '-u', lambda arg: True),
-            ('url_prefxies', '-p', lambda arg: True),
+            ('url_prefixes', '-p', lambda arg: True),
             ('dir_suffixes', '-D', lambda arg: arg == (
                 '.json', '.yaml', '.yml',
             )),
@@ -883,46 +758,47 @@ class ApiDescription:
             if hasattr(args, attr) and not check(getattr(args, attr)):
                 raise NotImplementedError(f'{opt} option not yet implemented!')
 
-        try:
-            # TODO: prefixes -> directories migration/split
-            prefixes = args.directories
-        except ValueError as e:
-            logger.error(str(e))
-            sys.exit(-1)
-
-        # Reverse sort so that the first matching prefix is the longest
-        # TODO: At some point I switched the tuple order, does this still work?
-        prefixes.sort(reverse=True)
-
-        resources = [cls._process_file_arg(
-            filearg,
-            prefixes,
-            args.number_lines is True,
-            strip_suffix,
-        ) for filearg in args.files]
-
-        candidates = list(filter(lambda r: 'openapi' in r['data'], resources))
-        if not candidates:
-            logger.error("No document contains an 'openapi' field!")
-            return -1
-        primary = candidates[0]
-
-        desc = ApiDescription(
-            primary['data'],
-            primary['uri'],
-            path=primary['path'],
-            sourcemap=primary['sourcemap'],
-            test_mode=args.test_mode,
-        )
-        for r in resources:
-            if r['uri'] != primary['uri']:
-                desc.add_resource(
-                    r['data'],
-                    r['uri'],
-                    path=r['path'],
-                    sourcemap=r['sourcemap'],
-                    oastype=r['oastype'],
+        for dir_to_uri in args.directories:
+            oascomply.catalog.add_uri_source(
+                dir_to_uri.uri,
+                FileMultiSuffixSource(
+                    str(dir_to_uri.path), # TODO: fix type mismatch
+                    suffixes=args.dir_suffixes,
                 )
+            )
+
+        for url_to_uri in args.url_prefixes:
+            oascomply.catalog.add_uri_source(
+                url_to_uri.uri,
+                HttpMultiSuffixSource(
+                    str(url_to_uri.url), # TODO: fix type mismatch
+                    suffixes=args.url_suffixes,
+                )
+            )
+
+        file_map = {
+            f_to_u.uri: f_to_u.path
+            for f_to_u in args.files
+        }
+        url_map = {
+            u_to_u.uri: u_to_u.path
+            for u_to_u in args.urls
+        }
+        oascomply.catalog.add_uri_source(
+            None,
+            MultiDirectMapSource(
+                sources=(
+                    FileDirectMapSource(file_map, suffixes=args.strip_suffixes),
+                    HttpDirectMapSource(url_map, suffixes=args.strip_suffixes),
+                ),
+            )
+        )
+
+        # TODO: Temporary hack, search lists properly
+        entry_resource = oascomply.catalog.get_resource(args.files[0].uri)
+        assert entry_resource['openapi'], "First file must contain 'openapi'"
+
+        desc = ApiDescription(entry_resource, test_mode=args.test_mode)
 
         errors = desc.validate(validate_examples=(args.examples == 'true'))
         errors.extend(desc.validate_graph())
