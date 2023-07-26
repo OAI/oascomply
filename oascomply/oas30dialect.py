@@ -13,7 +13,6 @@ from jschon.vocabulary import (
 )
 
 import rfc3339
-import rfc3987
 
 from oascomply.ptrtemplates import (
     JSON_POINTER_TEMPLATE, RELATIVE_JSON_POINTER_TEMPLATE,
@@ -231,26 +230,35 @@ def validate_relative_json_pointer(value: str) -> None:
 
 @format_validator('uri', instance_types=('string',))
 def validate_uri(value: str) -> None:
-    # parse() already raises a ValueError on error
-    rfc3987.parse(value, rule='URI')
-
+    try:
+        URI(value).validate(require_scheme=True)
+    except URIError as e:
+        raise ValueError(str(e)) from e
 
 @format_validator('uri-reference', instance_types=('string',))
 def validate_uri_reference(value: str) -> None:
-    # parse() already raises a ValueError on error
-    rfc3987.parse(value, rule='URI_reference')
+    try:
+        URI(value).validate(require_scheme=True)
+    except URIError as e:
+        raise ValueError(str(e)) from e
 
 
 @format_validator('iri', instance_types=('string',))
 def validate_iri(value: str) -> None:
-    # parse() already raises a ValueError on error
-    rfc3987.parse(value, rule='IRI')
+    try:
+        URI(value).validate(require_scheme=True)
+    except URIError as e:
+        # It may still be a valid IRI, we can't tell.
+        raise NotImplementedError('Full "iri" format support TBD')
 
 
 @format_validator('iri-reference', instance_types=('string',))
 def validate_iri_reference(value: str) -> None:
-    # parse() already raises a ValueError on error
-    rfc3987.parse(value, rule='IRI_reference')
+    try:
+        URI(value).validate()
+    except URIError as e:
+        # It may still be a valid IRI-reference, we can't tell.
+        raise NotImplementedError('Full "iri-reference" format support TBD')
 
 
 def initialize_oas30_dialect(catalog: Catalog):

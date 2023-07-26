@@ -15,7 +15,6 @@ from jschon.catalog import Catalog, Source, LocalSource, RemoteSource
 
 import yaml
 import rfc3339
-import rfc3987
 import json_source_map as jmap
 import yaml_source_map as ymap
 from yaml_source_map.errors import InvalidYamlError
