@@ -121,14 +121,14 @@ class Location:
 
     @cached_property
     def instance_resource_uri(self) -> rid.Iri:
-        return self._get_instance_base_uri(self._given_base).copy(
-            rid.IriWithJsonPtr
+        return rid.IriWithJsonPtr(
+            str(self._get_instance_base_uri(self._given_base)),
         )
 
     @cached_property
     def instance_uri(self) -> rid.Iri:
         return self.instance_resource_uri.copy(
-            fragment=self.instance_ptr.uri_fragment(),
+           fragment=self.instance_ptr.uri_fragment(),
         )
 
     @cached_property
@@ -219,7 +219,7 @@ class JschonSchemaParser(SchemaParser):
         # logger.error('\n\nSCHEMA:\n' + str(schema.uri))
         result = schema.evaluate(data)
         if not result.valid:
-            raise JsonSchemaParseError(result.output('detailed'))
+            raise JsonSchemaParseError(result.output('basic'))
 
         return result.output(
             output_format,

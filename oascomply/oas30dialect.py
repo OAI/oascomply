@@ -3,7 +3,7 @@ import logging
 from collections import defaultdict
 from typing import Union
 
-from jschon import JSON, JSONCompatible, JSONSchema, Result, URI
+from jschon import JSON, JSONCompatible, JSONSchema, Result, URI, URIError
 from jschon.catalog import Catalog, CatalogError
 from jschon.jsonpointer import RelativeJSONPointer
 from jschon.vocabulary.format import format_validator
@@ -238,7 +238,7 @@ def validate_uri(value: str) -> None:
 @format_validator('uri-reference', instance_types=('string',))
 def validate_uri_reference(value: str) -> None:
     try:
-        URI(value).validate(require_scheme=True)
+        URI(value).validate()
     except URIError as e:
         raise ValueError(str(e)) from e
 

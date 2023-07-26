@@ -97,27 +97,34 @@ class ContentParser:
     SUPPORTED_SUFFIXES = ('.json', '.yaml', '.yml')
     """Suffixes for which we have parsers, when a media type is unavailable"""
 
-    @classmethod
-    def get_parser(cls, content_info):
+    def get_parser(self, content_info):
         """Map of file suffixes and media types to parsing functions."""
         return {
-            None: cls._unknown_parse,
-            'application/json': cls._json_parse,
-            'application/openapi+json': cls._json_parse,
-            'application/schema+json': cls._json_parse,
-            'application/*+json': cls._json_parse,
-            'application/yaml': cls._yaml_parse,
-            'application/openapi+yaml': cls._yaml_parse,
-            'application/schema+yaml': cls._yaml_parse,
-            'application/*+yaml': cls._yaml_parse,
-            '': cls._unknown_parse,
-            '.json': cls._json_parse,
-            '.yaml': cls._yaml_parse,
-            '.yml': cls._yaml_parse,
+            None: self._unknown_parse,
+            'application/json': self._json_parse,
+            'application/openapi+json': self._json_parse,
+            'application/schema+json': self._json_parse,
+            'application/*+json': self._json_parse,
+            'application/yaml': self._yaml_parse,
+            'application/openapi+yaml': self._yaml_parse,
+            'application/schema+yaml': self._yaml_parse,
+            'application/*+yaml': self._yaml_parse,
+            '': self._unknown_parse,
+            '.json': self._json_parse,
+            '.yaml': self._yaml_parse,
+            '.yml': self._yaml_parse,
         }[content_info]
 
     def __init__(self, loaders: Tuple[ResourceLoader]):
         self._loaders = loaders
+
+    def parse(
+        self,
+        full_path: str,
+        content_info: str,
+        create_source_map: bool = False,
+    ) -> ParsedContent:
+        return self.get_parser(content_info)(full_path, create_source_map)
 
     def _json_parse(
         self,
@@ -139,7 +146,6 @@ class ContentParser:
         except json.JSONDecodeError as e:
             raise CatalogError(str(e)) from e
 
-    @classmethod
     def _yaml_parse(
         self,
         full_path: str,
@@ -165,11 +171,10 @@ class ContentParser:
                     logger.warn(
                         f"Unable to calculate source map for {path}",
                     )
-            return ParsedContent(value=data, url=url, sourcemap=sourcemap)
+            return ParsedContent(value=data, url=loaded.url, sourcemap=sourcemap)
         except InvalidYamlError:
             raise CatalogError(str(e)) from e
 
-    @classmethod
     def _unknown_parse(
         self,
         full_path: str,
@@ -196,12 +201,11 @@ class ContentParser:
                     "Could not determine content type of '{full_path}'",
                 )
 
-    @classmethod
     def load(self, location: str) -> LoadedContent:
         errors = []
         for loader in self._loaders:
             try:
-                return loader.load(full_path, create_source_map)
+                return loader.load(location)
             except CatalogError as e:
                 errors.append(e)
 
@@ -215,7 +219,7 @@ class ContentParser:
         )
 
 
-class OASSource:
+class OASSource(Source):
     """
     Source that tracks loading information and uses modular parsers/loaders.
 
@@ -238,11 +242,16 @@ class OASSource:
 
     def __init__(
         self,
-        parser: ContentParser,
         **kwargs,
     ) -> None:
-        self._parser = parser
+        self._parser = ContentParser(self.get_loaders())
+        self._uri_url_map = {}
+        self._uri_sourcemap_map = {}
         super().__init__(**kwargs)
+
+    @classmethod
+    def get_loaders(cls) -> Tuple[ResourceLoader]:
+        raise NotImplementedError
 
     def set_uri_url_map(self, mapping: Mapping[URIString, URIString]):
         self._uri_url_map = mapping
@@ -255,7 +264,7 @@ class OASSource:
         relative_path: URIReferenceString,
         url: URIString,
     ) -> None:
-        uri = self._uri_prefix + relative_path
+        uri = str(self._uri_prefix) + relative_path
         logger.debug(f"Resolved URI <{uri}> via URL <{url}>")
         self._uri_url_map[uri] = url
 
@@ -264,7 +273,7 @@ class OASSource:
         relative_path: URIReferenceString,
         sourcemap: Optional[dict],
     ) -> None:
-        self._uri_sourcemap_map[self._uri_prefix + relative_path] = sourcemap
+        self._uri_sourcemap_map[str(self._uri_prefix) + relative_path] = sourcemap
 
     def get_url(self, uri: URIString) -> Mapping[URIString, URIString]:
         return self._uri_url_map
@@ -276,11 +285,11 @@ class OASSource:
         return self._uri_sourcemap_map
 
     @property
-    def base_uri(self) -> URIString:
+    def uri_prefix(self) -> URIString:
         """The base URI / URI prefix under which this source is registered."""
         return self._base_uri
 
-    def set_base_uri(self, base_uri: URIString) -> None:
+    def set_uri_prefix(self, base_uri: URIString) -> None:
         self._uri_prefix = '' if base_uri is None else base_uri
 
     def resolve_resource(
@@ -293,10 +302,10 @@ class OASSource:
         content = self.resolve_resource(relative_path)
         self.map_url(relative_path, content.url)
         self.map_sourcemap(relative_path, content.sourcemap)
-        return content.data
+        return content.value
 
 
-class MultiSuffixSource(OASSource, ContentParser):
+class MultiSuffixSource(OASSource):
     """
     Source that appends each of a list of suffixes before attempting to load.
 
@@ -314,7 +323,6 @@ class MultiSuffixSource(OASSource, ContentParser):
         self,
         prefix: str,
         *,
-        parser: ContentParser,
         suffixes: Sequence[Suffix] = ('', '.json', '.yaml'),
         **kwargs,
     ) -> None:
@@ -323,7 +331,7 @@ class MultiSuffixSource(OASSource, ContentParser):
         self._suffixes: Sequence[Suffix] = suffixes
         """The suffixes to search, in order."""
 
-        super().__init__(parser=parser, **kwargs)
+        super().__init__(**kwargs)
 
     @property
     def prefix(self) -> URIStringReference:
@@ -355,7 +363,7 @@ class MultiSuffixSource(OASSource, ContentParser):
         for suffix in self._suffixes:
             full_path = no_suffix_path + suffix
             try:
-                return self._parser.get_parser(suffix)(full_path)
+                return self._parser.parse(full_path, suffix)
             except KeyError as e:
                 logger.warning(
                     f'Unsupported suffix {suffix!r} while loading '
@@ -376,7 +384,7 @@ class FileMultiSuffixSource(MultiSuffixSource, FileLoader):
         return f'{resource_dir}/'
 
     @classmethod
-    def get_loaders(self) -> Sequence[ResourceLoader]:
+    def get_loaders(self) -> Tuple[ResourceLoader]:
         return (FileLoader,)
 
 
@@ -389,21 +397,20 @@ class HttpMultiSuffixSource(MultiSuffixSource, HttpLoader):
         return str(parsed_prefix)
 
     @classmethod
-    def get_loaders(self) -> Sequence[ResourceLoader]:
+    def get_loaders(self) -> Tuple[ResourceLoader]:
         return (HttpLoader,)
 
 
-class DirectMapSource(OASSource, ContentParser):
+class DirectMapSource(OASSource):
     """Source for loading URIs with known exact locations."""
     def __init__(
         self,
         location_map: Mapping[URIString, str],
         *,
-        parser: ContentParser,
         suffixes=(), # TODO: empty tuple not really right
         **kwargs,
     ) -> None:
-        super().__init__(parser=parser, **kwargs)
+        super().__init__(**kwargs)
         self._suffixes = suffixes
         self._map = location_map.copy()
 
@@ -411,17 +418,11 @@ class DirectMapSource(OASSource, ContentParser):
         self,
         relative_path: URIReferenceString,
     ) -> ParsedContent:
-        if (location := self._map.get(relative_path)) is None:
-            raise CatalogError(f'Requested unkown resource {relative_path!r}')
+        if (location := self._map.get(jschon.URI(relative_path))) is None:
+            raise CatalogError(f'Requested unknown resource {relative_path!r}')
 
-        for suffix in self._suffixes:
-            if str(location).endswith(suffix):
-                data, url, sourcemap = self.suffix_map()[suffix](location)
-                return data
-
-        raise CatalogError(f'Cannot determine format of {relative_path!r}')
-
+        return self._parser.parse(location, location.suffix)
 
     @classmethod
-    def get_loaders(self) -> Sequence[ResourceLoader]:
+    def get_loaders(self) -> Tuple[ResourceLoader]:
         return (FileLoader, HttpLoader)

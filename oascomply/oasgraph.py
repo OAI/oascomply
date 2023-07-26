@@ -9,6 +9,7 @@ from typing import Any, Optional
 import logging
 
 import jschon
+import jschon.exc
 import rdflib
 from rdflib.namespace import RDF, RDFS, XSD
 import toml
@@ -22,13 +23,19 @@ from oascomply.ptrtemplates import (
     RelJsonPtrTemplateError,
 )
 from oascomply.oas30dialect import OAS30_DIALECT_METASCHEMA
-from oascomply.oasjson import OASJSON, OASJSONSchema
+from oascomply.oasjson import OASJSON, OASJSONMixin, OASJSONSchema
 
 __all__ = [
     'OasGraph',
 ]
 
 logger = logging.getLogger(__name__)
+
+OAS31_INDEX: {
+    'Callback': '/$defs/callbacks-or-reference',
+    'Example': '/$defs/example-or-reference',
+}
+
 
 
 OUTPUT_FORMATS_LINE = frozenset({
@@ -382,7 +389,7 @@ class OasGraph:
                     )
             return OasGraphResult(errors=[], refTargets=[])
         except (
-            jschon.RelativeJSONPointerError,
+            jschon.exc.JSONPointerError,
             RelJsonPtrTemplateError,
         ) as e:
             # TODO: actual error handling
@@ -414,7 +421,7 @@ class OasGraph:
                 #       be subjects in triples.
             return OasGraphResult(errors=[], refTargets=[])
         except (
-            jschon.RelativeJSONPointerError,
+            jschon.exc.JSONPointerError,
             RelJsonPtrTemplateError,
         ) as e:
             # TODO: actual error handling
@@ -454,7 +461,7 @@ class OasGraph:
                 ))
             return OasGraphResult(errors=[], refTargets=[])
         except (
-            jschon.RelativeJSONPointerError,
+            jschon.exc.JSONPointerError,
             RelJsonPtrTemplateError,
         ) as e:
             # TODO: actual error handling
@@ -546,7 +553,7 @@ class OasGraph:
 
         except (
             ValueError,
-            jschon.RelativeJSONPointerError,
+            jschon.exc.JSONPointerError,
             RelJsonPtrTemplateError,
         ) as e:
             # TODO: Actual error handling
@@ -573,9 +580,11 @@ class OasGraph:
         # TODO: Access OAS dialect metaschema through OASJSON document instance
         m_uri = jschon.URI(OAS30_DIALECT_METASCHEMA)
         for sd in schema_data:
+            assert isinstance(sd, OASJSONMixin)
             if isinstance(sd, OASJSONSchema):
                 schemas.append(sd)
             elif isinstance(sd, OASJSON):
+                logger.error(f'URI AND M_URI: |{type(sd)}| <{sd.document_root.uri}> <{sd.uri}> <{m_uri}>')
                 schemas.append(
                     oascomply.catalog.get_schema(sd.uri, metaschema_uri=m_uri),
                 )
@@ -635,7 +644,7 @@ class OasGraph:
 
         except (
             jschon.CatalogError,
-            jschon.RelativeJSONPointerError,
+            jschon.exc.JSONPointerError,
             RelJsonPtrTemplateError,
         ) as e:
             # TODO: actual error handling

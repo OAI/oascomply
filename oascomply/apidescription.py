@@ -442,7 +442,8 @@ class ApiDescription:
             # TODO: Non-JSON Pointer fragments in 3.1
             resource_uri = rid.IriWithJsonPtr(resource_uri)
 
-        resource = oascomply.catalog.get_resource(resource_uri, cacheid='3.0')
+        # TODO: Don't hardcode 3.0
+        resource = oascomply.catalog.get_oas(resource_uri, '3.0')
         assert resource is not None
         document = resource.document_root
         sourcemap = resource.sourcemap
@@ -776,26 +777,25 @@ class ApiDescription:
                 )
             )
 
-        file_map = {
+        resource_map = {
             f_to_u.uri: f_to_u.path
             for f_to_u in args.files
         }
-        url_map = {
+        resource_map.update({
             u_to_u.uri: u_to_u.path
             for u_to_u in args.urls
-        }
+        })
         oascomply.catalog.add_uri_source(
             None,
-            MultiDirectMapSource(
-                sources=(
-                    FileDirectMapSource(file_map, suffixes=args.strip_suffixes),
-                    HttpDirectMapSource(url_map, suffixes=args.strip_suffixes),
-                ),
+            DirectMapSource(
+                resource_map,
+                suffixes=('.json', '.yaml', '.yml'),
             )
         )
 
         # TODO: Temporary hack, search lists properly
-        entry_resource = oascomply.catalog.get_resource(args.files[0].uri)
+        # TODO: Don't hardcode 3.0
+        entry_resource = oascomply.catalog.get_oas(args.files[0].uri, '3.0')
         assert entry_resource['openapi'], "First file must contain 'openapi'"
 
         desc = ApiDescription(entry_resource, test_mode=args.test_mode)

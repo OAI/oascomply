@@ -36,10 +36,9 @@ AnyURIRef = Union[URIString, jschon.URI, 'IriReference']
 
 class ResourceIdentifier(jschon.URI):
     """Abstract base class for RFC 3986/7 resource identifiers"""
-
     def to_absolute(self):
         if self.scheme is not None:
-            return self.copy(fragment == None)
+            return self.copy(fragment=None)
         else:
             raise ValueError(
                 'Cannot convert relative {abstype}-reference to absolute; '
