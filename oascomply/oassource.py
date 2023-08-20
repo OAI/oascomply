@@ -24,7 +24,7 @@ from oascomply.ptrtemplates import (
     JSON_POINTER_TEMPLATE, RELATIVE_JSON_POINTER_TEMPLATE,
     RelJsonPtrTemplate,
 )
-from oascomply.oas30dialect import OAS30_DIALECT_METASCHEMA
+from oascomply.oas3dialect import OAS30_DIALECT_METASCHEMA
 
 __all__ = [
     'DirectMapSource',
@@ -142,7 +142,11 @@ class ContentParser:
                     '(can disable with -n if slow)',
                 )
                 sourcemap = jmap.calculate(content)
-            return ParsedContent(value=data, url=url, sourcemap=sourcemap)
+            return ParsedContent(
+                value=data,
+                url=pathlib.Path(full_path).as_uri(),
+                sourcemap=sourcemap,
+            )
         except json.JSONDecodeError as e:
             raise CatalogError(str(e)) from e
 

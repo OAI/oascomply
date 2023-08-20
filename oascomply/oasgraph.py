@@ -22,7 +22,7 @@ from oascomply.ptrtemplates import (
     RelJsonPtrTemplate,
     RelJsonPtrTemplateError,
 )
-from oascomply.oas30dialect import OAS30_DIALECT_METASCHEMA
+from oascomply.oas3dialect import OAS30_DIALECT_METASCHEMA
 from oascomply.oasjson import OASJSON, OASJSONMixin, OASJSONSchema
 
 __all__ = [

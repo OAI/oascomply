@@ -15,7 +15,7 @@ from jschon.vocabulary import Metaschema
 
 from oascomply import resourceid as rid
 from oascomply.exceptions import OASComplyError
-from oascomply.oas30dialect import OAS30_DIALECT_METASCHEMA
+from oascomply.oas3dialect import OAS30_DIALECT_METASCHEMA
 
 if TYPE_CHECKING:
     from oascomply.oascatalog import OASCatalog
@@ -71,7 +71,7 @@ class OASJSONMixin:
             },
             'dialect': {
                 # We don't need a path as loading this dialect is managed by
-                # the oascomply.oas30dialect module.
+                # the oascomply.oas3dialect module.
                 'uri': OAS30_DIALECT_METASCHEMA,
                 'vocab-meta': {},
             },

@@ -11,6 +11,7 @@
     "properties": {
         "oasApiLinks": {"$ref": "#/$defs/templatedPointerRelationObject"},
         "oasChildren": {"$ref": "#/$defs/templatedPointerRelationObject"},
+        "oasIntermediate": {"$ref": "#"},
         "oasDescriptionLinks": {
             "$ref": "#/$defs/templatedPointerRelationObject"
         },
@@ -73,6 +74,7 @@
         },
         "oasReferences": {"$ref": "#/$defs/templatedPointerTypeObject"},
         "oasType": {"$ref": "#/$defs/semanticType"},
+        "oasTypeGroup": {"$ref": "#/$defs/semanticType"},
         "oasUniqueKey": {
             "type": "object",
             "properties": {

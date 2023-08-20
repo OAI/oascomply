@@ -24,7 +24,7 @@
       "items": {
         "$ref": "#/$defs/Server"
       },
-      "oasType": "Servers",
+      "oasTypeGroup": "Servers",
       "oasChildren": {
         "0/{index}": "server"
       }
@@ -41,7 +41,7 @@
         "$ref": "#/$defs/Tag"
       },
       "uniqueItems": true,
-      "oasType": "Tags",
+      "oasTypeGroup": "Tags",
       "oasChildren": {
         "0/{index}": "tag"
       }
@@ -53,7 +53,7 @@
       "$ref": "#/$defs/Components"
     },
     "securty": {
-      "oasType": "SecurityRequirements",
+      "oasTypeGroup": "SecurityRequirements",
       "oasChildren": {
         "0/{index}": "securityRequirement"
       }
@@ -1068,7 +1068,7 @@
       "oasType": "Header",
       "oasChildren": {
         "0/schema": "0#",
-        "0/{contentType}": "content"
+        "0/content/{contentType}": "1#"
       },
       "oasLiterals": {
         "0/description": "0#",
@@ -1103,7 +1103,15 @@
       "oasChildren": {
         "0/{pathTemplate}": "pathItem"
       },
-      "oasExtensible": true
+      "oasExtensible": true,
+      "propertyNames": {
+        "if": {
+          "pattern": "^/"
+        },
+        "then": {
+          "oasType": "TemplatedUrl"
+        }
+      }
     },
     "PathItem": {
       "type": "object",
@@ -1123,7 +1131,7 @@
           "items": {
             "$ref": "#/$defs/Server"
           },
-          "oasType": "Servers",
+          "oasTypeGroup": "Servers",
           "oasChildren": {
             "0/{index}": "server"
           }
@@ -1184,15 +1192,20 @@
       "oasType": "PathItem",
       "oasChildren": {
         "0/parameters": "0#",
-        "0/servers": "0#",
-        "0/delete": "operation",
-        "0/get": "operation",
-        "0/head": "operation",
-        "0/options": "operation",
-        "0/patch": "operation",
-        "0/post": "operation",
-        "0/put": "operation",
-        "0/trace": "operation"
+        "0/servers": "0#"
+      },
+      "oasIntermediate": {
+        "oasTypeGroup": "Operations",
+        "oasChildren": {
+          "0/delete": "operation",
+          "0/get": "operation",
+          "0/head": "operation",
+          "0/options": "operation",
+          "0/patch": "operation",
+          "0/post": "operation",
+          "0/put": "operation",
+          "0/trace": "operation"
+        }
       },
       "oasReferences": {
         "0/$ref": "PathItem"
@@ -1203,7 +1216,8 @@
       "oasLiterals": {
         "0/summary": "0#",
         "0/description": "0#"
-      }
+      },
+      "oasExtensible": true
     },
     "Operation": {
       "type": "object",
@@ -1216,7 +1230,7 @@
           "items": {
             "type": "string"
           },
-          "oasType": "Tags",
+          "oasTypeGroup": "Tags",
           "oasImplicitReferences": {
             "0/{index}": {
               "oasRelationType": "tagRef",
@@ -1301,7 +1315,7 @@
           "items": {
             "$ref": "#/$defs/SecurityRequirement"
           },
-          "oasType": "SecurityRequirement",
+          "oasTypeGroup": "SecurityRequirements",
           "oasChildren": {
             "0/{index}": "securityRequirement"
           }
@@ -1311,7 +1325,7 @@
           "items": {
             "$ref": "#/$defs/Server"
           },
-          "oasType": "Servers",
+          "oasTypeGroup": "Servers",
           "oasChildren": {
             "0/{index}": "server"
           }
@@ -1328,7 +1342,8 @@
         "0/responses": "0#",
         "0/callbacks": "0#",
         "0/security": "securityRequirements",
-        "0/servers": "0#"
+        "0/servers": "0#",
+        "0/tags": "0#"
       },
       "oasLiterals": {
         "0/summary": "0#",
@@ -1390,6 +1405,12 @@
     },
     "SecurityRequirement": {
       "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
       "oasType": "SecurityRequirement",
       "oasImplicitReferences": {
         "0/{scheme}#": {
@@ -1414,7 +1435,8 @@
           "type": "string"
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "format": "commonmark"
         },
         "externalDocs": {
           "$ref": "#/$defs/ExternalDocumentation"
@@ -1424,7 +1446,14 @@
         "^x-": true
       },
       "additionalProperties": false,
-      "oasType": "Tag"
+      "oasType": "Tag",
+      "oasChildren": {
+        "0/externaDocs": "0#"
+      },
+      "oasLiterals": {
+        "0/name": "0#",
+        "0/description": "0#"
+      }
     },
     "ExternalDocumentation": {
       "type": "object",
@@ -1709,6 +1738,7 @@
       "oasLiterals": {
         "0/type": "0#",
         "0/name": "0#",
+        "0/scheme": "0#",
         "0/in": "parameteLocation",
         "0/description": "0#"
       },
@@ -1872,18 +1902,15 @@
         }
       },
       "patternProperties": {
-        "^x-": {
-          "oasType": "ExtensionOAuthFlow"
-        }
+        "^x-": true
       },
       "additionalProperties": false,
-      "oasLiterals": {
-        "0/scopes/{scopeName}": "scope"
-      },
-      "oasApiLinks": {
-        "0/authorizationUrl": "0#",
-        "0/tokenUrl": "0#",
-        "0/refreshUrl": "0#"
+      "oasType": "OAuthFlows",
+      "oasChildren": {
+        "0/implicit": "oauthFlowImplicit",
+        "0/password": "oauthFlowPassword",
+        "0/clientCredentials": "oauthFlowClientCredentials",
+        "0/authorizationCode": "oauthFlowAuthorizationCode"
       },
       "oasExtensible": true
     },
@@ -1913,7 +1940,14 @@
         "^x-": true
       },
       "additionalProperties": false,
-      "oasType": "ImplicitOAuthFlow"
+      "oasType": "ImplicitOAuthFlow",
+      "oasLiterals": {
+        "0/scopes/{scopeName}": "scope"
+      },
+      "oasApiLinks": {
+        "0/authorizationUrl": "0#",
+        "0/refreshUrl": "0#"
+      }
     },
     "PasswordOAuthFlow": {
       "type": "object",
@@ -1941,7 +1975,14 @@
         "^x-": true
       },
       "additionalProperties": false,
-      "oasType": "PasswordOAuthFlow"
+      "oasType": "PasswordOAuthFlow",
+      "oasLiterals": {
+        "0/scopes/{scopeName}": "scope"
+      },
+      "oasApiLinks": {
+        "0/tokenUrl": "0#",
+        "0/refreshUrl": "0#"
+      }
     },
     "ClientCredentialsFlow": {
       "type": "object",
@@ -1969,7 +2010,14 @@
         "^x-": true
       },
       "additionalProperties": false,
-      "oasType": "ClientCredentialsFlow"
+      "oasType": "ClientCredentialsFlow",
+      "oasLiterals": {
+        "0/scopes/{scopeName}": "scope"
+      },
+      "oasApiLinks": {
+        "0/tokenUrl": "0#",
+        "0/refreshUrl": "0#"
+      }
     },
     "AuthorizationCodeOAuthFlow": {
       "type": "object",
@@ -2002,7 +2050,15 @@
         "^x-": true
       },
       "additionalProperties": false,
-      "oasType": "AuthorizationCodeOAuthFlow"
+      "oasType": "AuthorizationCodeOAuthFlow",
+      "oasLiterals": {
+        "0/scopes/{scopeName}": "scope"
+      },
+      "oasApiLinks": {
+        "0/authorizationUrl": "0#",
+        "0/tokenUrl": "0#",
+        "0/refreshUrl": "0#"
+      }
     },
     "Link": {
       "type": "object",
@@ -2059,6 +2115,9 @@
     },
     "Callback": {
       "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/PathItem"
+      },
       "patternProperties": {
         "^x-": true
       },
@@ -2119,6 +2178,7 @@
         "0/headers/{header}": "header"
       },
       "oasLiterals": {
+        "0/content-type": "0#",
         "0/style": "0#",
         "0/explode": "0#",
         "0/allowReserved": "0#"

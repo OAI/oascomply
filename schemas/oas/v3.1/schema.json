@@ -1,0 +1,1976 @@
+{
+  "$id": "https://spec.openapis.org/compliance/schemas/oas/3.1/2023-06",
+  "$schema": "https://spec.openapis.org/compliance/schemas/dialect/2023-06/oas-ontology",
+  "description": "The description of OpenAPI v3.1.x documents without schema validation, as defined by https://spec.openapis.org/oas/v3.1.0",
+  "type": "object",
+  "properties": {
+    "openapi": {
+      "type": "string",
+      "pattern": "^3\\.1\\.\\d+(-.+)?$"
+    },
+    "info": {
+      "$ref": "#/$defs/info"
+    },
+    "jsonSchemaDialect": {
+      "type": "string",
+      "format": "uri",
+      "default": "https://spec.openapis.org/oas/3.1/dialect/strict"
+    },
+    "servers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/server"
+      },
+      "default": [
+        {
+          "url": "/"
+        }
+      ],
+      "oasTypeGroup": "Servers",
+      "oasChildren": {
+        "0/{index}": "server"
+      }
+    },
+    "paths": {
+      "$ref": "#/$defs/paths"
+    },
+    "webhooks": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/path-item"
+      }
+    },
+    "components": {
+      "$ref": "#/$defs/components"
+    },
+    "security": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/security-requirement"
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/tag"
+      },
+      "oasTypeGroup": "Tags",
+      "oasChildren": {
+        "0/{index}": "tag"
+      }
+    },
+    "externalDocs": {
+      "$ref": "#/$defs/external-documentation"
+    },
+    "securty": {
+      "oasTypeGroup": "SecurityRequirements",
+      "oasChildren": {
+        "0/{index}": "securityRequirement"
+      }
+    }
+  },
+  "required": [
+    "openapi",
+    "info"
+  ],
+  "anyOf": [
+    {
+      "required": [
+        "paths"
+      ]
+    },
+    {
+      "required": [
+        "components"
+      ]
+    },
+    {
+      "required": [
+        "webhooks"
+      ]
+    }
+  ],
+  "$ref": "#/$defs/specification-extensions",
+  "unevaluatedProperties": false,
+  "oasType": "OpenAPI",
+  "oasChildren": {
+    "0/info": "0#",
+    "0/externalDocs": "0#",
+    "0/servers": "0#",
+    "0/security": "securityRequirements",
+    "0/tags": "0#",
+    "0/paths": "0#",
+    "0/webhooks": "0#",
+    "0/components": "0#"
+  },
+  "oasLiterals": {
+    "0/openapi": "oasVersion",
+    "0/jsonSchemaDialect": "0#"
+  },
+  "oasExtensible": true,
+  "$defs": {
+    "info": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#info-object",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string",
+          "format": "commonmark"
+        },
+        "termsOfService": {
+          "type": "string",
+          "format": "uri"
+        },
+        "contact": {
+          "$ref": "#/$defs/contact"
+        },
+        "license": {
+          "$ref": "#/$defs/license"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "version"
+      ],
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "oasType": "Info",
+      "oasChildren": {
+        "0/contact": "0#",
+        "0/license": "0#"
+      },
+      "oasLiterals": {
+        "0/title": "0#",
+        "0/summary": "0#",
+        "0/description": "0#",
+        "0/version": "apiDescriptionVersion"
+      },
+      "oasDescriptionLinks": {
+        "0/termsOfService": "0#"
+      },
+      "oasExtensible": true
+    },
+    "contact": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#contact-object",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        }
+      },
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "oasType": "Contact",
+      "oasLiterals": {
+        "0/name": "0#",
+        "0/url": "0#",
+        "0/email": "0#"
+      }
+    },
+    "license": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#license-object",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "dependentSchemas": {
+        "identifier": {
+          "not": {
+            "required": [
+              "url"
+            ]
+          }
+        }
+      },
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "oasType": "License",
+      "oasLiterals": {
+        "0/name": "0#",
+        "0/identifier": "0#"
+      },
+      "oasDescriptionLinks": {
+        "0/url": "0#"
+      }
+    },
+    "server": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#server-object",
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri-reference",
+          "oasType": "TemplatedUrl"
+        },
+        "description": {
+          "type": "string",
+          "format": "commonmark"
+        },
+        "variables": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/server-variable"
+          }
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "oasType": "Server",
+      "oasChildren": {
+        "0/variables/{name}": "variable",
+        "0/url": "0#"
+      },
+      "oasLiterals": {
+        "0/description": "0#"
+      },
+      "oasExtensible": true
+    },
+    "server-variable": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#server-variable-object",
+      "type": "object",
+      "properties": {
+        "enum": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "default": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string",
+          "format": "commonmark"
+        }
+      },
+      "required": [
+        "default"
+      ],
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "oasType": "ServerVariable",
+      "oasImplicitReferences": {
+        "0#": {
+          "oasRelationType": "serverVariableRef",
+          "oasTargetType": "Server",
+          "oasTargetField": "0/url",
+          "oasTargetIsTemplateVariable": true
+        }
+      },
+      "oasLiterals": {
+        "0/enum/{index}": "1#",
+        "0/default": "0#",
+        "0/description": "0#"
+      },
+      "oasExtensible": true
+    },
+    "components": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#components-object",
+      "type": "object",
+      "properties": {
+        "schemas": {
+          "type": "object",
+          "additionalProperties": {
+            "$dynamicRef": "#meta"
+          },
+          "oasType": "SchemaComponents",
+          "oasChildren": {
+            "0/{name}": "namedSchema"
+          }
+        },
+        "responses": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/response-or-reference"
+          },
+          "oasType": "ResponseComponents",
+          "oasChildren": {
+            "0/{name}": "namedResponse"
+          }
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/parameter-or-reference"
+          },
+          "oasType": "ParameterComponents",
+          "oasChildren": {
+            "0/{name}": "namedParameter"
+          }
+        },
+        "examples": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/example-or-reference"
+          },
+          "oasType": "ExampleComponents",
+          "oasChildren": {
+            "0/{name}": "namedExample"
+          }
+        },
+        "requestBodies": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/request-body-or-reference"
+          },
+          "oasType": "RequestBodyComponents",
+          "oasChildren": {
+            "0/{name}": "namedRequestBody"
+          }
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/header-or-reference"
+          },
+          "oasType": "HeaderComponents",
+          "oasChildren": {
+            "0/{name}": "namedHeader"
+          }
+        },
+        "securitySchemes": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/security-scheme-or-reference"
+          },
+          "oasType": "SecuritySchemeComponents",
+          "oasChildren": {
+            "0/{name}": "namedSecurityScheme"
+          }
+        },
+        "links": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/link-or-reference"
+          },
+          "oasType": "LinkComponents",
+          "oasChildren": {
+            "0/{name}": "namedLink"
+          }
+        },
+        "callbacks": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/callbacks-or-reference"
+          },
+          "oasType": "CallbackComponents",
+          "oasChildren": {
+            "0/{name}": "namedCallback"
+          }
+        },
+        "pathItems": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/path-item"
+          },
+          "oasType": "PathItemComponents",
+          "oasChildren": {
+            "0/{name}": "namedPathItem"
+          }
+        }
+      },
+      "patternProperties": {
+        "^(schemas|responses|parameters|examples|requestBodies|headers|securitySchemes|links|callbacks|pathItems)$": {
+          "$comment": "Enumerating all of the property names in the regex above is necessary for unevaluatedProperties to work as expected",
+          "propertyNames": {
+            "pattern": "^[a-zA-Z0-9._-]+$"
+          }
+        }
+      },
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "oasType": "Components",
+      "oasExtensible": true,
+      "oasChildren": {
+        "0/{type}": "componentGroup"
+      }
+    },
+    "paths": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#paths-object",
+      "type": "object",
+      "patternProperties": {
+        "^/": {
+          "$ref": "#/$defs/path-item"
+        }
+      },
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "oasType": "Paths",
+      "oasChildren": {
+        "0/{pathTemplate}": "pathItem"
+      },
+      "propertyNames": {
+        "if": {
+          "pattern": "^/"
+        },
+        "then": {
+          "oasType": "TemplatedUrl"
+        }
+      }
+    },
+    "path-item": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#path-item-object",
+      "type": "object",
+      "properties": {
+        "summary": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string",
+          "format": "commonmark"
+        },
+        "servers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/server"
+          },
+          "oasTypeGroup": "Servers",
+          "oasChildren": {
+            "0/{index}": "server"
+          }
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/parameter-or-reference",
+            "oasReferences": {
+              "0/$ref": "Parameter"
+            }
+          },
+          "oasType": "Parameters",
+          "oasChildren": {
+            "0/{index}": "parameter"
+          }
+        },
+        "get": {
+          "$ref": "#/$defs/operation",
+          "oasType": "GetOperation"
+        },
+        "put": {
+          "$ref": "#/$defs/operation",
+          "oasType": "PutOperation"
+        },
+        "post": {
+          "$ref": "#/$defs/operation",
+          "oasType": "PostOperation"
+        },
+        "delete": {
+          "$ref": "#/$defs/operation",
+          "oasType": "DeleteOperation"
+        },
+        "options": {
+          "$ref": "#/$defs/operation",
+          "oasType": "OptionsOperation"
+        },
+        "head": {
+          "$ref": "#/$defs/operation",
+          "oasType": "HeadOperation"
+        },
+        "patch": {
+          "$ref": "#/$defs/operation",
+          "oasType": "PatchOperation"
+        },
+        "trace": {
+          "$ref": "#/$defs/operation",
+          "oasType": "TraceOperation"
+        },
+        "$ref": {
+          "type": "string",
+          "format": "uri-reference"
+        }
+      },
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "oasType": "PathItem",
+      "oasChildren": {
+        "0/parameters": "0#",
+        "0/servers": "0#"
+      },
+      "oasIntermediate": {
+        "oasTypeGroup": "Operations",
+        "oasChildren": {
+          "0/delete": "operation",
+          "0/get": "operation",
+          "0/head": "operation",
+          "0/options": "operation",
+          "0/patch": "operation",
+          "0/post": "operation",
+          "0/put": "operation",
+          "0/trace": "operation"
+        }
+      },
+      "oasReferences": {
+        "0/$ref": "PathItem"
+      },
+      "oasReferenceConflict": {
+        "0/$ref": "undefined"
+      },
+      "oasLiterals": {
+        "0/summary": "0#",
+        "0/description": "0#"
+      }
+    },
+    "operation": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#operation-object",
+      "type": "object",
+      "properties": {
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "oasTypeGroup": "Tags",
+          "oasImplicitReferences": {
+            "0/{index}": {
+              "oasRelationType": "tagRef",
+              "oasTargetType": "Tag",
+              "oasTargetField": "0/name",
+              "oasTargetRequired": false
+            }
+          }
+        },
+        "summary": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string",
+          "format": "commonmark"
+        },
+        "externalDocs": {
+          "$ref": "#/$defs/external-documentation"
+        },
+        "operationId": {
+          "type": "string"
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/parameter-or-reference"
+          },
+          "oasType": "Parameters",
+          "oasChildren": {
+            "0/{index}": "parameter"
+          }
+        },
+        "requestBody": {
+          "$ref": "#/$defs/request-body-or-reference"
+        },
+        "responses": {
+          "$ref": "#/$defs/responses"
+        },
+        "callbacks": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/callbacks-or-reference"
+          }
+        },
+        "deprecated": {
+          "default": false,
+          "type": "boolean"
+        },
+        "security": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/security-requirement"
+          },
+          "oasTypeGroup": "SecurityRequirements",
+          "oasChildren": {
+            "0/{index}": "securityRequirement"
+          }
+        },
+        "servers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/server"
+          },
+          "oasTypeGroup": "Servers",
+          "oasChildren": {
+            "0/{index}": "server"
+          }
+        }
+      },
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "oasChildren": {
+        "0/externalDocs": "0#",
+        "0/parameters": "0#",
+        "0/requestBody": "0#",
+        "0/responses": "0#",
+        "0/callbacks": "0#",
+        "0/security": "securityRequirements",
+        "0/servers": "0#",
+        "0/tags": "0#"
+      },
+      "oasLiterals": {
+        "0/summary": "0#",
+        "0/description": "0#",
+        "0/operationId": "0#",
+        "0/deprecated": "0#"
+      },
+      "oasUniqueKey": {
+        "fields": [
+          "0/name",
+          "0/in"
+        ],
+        "scope": [
+          "0/parameters/{index}",
+          "2/parameters/{index}"
+        ]
+      }
+    },
+    "external-documentation": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#external-documentation-object",
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "format": "commonmark"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "oasType": "ExternalDocumentation",
+      "oasLiterals": {
+        "0/description": "0#"
+      },
+      "oasDescriptionLinks": {
+        "0/url": "0#"
+      }
+    },
+    "parameter": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#parameter-object",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "enum": [
+            "query",
+            "header",
+            "path",
+            "cookie"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "format": "commonmark"
+        },
+        "required": {
+          "default": false,
+          "type": "boolean"
+        },
+        "deprecated": {
+          "default": false,
+          "type": "boolean"
+        },
+        "schema": {
+          "$dynamicRef": "#meta"
+        },
+        "content": {
+          "$ref": "#/$defs/content",
+          "minProperties": 1,
+          "maxProperties": 1
+        }
+      },
+      "required": [
+        "name",
+        "in"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "schema"
+          ]
+        },
+        {
+          "required": [
+            "content"
+          ]
+        }
+      ],
+      "if": {
+        "properties": {
+          "in": {
+            "const": "query"
+          }
+        },
+        "required": [
+          "in"
+        ]
+      },
+      "then": {
+        "properties": {
+          "allowEmptyValue": {
+            "default": false,
+            "type": "boolean"
+          }
+        }
+      },
+      "dependentSchemas": {
+        "schema": {
+          "properties": {
+            "style": {
+              "type": "string"
+            },
+            "explode": {
+              "type": "boolean"
+            }
+          },
+          "allOf": [
+            {
+              "$ref": "#/$defs/examples"
+            },
+            {
+              "$ref": "#/$defs/parameter/dependentSchemas/schema/$defs/styles-for-path"
+            },
+            {
+              "$ref": "#/$defs/parameter/dependentSchemas/schema/$defs/styles-for-header"
+            },
+            {
+              "$ref": "#/$defs/parameter/dependentSchemas/schema/$defs/styles-for-query"
+            },
+            {
+              "$ref": "#/$defs/parameter/dependentSchemas/schema/$defs/styles-for-cookie"
+            },
+            {
+              "$ref": "#/$defs/parameter/dependentSchemas/schema/$defs/styles-for-form"
+            }
+          ],
+          "$defs": {
+            "styles-for-path": {
+              "if": {
+                "properties": {
+                  "in": {
+                    "const": "path"
+                  }
+                },
+                "required": [
+                  "in"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "name": {
+                    "pattern": "[^/#?]+$"
+                  },
+                  "style": {
+                    "default": "simple",
+                    "enum": [
+                      "matrix",
+                      "label",
+                      "simple"
+                    ]
+                  },
+                  "required": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "required"
+                ]
+              }
+            },
+            "styles-for-header": {
+              "if": {
+                "properties": {
+                  "in": {
+                    "const": "header"
+                  }
+                },
+                "required": [
+                  "in"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "style": {
+                    "default": "simple",
+                    "const": "simple"
+                  }
+                }
+              }
+            },
+            "styles-for-query": {
+              "if": {
+                "properties": {
+                  "in": {
+                    "const": "query"
+                  }
+                },
+                "required": [
+                  "in"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "style": {
+                    "default": "form",
+                    "enum": [
+                      "form",
+                      "spaceDelimited",
+                      "pipeDelimited",
+                      "deepObject"
+                    ]
+                  },
+                  "allowReserved": {
+                    "default": false,
+                    "type": "boolean"
+                  }
+                }
+              }
+            },
+            "styles-for-cookie": {
+              "if": {
+                "properties": {
+                  "in": {
+                    "const": "cookie"
+                  }
+                },
+                "required": [
+                  "in"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "style": {
+                    "default": "form",
+                    "const": "form"
+                  }
+                }
+              }
+            },
+            "styles-for-form": {
+              "if": {
+                "properties": {
+                  "style": {
+                    "const": "form"
+                  }
+                },
+                "required": [
+                  "style"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "explode": {
+                    "default": true
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "explode": {
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "oasChildren": {
+        "0/schema": "0#",
+        "0/content/{contentType}": "1#"
+      },
+      "oasLiterals": {
+        "0/name": "0#",
+        "0/in": "parameterLocation",
+        "0/description": "0#",
+        "0/required": "0#",
+        "0/deprecated": "0#",
+        "0/allowEmptyValue": "0#",
+        "0/style": "0#",
+        "0/explode": "0#",
+        "0/allowReserved": "0#"
+      },
+      "oasExamples": {
+        "examples": [
+          "0/example",
+          "0/examples/{name}"
+        ],
+        "schemas": [
+          "0/schema",
+          "0/content/{contentType}/schema"
+        ],
+        "encodings": [
+          "0/content/{contentType}/encoding/{property}"
+        ]
+      },
+      "oasExtensible": true,
+      "$defs": {
+        "styles-for-path": {
+          "then": {
+            "oasType": "PathParameter",
+            "name": {
+              "oasType": "TemplateParameter"
+            }
+          }
+        },
+        "styles-for-query": {
+          "then": {
+            "oasType": "QueryParameter"
+          }
+        },
+        "styles-for-header": {
+          "then": {
+            "oasType": "HeaderParameter"
+          }
+        },
+        "styles-for-cookie": {
+          "then": {
+            "oasType": "CookieParameter"
+          }
+        }
+      }
+    },
+    "parameter-or-reference": {
+      "if": {
+        "type": "object",
+        "required": [
+          "$ref"
+        ]
+      },
+      "then": {
+        "$ref": "#/$defs/reference"
+      },
+      "else": {
+        "$ref": "#/$defs/parameter"
+      },
+      "oasType": "Parameter",
+      "oasReferences": {
+        "0/$ref": "Parameter"
+      }
+    },
+    "request-body": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#request-body-object",
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "format": "commonmark"
+        },
+        "content": {
+          "$ref": "#/$defs/content"
+        },
+        "required": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "oasType": "RequestBody",
+      "oasChildren": {
+        "0/content/{contentType}": "content"
+      },
+      "oasLiterals": {
+        "0/description": "0#",
+        "0/required": "0#"
+      }
+    },
+    "request-body-or-reference": {
+      "if": {
+        "type": "object",
+        "required": [
+          "$ref"
+        ]
+      },
+      "then": {
+        "$ref": "#/$defs/reference"
+      },
+      "else": {
+        "$ref": "#/$defs/request-body"
+      },
+      "oasType": "RequestBody",
+      "oasReferences": {
+        "0/$ref": "RequestBody"
+      }
+    },
+    "content": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#fixed-fields-10",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/media-type"
+      },
+      "propertyNames": {
+        "format": "media-range"
+      },
+      "oasTypeGroup": "MediaTypes"
+    },
+    "media-type": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#media-type-object",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "$dynamicRef": "#meta"
+        },
+        "encoding": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/encoding"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/$defs/specification-extensions"
+        },
+        {
+          "$ref": "#/$defs/examples"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "oasType": "MediaType",
+      "oasChildren": {
+        "0/schema": "0#",
+        "0/encoding/{property}": "1#"
+      },
+      "oasExamples": {
+        "examples": [
+          "0/example",
+          "0/examples/{name}"
+        ],
+        "schemas": [
+          "0/schema"
+        ],
+        "encodings": [
+          "0/encoding/{property}"
+        ]
+      }
+    },
+    "encoding": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#encoding-object",
+      "type": "object",
+      "properties": {
+        "contentType": {
+          "type": "string",
+          "format": "media-range"
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/header-or-reference"
+          }
+        },
+        "style": {
+          "default": "form",
+          "enum": [
+            "form",
+            "spaceDelimited",
+            "pipeDelimited",
+            "deepObject"
+          ]
+        },
+        "explode": {
+          "type": "boolean"
+        },
+        "allowReserved": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/$defs/specification-extensions"
+        },
+        {
+          "$ref": "#/$defs/encoding/$defs/explode-default"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "$defs": {
+        "explode-default": {
+          "if": {
+            "properties": {
+              "style": {
+                "const": "form"
+              }
+            },
+            "required": [
+              "style"
+            ]
+          },
+          "then": {
+            "properties": {
+              "explode": {
+                "default": true
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "explode": {
+                "default": false
+              }
+            }
+          }
+        }
+      },
+      "oasType": "Encoding",
+      "oasChildren": {
+        "0/headers/{header}": "header"
+      },
+      "oasLiterals": {
+        "0/contentType": "0#",
+        "0/style": "0#",
+        "0/explode": "0#",
+        "0/allowReserved": "0#"
+      }
+    },
+    "responses": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#responses-object",
+      "type": "object",
+      "properties": {
+        "default": {
+          "$ref": "#/$defs/response-or-reference"
+        }
+      },
+      "patternProperties": {
+        "^[1-5](?:[0-9]{2}|XX)$": {
+          "$ref": "#/$defs/response-or-reference"
+        }
+      },
+      "minProperties": 1,
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "if": {
+        "$comment": "either default, or at least one response code property must exist",
+        "patternProperties": {
+          "^[1-5](?:[0-9]{2}|XX)$": false
+        }
+      },
+      "then": {
+        "required": [
+          "default"
+        ]
+      },
+      "oasType": "Responses",
+      "oasChildren": {
+        "0/{statusSpecification}": "response"
+      }
+    },
+    "response": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#response-object",
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "format": "commonmark"
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/header-or-reference"
+          }
+        },
+        "content": {
+          "$ref": "#/$defs/content"
+        },
+        "links": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/link-or-reference"
+          }
+        }
+      },
+      "required": [
+        "description"
+      ],
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "oasType": "Response",
+      "oasChildren": {
+        "0/headers/{header}": "header",
+        "0/content/{contentType}": "1#",
+        "0/links/{linkRel}": "link"
+      },
+      "oasLiterals": {
+        "0/description": "0#"
+      },
+      "oasExtensible": true
+    },
+    "response-or-reference": {
+      "if": {
+        "type": "object",
+        "required": [
+          "$ref"
+        ]
+      },
+      "then": {
+        "$ref": "#/$defs/reference"
+      },
+      "else": {
+        "$ref": "#/$defs/response"
+      },
+      "oasType": "Response",
+      "oasReferences": {
+        "0/$ref": "Response"
+      }
+    },
+    "callbacks": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#callback-object",
+      "type": "object",
+      "$ref": "#/$defs/specification-extensions",
+      "additionalProperties": {
+        "$ref": "#/$defs/path-item"
+      },
+      "oasChildren": {
+        "0/{name}/{pathTemplate}": "callback"
+      }
+    },
+    "callbacks-or-reference": {
+      "if": {
+        "type": "object",
+        "required": [
+          "$ref"
+        ]
+      },
+      "then": {
+        "$ref": "#/$defs/reference"
+      },
+      "else": {
+        "$ref": "#/$defs/callbacks"
+      },
+      "oasType": "Callback",
+      "oasReferences": {
+        "0/$ref": "Callback"
+      }
+    },
+    "example": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#example-object",
+      "type": "object",
+      "properties": {
+        "summary": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string",
+          "format": "commonmark"
+        },
+        "value": true,
+        "externalValue": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "not": {
+        "required": [
+          "value",
+          "externalValue"
+        ]
+      },
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "oasType": "Example",
+      "oasLiterals": {
+        "0/summary": "0#",
+        "0/description": "0#",
+        "0/value": "0#"
+      },
+      "oasDescriptionLinks": {
+        "0/externalValue": "0#"
+      }
+    },
+    "example-or-reference": {
+      "if": {
+        "type": "object",
+        "required": [
+          "$ref"
+        ]
+      },
+      "then": {
+        "$ref": "#/$defs/reference"
+      },
+      "else": {
+        "$ref": "#/$defs/example"
+      },
+      "oasType": "Example",
+      "oasReferences": {
+        "0/$ref": "Example"
+      }
+    },
+    "link": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#link-object",
+      "type": "object",
+      "properties": {
+        "operationRef": {
+          "type": "string",
+          "format": "uri-reference"
+        },
+        "operationId": {
+          "type": "string"
+        },
+        "parameters": {
+          "$ref": "#/$defs/map-of-strings"
+        },
+        "requestBody": true,
+        "description": {
+          "type": "string"
+        },
+        "body": {
+          "$ref": "#/$defs/server"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "operationRef"
+          ]
+        },
+        {
+          "required": [
+            "operationId"
+          ]
+        }
+      ],
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "oasType": "Link",
+      "oasImplicitReferences": {
+        "0/operationId": {
+          "oasRelationType": "operationIdRef",
+          "oasTargetType": "Operation",
+          "oasTargetField": "0/operationId"
+        },
+        "0/parameters/{name}#": {
+          "oasTargetType": "Parameter",
+          "oasTargetField": "0/name",
+          "oasTargetQualifier": "0/in"
+        }
+      },
+      "oasReferences": {
+        "0/operationRef": "Operation"
+      },
+      "oasChildren": {
+        "0/parameters/{parameterSpecification}": "parameterSpecification"
+      }
+    },
+    "link-or-reference": {
+      "if": {
+        "type": "object",
+        "required": [
+          "$ref"
+        ]
+      },
+      "then": {
+        "$ref": "#/$defs/reference"
+      },
+      "else": {
+        "$ref": "#/$defs/link"
+      },
+      "oasType": "Link",
+      "oasReferences": {
+        "0/$ref": "Link"
+      }
+    },
+    "header": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#header-object",
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "format": "commonmark"
+        },
+        "required": {
+          "default": false,
+          "type": "boolean"
+        },
+        "deprecated": {
+          "default": false,
+          "type": "boolean"
+        },
+        "schema": {
+          "$dynamicRef": "#meta"
+        },
+        "content": {
+          "$ref": "#/$defs/content",
+          "minProperties": 1,
+          "maxProperties": 1
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "schema"
+          ]
+        },
+        {
+          "required": [
+            "content"
+          ]
+        }
+      ],
+      "dependentSchemas": {
+        "schema": {
+          "properties": {
+            "style": {
+              "default": "simple",
+              "const": "simple"
+            },
+            "explode": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          "$ref": "#/$defs/examples"
+        }
+      },
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "oasType": "Header",
+      "oasChildren": {
+        "0/schema": "0#",
+        "0/content/{contentType}": "1#"
+      },
+      "oasLiterals": {
+        "0/description": "0#",
+        "0/required": "0#",
+        "0/deprecated": "0#",
+        "0/style": "0#",
+        "0/explode": "0#"
+      },
+      "oasExamples": {
+        "examples": [
+          "0/example",
+          "0/examples/{name}/value"
+        ],
+        "schemas": [
+          "0/schema",
+          "0/content/{contentType}/schema"
+        ]
+      }
+    },
+    "header-or-reference": {
+      "if": {
+        "type": "object",
+        "required": [
+          "$ref"
+        ]
+      },
+      "then": {
+        "$ref": "#/$defs/reference"
+      },
+      "else": {
+        "$ref": "#/$defs/header"
+      },
+      "oasType": "Header",
+      "oasReferences": {
+        "0/$ref": "Header"
+      }
+    },
+    "tag": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#tag-object",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string",
+          "format": "commonmark"
+        },
+        "externalDocs": {
+          "$ref": "#/$defs/external-documentation"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "oasType": "Tag",
+      "oasChildren": {
+        "0/externaDocs": "0#"
+      },
+      "oasLiterals": {
+        "0/name": "0#",
+        "0/description": "0#"
+      }
+    },
+    "reference": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#reference-object",
+      "type": "object",
+      "properties": {
+        "$ref": {
+          "type": "string",
+          "format": "uri-reference"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string",
+          "format": "commonmark"
+        }
+      },
+      "unevaluatedProperties": false,
+      "oasType": "Reference",
+      "oasLiterals": {
+        "0/summary": "0#",
+        "0/description": "0#"
+      }
+    },
+    "schema": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#schema-object",
+      "$dynamicAnchor": "meta",
+      "type": [
+        "object",
+        "boolean"
+      ],
+      "oasType": "Schema"
+    },
+    "security-scheme": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#security-scheme-object",
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "apiKey",
+            "http",
+            "mutualTLS",
+            "oauth2",
+            "openIdConnect"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "format": "commonmark"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/$defs/specification-extensions"
+        },
+        {
+          "$ref": "#/$defs/security-scheme/$defs/type-apikey"
+        },
+        {
+          "$ref": "#/$defs/security-scheme/$defs/type-http"
+        },
+        {
+          "$ref": "#/$defs/security-scheme/$defs/type-http-bearer"
+        },
+        {
+          "$ref": "#/$defs/security-scheme/$defs/type-oauth2"
+        },
+        {
+          "$ref": "#/$defs/security-scheme/$defs/type-oidc"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "$defs": {
+        "type-apikey": {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "apiKey"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "in": {
+                "enum": [
+                  "query",
+                  "header",
+                  "cookie"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "in"
+            ],
+            "oasType": "APIKeySecurityScheme"
+          }
+        },
+        "type-http": {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "http"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "scheme": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "scheme"
+            ],
+            "oasType": "HTTPSecurityScheme"
+          }
+        },
+        "type-http-bearer": {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "http"
+              },
+              "scheme": {
+                "type": "string",
+                "pattern": "^[Bb][Ee][Aa][Rr][Ee][Rr]$"
+              }
+            },
+            "required": [
+              "type",
+              "scheme"
+            ]
+          },
+          "then": {
+            "properties": {
+              "bearerFormat": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "type-oauth2": {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "oauth2"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "flows": {
+                "$ref": "#/$defs/oauth-flows"
+              }
+            },
+            "required": [
+              "flows"
+            ],
+            "oasType": "OAuth2SecurityScheme"
+          }
+        },
+        "type-oidc": {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "openIdConnect"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "openIdConnectUrl": {
+                "type": "string",
+                "format": "uri"
+              }
+            },
+            "required": [
+              "openIdConnectUrl"
+            ],
+            "oasType": "OpenIdConnectSecurityScheme"
+          }
+        }
+      },
+      "oasLiterals": {
+        "0/type": "0#",
+        "0/name": "0#",
+        "0/scheme": "0#",
+        "0/in": "parameterLocation",
+        "0/description": "0#"
+      }
+    },
+    "security-scheme-or-reference": {
+      "if": {
+        "type": "object",
+        "required": [
+          "$ref"
+        ]
+      },
+      "then": {
+        "$ref": "#/$defs/reference"
+      },
+      "else": {
+        "$ref": "#/$defs/security-scheme"
+      },
+      "oasType": "SecurityScheme",
+      "oasReferences": {
+        "0/$ref": "SecurityScheme"
+      }
+    },
+    "oauth-flows": {
+      "type": "object",
+      "properties": {
+        "implicit": {
+          "$ref": "#/$defs/oauth-flows/$defs/implicit"
+        },
+        "password": {
+          "$ref": "#/$defs/oauth-flows/$defs/password"
+        },
+        "clientCredentials": {
+          "$ref": "#/$defs/oauth-flows/$defs/client-credentials"
+        },
+        "authorizationCode": {
+          "$ref": "#/$defs/oauth-flows/$defs/authorization-code"
+        }
+      },
+      "$ref": "#/$defs/specification-extensions",
+      "unevaluatedProperties": false,
+      "$defs": {
+        "implicit": {
+          "type": "object",
+          "properties": {
+            "authorizationUrl": {
+              "type": "string",
+              "format": "uri"
+            },
+            "refreshUrl": {
+              "type": "string",
+              "format": "uri"
+            },
+            "scopes": {
+              "$ref": "#/$defs/map-of-strings"
+            }
+          },
+          "required": [
+            "authorizationUrl",
+            "scopes"
+          ],
+          "$ref": "#/$defs/specification-extensions",
+          "unevaluatedProperties": false,
+          "oasType": "ImplicitOAuthFlow",
+          "oasLiterals": {
+            "0/scopes/{scopeName}": "scope"
+          },
+          "oasApiLinks": {
+            "0/authorizationUrl": "0#",
+            "0/refreshUrl": "0#"
+          }
+        },
+        "password": {
+          "type": "object",
+          "properties": {
+            "tokenUrl": {
+              "type": "string",
+              "format": "uri"
+            },
+            "refreshUrl": {
+              "type": "string",
+              "format": "uri"
+            },
+            "scopes": {
+              "$ref": "#/$defs/map-of-strings"
+            }
+          },
+          "required": [
+            "tokenUrl",
+            "scopes"
+          ],
+          "$ref": "#/$defs/specification-extensions",
+          "unevaluatedProperties": false,
+          "oasType": "PasswordOAuthFlow",
+          "oasLiterals": {
+            "0/scopes/{scopeName}": "scope"
+          },
+          "oasApiLinks": {
+            "0/tokenUrl": "0#",
+            "0/refreshUrl": "0#"
+          }
+        },
+        "client-credentials": {
+          "type": "object",
+          "properties": {
+            "tokenUrl": {
+              "type": "string",
+              "format": "uri"
+            },
+            "refreshUrl": {
+              "type": "string",
+              "format": "uri"
+            },
+            "scopes": {
+              "$ref": "#/$defs/map-of-strings"
+            }
+          },
+          "required": [
+            "tokenUrl",
+            "scopes"
+          ],
+          "$ref": "#/$defs/specification-extensions",
+          "unevaluatedProperties": false,
+          "oasType": "ClientCredentialsFlow",
+          "oasLiterals": {
+            "0/scopes/{scopeName}": "scope"
+          },
+          "oasApiLinks": {
+            "0/tokenUrl": "0#",
+            "0/refreshUrl": "0#"
+          }
+        },
+        "authorization-code": {
+          "type": "object",
+          "properties": {
+            "authorizationUrl": {
+              "type": "string",
+              "format": "uri"
+            },
+            "tokenUrl": {
+              "type": "string",
+              "format": "uri"
+            },
+            "refreshUrl": {
+              "type": "string",
+              "format": "uri"
+            },
+            "scopes": {
+              "$ref": "#/$defs/map-of-strings"
+            }
+          },
+          "required": [
+            "authorizationUrl",
+            "tokenUrl",
+            "scopes"
+          ],
+          "$ref": "#/$defs/specification-extensions",
+          "unevaluatedProperties": false,
+          "oasType": "AuthorizationCodeOAuthFlow",
+          "oasLiterals": {
+            "0/scopes/{scopeName}": "scope"
+          },
+          "oasApiLinks": {
+            "0/authorizationUrl": "0#",
+            "0/tokenUrl": "0#",
+            "0/refreshUrl": "0#"
+          }
+        }
+      },
+      "oasType": "OAuthFlows",
+      "oasChildren": {
+        "0/implicit": "oauthFlowImplicit",
+        "0/password": "oauthFlowPassword",
+        "0/clientCredentials": "oauthFlowClientCredentials",
+        "0/authorizationCode": "oauthFlowAuthorizationCode"
+      }
+    },
+    "security-requirement": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#security-requirement-object",
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "oasType": "SecurityRequirement",
+      "oasImplicitReferences": {
+        "0/{scheme}#": {
+          "oasRelationType": "securitySchemeRef",
+          "oasTargetType": "SecurityScheme",
+          "oasTargetField": "0/scheme"
+        },
+        "0/{scheme}/{index}": {
+          "oasRelationType": "securitySchemeScopeRef",
+          "oasTargetType": "SecurityScheme",
+          "oasTargetField": "0/{scheme}/flows/{flow}/scopes/{scope}#"
+        }
+      }
+    },
+    "specification-extensions": {
+      "$comment": "https://spec.openapis.org/oas/v3.1.0#specification-extensions",
+      "patternProperties": {
+        "^x-": true
+      },
+      "oasExtensible": true
+    },
+    "examples": {
+      "properties": {
+        "example": true,
+        "examples": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/example-or-reference"
+          }
+        }
+      }
+    },
+    "map-of-strings": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "runtime-expression": {
+      "oasType": "RuntimeExpression",
+      "type": "string",
+      "pattern": "\\$(url$|method$|statusCode$|request\\.|response\\.)"
+    },
+    "path-item-or-reference": {
+      "oasType": "PathItem",
+      "oasReferences": {
+        "0/$ref": "PathItem"
+      }
+    }
+  }
+}

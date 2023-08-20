@@ -14,7 +14,7 @@ from jschon.catalog import Catalog, Source
 from jschon.vocabulary import Metaschema
 
 from oascomply import resourceid as rid
-from oascomply.oas30dialect import (
+from oascomply.oas3dialect import (
     OAS30_DIALECT_METASCHEMA, OAS30_SUBSET_VOCAB, OAS30_EXTENSION_VOCAB,
 )
 from oascomply.oasjson import OASJSON, OASJSONSchema

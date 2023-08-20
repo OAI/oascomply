@@ -6,7 +6,7 @@ from typing import Union
 from jschon import JSON, JSONCompatible, JSONSchema, Result, URI, URIError
 from jschon.catalog import Catalog, CatalogError
 from jschon.jsonpointer import RelativeJSONPointer
-from jschon.vocabulary.format import format_validator
+from jschon.vocabulary.format import format_validator, FormatKeyword
 from jschon.vocabulary import (
     Keyword, KeywordClass, Metaschema, ObjectOfSubschemas, Subschema,
     Vocabulary, format as format_, annotation, applicator, validation,
@@ -36,10 +36,14 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
+# Note: The OAS30 dialect metaschema includes the extension keyword schemas
 OAS30_SUBSET_VOCAB = "https://spec.openapis.org/oas/v3.0/vocab/draft-04-subset"
 OAS30_EXTENSION_VOCAB = "https://spec.openapis.org/oas/v3.0/vocab/extension"
 OAS30_DIALECT_METASCHEMA = "https://spec.openapis.org/oas/v3.0/dialect/base"
 
+OAS31_EXTENSION_VOCAB = "https://spec.openapis.org/oas/3.1/vocab/base"
+OAS31_EXTENSION_METASCHEMA = "https://spec.openapis.org/oas/3.1/meta/base"
+OAS31_DIALECT_METASCHEMA = "https://spec.openapis.org/oas/3.1/dialect/strict"
 
 class _OasAnnotationKeyword(Keyword):
     def evaluate(self, instance: JSON, result: Result) -> None:
@@ -261,6 +265,32 @@ def validate_iri_reference(value: str) -> None:
         raise NotImplementedError('Full "iri-reference" format support TBD')
 
 
+def enable_formats(catalog: Catalog) -> None:
+    catalog.enable_formats(
+        ## JSON Schema formats
+        'date', 'time', 'date-time', # TBA: 'duration',
+        # TBA: 'email', 'idn-email', 'hostname', 'idn-hostname',
+        'json-pointer', 'relative-json-pointer',
+        'uri', 'uri-reference', 'iri', 'iri-reference',
+        # TBA: 'uri-template', 'ipv4', 'ipv6', 'uuid',
+        # TBA (maybe; regex variations are challenging): `regex`
+
+        ## Note 1: 'binary' is outsied the JSON data model and
+        ##          cannot be validated direclty)
+        ## Note 2: All text is valid markdown, so 'commonmark'
+        ##         has no meaningful validation behavior
+        ## Note 3: As a UI hint, 'password' is not meaningful for validation
+        'uint8', 'uint16', 'uint32', 'uint64',
+        'int8', 'int16', 'int32', 'int64',
+        # TBA: 'byte', 'base64url', 'char',
+        # TBA: 'float', 'decimal', 'decimal128',
+        # TBA: 'html', 'media-range',
+
+        # oascomply formats
+        'json-pointer-template', 'relative-json-pointer-template',
+    )
+
+
 def initialize_oas30_dialect(catalog: Catalog):
     catalog.create_vocabulary(
         URI(OAS30_SUBSET_VOCAB),
@@ -304,21 +334,41 @@ def initialize_oas30_dialect(catalog: Catalog):
         XmlKeyword,
     )
     catalog.create_metaschema(
-        URI("https://spec.openapis.org/oas/v3.0/dialect/base"),
+        URI(OAS30_DIALECT_METASCHEMA),
         URI('https://json-schema.org/draft/2020-12/vocab/core'),
         URI(OAS30_SUBSET_VOCAB),
         URI(OAS30_EXTENSION_VOCAB),
     )
-    # NOTE: All strings are valid CommonMark, so the "commonmark"
-    #       format is not validated.
-    catalog.enable_formats(
-        'uint8', 'uint16', 'uint32', 'uint64',
-        'int8', 'int16', 'int32', 'int64',
-        'date', 'time', 'date-time',
-        'json-pointer', 'relative-json-pointer',
-        'json-pointer-template', 'relative-json-pointer-template',
-        'uri', 'uri-reference', 'iri', 'iri-reference',
+    enable_formats(catalog)
+
+
+def initialize_oas31_dialect(catalog: Catalog):
+    catalog.create_vocabulary(
+        URI(OAS31_EXTENSION_VOCAB),
+        DiscriminatorKeyword,
+        ExampleKeyword,
+        ExternalDocsKeyword,
+        XmlKeyword,
     )
+    format_assertion_uri = URI(
+        'https://json-schema.org/draft/2020-12/vocab/format-assertion',
+    )
+    catalog.create_vocabulary(
+        format_assertion_uri,
+        FormatKeyword,
+    )
+    catalog.create_metaschema(
+        URI(OAS31_DIALECT_METASCHEMA),
+        URI('https://json-schema.org/draft/2020-12/vocab/core'),
+        URI('https://json-schema.org/draft/2020-12/vocab/applicator'),
+        URI('https://json-schema.org/draft/2020-12/vocab/unevaluated'),
+        URI('https://json-schema.org/draft/2020-12/vocab/validation'),
+        URI('https://json-schema.org/draft/2020-12/vocab/meta-data'),
+        format_assertion_uri,
+        URI('https://json-schema.org/draft/2020-12/vocab/content'),
+        URI(OAS31_EXTENSION_VOCAB),
+    )
+    enable_formats(catalog)
 
 
 def validate_with_oas30():

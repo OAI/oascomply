@@ -27,7 +27,7 @@ from oascomply.schemaparse import (
 from oascomply.oassource import (
     DirectMapSource, FileMultiSuffixSource, HttpMultiSuffixSource,
 )
-from oascomply.oas30dialect import OAS30_DIALECT_METASCHEMA
+from oascomply.oas3dialect import OAS30_DIALECT_METASCHEMA
 import oascomply.resourceid as rid
 
 __all__ = [
