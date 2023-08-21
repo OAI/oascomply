@@ -4,8 +4,6 @@ import re
 import jschon
 import jschon.exc
 
-from oascomply.resourceid import JsonPtr, RelJsonPtr
-
 TEMPLATE_UNESCAPED = r'[\x00-.0-z|\x7f-\U0010ffff]'
 TEMPLATE_VARIABLE = f'{TEMPLATE_UNESCAPED}*'
 TEMPLATE_TOKEN = r'\{(' + TEMPLATE_VARIABLE + r')\}'
@@ -21,7 +19,7 @@ RELATIVE_JSON_POINTER_TEMPLATE = (
 )
 
 
-TemplateComponent = Union[JsonPtr, str, Literal[True]]
+TemplateComponent = Union[jschon.JSONPointer, str, Literal[True]]
 
 TemplateResult = namedtuple(
     'TemplateResult',
@@ -65,12 +63,12 @@ class JsonPtrTemplate:
         #   only occur as the last component
         self._components: Sequence[TemplateComponent] = []
 
-        currptr = JsonPtr()
+        currptr = jschon.JSONPointer()
         for s in segments:
             if s.startswith('{'):
                 if len(currptr) > 0:
                     self._components.append(currptr)
-                    currptr = JsonPtr()
+                    currptr = jschon.JSONPointer()
                 if s.endswith('#'):
                     self._components.extend((s[1:-2], True))
                 else:
@@ -96,7 +94,7 @@ class JsonPtrTemplate:
         *,
         require_match: bool = False,
         _index=0,
-        _resolved=JsonPtr(),
+        _resolved=jschon.JSONPointer(),
         _variables=None,
         _previous_variable=None,
     ) -> Generator[
@@ -112,7 +110,7 @@ class JsonPtrTemplate:
             return
 
         next_c = remaining[0]
-        if isinstance(next_c, JsonPtr):
+        if isinstance(next_c, jschon.JSONPointer):
             new_resolved = _resolved / next_c
             try:
                 new_instance = next_c.evaluate(instance)
@@ -208,10 +206,10 @@ class RelJsonPtrTemplate:
                     raise InvalidRelJsonPtrTemplateError(
                         "Can't use '#' in origin adjustment with template path"
                     )
-                self._relptr = RelJsonPtr(template[:slash])
+                self._relptr = jschon.RelativeJSONPointer(template[:slash])
                 self._jptemplate = JsonPtrTemplate(template[slash:])
             except ValueError:
-                self._relptr = RelJsonPtr(template)
+                self._relptr = jschon.RelativeJSONPointer(template)
                 self._jptemplate = None
         except (
             jschon.exc.JSONPointerError,
@@ -243,7 +241,7 @@ class RelJsonPtrTemplate:
             if self._relptr.index:
                 # Since we already evaluated the full relptr,
                 # we know this will not raise an exception
-                value = RelJsonPtr(
+                value = jschon.RelativeJSONPointer(
                     self._template[:-1]
                 ).evaluate(instance)
                 name = base
@@ -256,7 +254,7 @@ class RelJsonPtrTemplate:
         try:
             yield from (
                 TemplateResult(
-                    RelJsonPtr(
+                    jschon.RelativeJSONPointer(
                         up=self._relptr.up,
                         over=self._relptr.over,
                         ref=result[0],

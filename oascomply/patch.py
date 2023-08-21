@@ -10,11 +10,9 @@ from typing import Mapping, Sequence, Union
 
 import yaml
 import json_merge_patch
-from jschon import JSONSchema
+from jschon import JSONSchema, Catalog
 from jschon.vocabulary import Metaschema
 from jschon.jsonpatch import JSONPatch
-
-from oascomply.oascatalog import OASCatalog
 
 __all__ = [
     'PATCHED_OAS30_SCHEMA_DIR',
@@ -172,7 +170,7 @@ def validate_schema(schema_data: Union[Mapping, bool], *metaschema_data: Sequenc
     """
     # Constructing the Metaschema instances registers them
     # with the catalog, so we do not need to save the instances
-    catalog = OASCatalog.get_catalog('oascomply')
+    catalog = Catalog.get_catalog('oascomply')
     for md in metaschema_data:
         Metaschema(catalog, md)
 

@@ -19,7 +19,6 @@ import json_source_map as jmap
 import yaml_source_map as ymap
 from yaml_source_map.errors import InvalidYamlError
 
-from oascomply import resourceid as rid
 from oascomply.ptrtemplates import (
     JSON_POINTER_TEMPLATE, RELATIVE_JSON_POINTER_TEMPLATE,
     RelJsonPtrTemplate,
@@ -248,16 +247,19 @@ class OASSource(Source):
         self,
         **kwargs,
     ) -> None:
+        super().__init__(**kwargs)
         self._parser = ContentParser(self.get_loaders())
         self._uri_url_map = {}
         self._uri_sourcemap_map = {}
-        super().__init__(**kwargs)
+
+        # TODO: Not always accurate, but a good initial state?
+        self.set_uri_prefix(None)
 
     @classmethod
     def get_loaders(cls) -> Tuple[ResourceLoader]:
         raise NotImplementedError
 
-    def set_uri_url_map(self, mapping: Mapping[URIString, URIString]):
+    def set_uri_url_map(self, mapping: Mapping[jschon.URI, jschon.URI]):
         self._uri_url_map = mapping
 
     def set_uri_sourcemap_map(self, mapping: Optional[dict]) -> None:
@@ -304,7 +306,7 @@ class OASSource(Source):
 
     def __call__(self, relative_path: str):
         content = self.resolve_resource(relative_path)
-        self.map_url(relative_path, content.url)
+        self.map_url(relative_path, jschon.URI(content.url))
         self.map_sourcemap(relative_path, content.sourcemap)
         return content.value
 
@@ -331,7 +333,7 @@ class MultiSuffixSource(OASSource):
         **kwargs,
     ) -> None:
 
-        self._prefix = self.validate_prefix(prefix)
+        self._prefix = self._validate_prefix(prefix)
         self._suffixes: Sequence[Suffix] = suffixes
         """The suffixes to search, in order."""
 
@@ -394,7 +396,7 @@ class FileMultiSuffixSource(MultiSuffixSource, FileLoader):
 
 class HttpMultiSuffixSource(MultiSuffixSource, HttpLoader):
     def _validate_prefix(self, prefix: str) -> str:
-        parsed_prefix = rid.Iri(prefix)
+        parsed_prefix = jschon.URI(prefix)
         if not parsed_prefix.path.endswith('/'):
             raise ValueError(f'{prefix!r} must contain a path ending with "/"')
 

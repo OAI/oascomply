@@ -11,13 +11,21 @@ import coloredlog
 import jschon
 import jschon.catalog
 from jschon.catalog import _2020_12
-from oascomply.oascatalog import (
-        OASCatalog, initialize_oas_specification_schemas,
-)
 from oascomply.oassource import DirectMapSource
 from oascomply.oas3dialect import (
+    # TODO: sort out vs oascomply.patch
+    OAS30_SCHEMA,
+    OAS30_SCHEMA_PATH,
+    OAS31_SCHEMA,
+    OAS31_SCHEMA_PATH,
+    OAS31_EXTENSION_METASCHEMA,
+    OAS31_DIALECT_METASCHEMA,
     initialize_oas30_dialect,
     initialize_oas31_dialect,
+)
+from oascomply.schemaparse import (
+    OAS_SCHEMA_INFO,
+    initialize_oas_specification_schemas,
 )
 from oascomply.patch import (
     PATCHED_OAS30_SCHEMA_DIR,
@@ -41,7 +49,11 @@ _log_handler = (
 _log_handler.setFormatter(_log_formatter)
 _oascomply_logger.addHandler(_log_handler)
 
-catalog = OASCatalog('oascomply', resolve_references=False)
+catalog = jschon.create_catalog(
+    '2020-12',
+    name='oascomply',
+    resolve_references=False,
+)
 """The default shared ``jschon``-derived resource loader and cache"""
 
 
@@ -77,12 +89,10 @@ catalog.add_uri_source(
     None,
     DirectMapSource(
         {
-            jschon.URI('https://spec.openapis.org/oas/3.1/schema/2022-10-07'):
-                PATCHED_OAS31_SCHEMA_PATH,
-            jschon.URI('https://spec.openapis.org/oas/3.1/dialect/strict'):
-                PATCHED_OAS31_DIALECT_PATH,
-            jschon.URI('https://spec.openapis.org/oas/3.1/meta/base'):
-                PATCHED_OAS31_META_PATH,
+            jschon.URI(OAS30_SCHEMA): OAS30_SCHEMA_PATH,
+            jschon.URI(OAS31_SCHEMA): OAS31_SCHEMA_PATH,
+            jschon.URI(OAS31_DIALECT_METASCHEMA): PATCHED_OAS31_DIALECT_PATH,
+            jschon.URI(OAS31_EXTENSION_METASCHEMA): PATCHED_OAS31_META_PATH,
         },
         suffixes=('.json',)
     ),

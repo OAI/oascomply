@@ -11,14 +11,70 @@ from rdflib.namespace import RDF
 import yaml
 
 from oascomply.oasgraph import OasGraph
-import oascomply.resourceid as rid
+from oascomply.oas3dialect import (
+    OAS30_DIALECT_METASCHEMA,
+    OAS30_VOCAB_LIST,
+    OAS30_SUBSET_VOCAB,
+    OAS30_SCHEMA,
+    OAS30_SCHEMA_PATH,
+    OAS31_DIALECT_METASCHEMA,
+    OAS31_VOCAB_LIST,
+    OAS31_SCHEMA,
+    OAS31_SCHEMA_PATH,
+)
 
 __all__ = [
+    'OAS_SCHEMA_INFO',
+    'initialize_oas_specification_schemas',
     'Annotation',
     'SchemaParser',
 ]
 
 logger = logging.getLogger(__name__)
+
+
+# TODO: Sort out vs oascomply.oas3dialect and oascomply.patch
+OAS_SCHEMA_INFO = {
+    '3.0':  {
+        'schema': {
+            'uri': OAS30_SCHEMA,
+            'path': OAS30_SCHEMA_PATH,
+            'vocabs': OAS30_VOCAB_LIST,
+        },
+        'dialect': {
+            # We don't need a path as loading this dialect is managed by
+            # the oascomply.oas3dialect module.
+            'uri': OAS30_DIALECT_METASCHEMA,
+            'vocab-meta': {},
+        },
+    },
+    '3.1': {
+        'schema': {
+            'uri': OAS31_SCHEMA,
+            'path': OAS31_SCHEMA_PATH,
+            'vocabs': OAS31_VOCAB_LIST,
+        },
+        'dialect': {
+            # We don't need a path as loading this dialect is managed by
+            # the oascomply.oas3dialect module.
+            'uri': OAS31_DIALECT_METASCHEMA,
+            'vocab-meta': {},
+        },
+    },
+}
+
+
+def initialize_oas_specification_schemas(catalog: jschon.Catalog):
+    for oasversion, oasinfo in OAS_SCHEMA_INFO.items():
+        # As a metaschema, the OAS schema behaves like the corresponding
+        # dialect metaschema as that is what it should use by default when
+        # it encounters a Schema Object.  Objects between the document root
+        # and the Schema Objects are not JSONSchema subclasses and are
+        # therefore treated like regular instance validation.
+        catalog.create_metaschema(
+            jschon.URI(oasinfo['schema']['uri']),
+            *oasinfo['schema']['vocabs']
+        )
 
 
 class JsonSchemaParseError(ValueError):
@@ -63,21 +119,21 @@ class Location:
     @classmethod
     def _get_instance_base_uri(cls, base=None):
         if base:
-            if isinstance(base, rid.IriWithJsonPtr):
+            if isinstance(base, jschon.URI):
                 return base
             else:
-                return rid.IriWithJsonPtr(str(base))
+                return jschon.URI(str(base))
         try:
             return cls._default_instance_base
         except AttributeError:
             # NOTE: This ony works if there is only one instance document.
             # TODO: Guard against messing it up?  Do we even need this?
-            cls._dibu = rid.Iri(f'urn:uuid:{uuid4()}')
+            cls._dibu = jschon.URI(f'urn:uuid:{uuid4()}')
         return cls._default_instance_base
 
     @classmethod
-    def get(cls, unit: dict, instance_base: Union[str, rid.Iri] = None):
-        eval_ptr = rid.JsonPtr(unit['keywordLocation'])[:-1]
+    def get(cls, unit: dict, instance_base: Union[str, jschon.URI] = None):
+        eval_ptr = jschon.JSONPointer(unit['keywordLocation'])[:-1]
 
         cache_key = (
             cls._get_instance_base_uri(instance_base),
@@ -105,7 +161,7 @@ class Location:
         self._unit = unit
         self._given_base = instance_base
         self._eval_ptr = (
-            rid.JsonPtr(unit['keywordLocation'])[:-1] if eval_ptr is None
+            jschon.JSONPointer(unit['keywordLocation'])[:-1] if eval_ptr is None
             else eval_ptr
         )
 
@@ -120,33 +176,34 @@ class Location:
         }) + ')'
 
     @cached_property
-    def instance_resource_uri(self) -> rid.Iri:
-        return rid.IriWithJsonPtr(
+    def instance_resource_uri(self) -> jschon.URI:
+        return jschon.URI(
             str(self._get_instance_base_uri(self._given_base)),
         )
 
     @cached_property
-    def instance_uri(self) -> rid.Iri:
+    def instance_uri(self) -> jschon.URI:
         return self.instance_resource_uri.copy(
            fragment=self.instance_ptr.uri_fragment(),
         )
 
     @cached_property
-    def instance_ptr(self) -> rid.JsonPtr:
-        return rid.JsonPtr(self._unit['instanceLocation'])
+    def instance_ptr(self) -> jschon.JSONPointer:
+        return jschon.JSONPointer(self._unit['instanceLocation'])
 
     @cached_property
-    def evaluation_path_ptr(self) -> rid.JsonPtr:
+    def evaluation_path_ptr(self) -> jschon.JSONPointer:
         return self._eval_ptr
 
     @cached_property
-    def schema_resource_uri(self) -> rid.Iri:
+    def schema_resource_uri(self) -> jschon.URI:
         return self.schema_uri.to_absolute()
 
     @cached_property
-    def schema_uri(self) -> rid.Iri:
-        s_uri = rid.IriWithJsonPtr(self._unit['absoluteKeywordLocation'])
-        return s_uri.copy(fragment=s_uri.fragment_ptr[:-1].uri_fragment())
+    def schema_uri(self) -> jschon.URI:
+        s_uri = jschon.URI(self._unit['absoluteKeywordLocation'])
+        ptr = jschon.JSONPointer.parse_uri_fragment(s_uri.fragment)
+        return s_uri.copy(fragment=ptr[:-1].uri_fragment())
 
 
 class SchemaParser:

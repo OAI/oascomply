@@ -2,6 +2,7 @@ import re
 import logging
 from collections import defaultdict
 from typing import Union
+from pathlib import Path
 
 from jschon import JSON, JSONCompatible, JSONSchema, Result, URI, URIError
 from jschon.catalog import Catalog, CatalogError
@@ -18,13 +19,21 @@ from oascomply.ptrtemplates import (
     JSON_POINTER_TEMPLATE, RELATIVE_JSON_POINTER_TEMPLATE,
     RelJsonPtrTemplate,
 )
-import oascomply.resourceid as rid
 
 __all__ = [
     'initialize_oas30_dialect',
+    'OAS30_SCHEMA',
+    'OAS30_SCHEMA_PATH',
     'OAS30_SUBSET_VOCAB',
     'OAS30_EXTENSION_VOCAB',
     'OAS30_DIALECT_METASCHEMA',
+    'OAS30_VOCAB_LIST',
+    'OAS31_SCHEMA',
+    'OAS31_SCHEMA_PATH',
+    'OAS31_EXTENSION_VOCAB',
+    'OAS31_EXTENSION_METASCHEMA',
+    'OAS31_DIALECT_METASCHEMA',
+    'OAS31_VOCAB_LIST',
     'DiscriminatorKeyword',
     'ExampleKeyword',
     'ExternalDocsKeyword',
@@ -37,13 +46,41 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 # Note: The OAS30 dialect metaschema includes the extension keyword schemas
+OAS30_SCHEMA = "https://spec.openapis.org/compliance/schemas/oas/3.0/2023-06"
+OAS30_SCHEMA_PATH = (
+    Path(__file__).parent / '..' / 'schemas' / 'oas' / 'v3.0' / 'schema.json'
+).resolve()
 OAS30_SUBSET_VOCAB = "https://spec.openapis.org/oas/v3.0/vocab/draft-04-subset"
 OAS30_EXTENSION_VOCAB = "https://spec.openapis.org/oas/v3.0/vocab/extension"
 OAS30_DIALECT_METASCHEMA = "https://spec.openapis.org/oas/v3.0/dialect/base"
 
+OAS31_SCHEMA = "https://spec.openapis.org/compliance/schemas/oas/3.1/2023-06"
+OAS31_SCHEMA_PATH = (
+    Path(__file__).parent / '..' / 'schemas' / 'oas' / 'v3.1' / 'schema.json'
+).resolve()
 OAS31_EXTENSION_VOCAB = "https://spec.openapis.org/oas/3.1/vocab/base"
 OAS31_EXTENSION_METASCHEMA = "https://spec.openapis.org/oas/3.1/meta/base"
 OAS31_DIALECT_METASCHEMA = "https://spec.openapis.org/oas/3.1/dialect/strict"
+
+
+FORMAT_ASSERTION_VOCAB_URI = URI(
+    'https://json-schema.org/draft/2020-12/vocab/format-assertion',
+)
+OAS30_VOCAB_LIST = [
+    URI('https://json-schema.org/draft/2020-12/vocab/core'),
+    URI(OAS30_SUBSET_VOCAB),
+    URI(OAS30_EXTENSION_VOCAB),
+]
+OAS31_VOCAB_LIST = [
+    URI('https://json-schema.org/draft/2020-12/vocab/core'),
+    URI('https://json-schema.org/draft/2020-12/vocab/applicator'),
+    URI('https://json-schema.org/draft/2020-12/vocab/unevaluated'),
+    URI('https://json-schema.org/draft/2020-12/vocab/validation'),
+    URI('https://json-schema.org/draft/2020-12/vocab/meta-data'),
+    FORMAT_ASSERTION_VOCAB_URI,
+    URI('https://json-schema.org/draft/2020-12/vocab/content'),
+    URI(OAS31_EXTENSION_VOCAB),
+]
 
 class _OasAnnotationKeyword(Keyword):
     def evaluate(self, instance: JSON, result: Result) -> None:
@@ -335,9 +372,7 @@ def initialize_oas30_dialect(catalog: Catalog):
     )
     catalog.create_metaschema(
         URI(OAS30_DIALECT_METASCHEMA),
-        URI('https://json-schema.org/draft/2020-12/vocab/core'),
-        URI(OAS30_SUBSET_VOCAB),
-        URI(OAS30_EXTENSION_VOCAB),
+        *OAS30_VOCAB_LIST,
     )
     enable_formats(catalog)
 
@@ -350,23 +385,13 @@ def initialize_oas31_dialect(catalog: Catalog):
         ExternalDocsKeyword,
         XmlKeyword,
     )
-    format_assertion_uri = URI(
-        'https://json-schema.org/draft/2020-12/vocab/format-assertion',
-    )
     catalog.create_vocabulary(
-        format_assertion_uri,
+        FORMAT_ASSERTION_VOCAB_URI,
         FormatKeyword,
     )
     catalog.create_metaschema(
         URI(OAS31_DIALECT_METASCHEMA),
-        URI('https://json-schema.org/draft/2020-12/vocab/core'),
-        URI('https://json-schema.org/draft/2020-12/vocab/applicator'),
-        URI('https://json-schema.org/draft/2020-12/vocab/unevaluated'),
-        URI('https://json-schema.org/draft/2020-12/vocab/validation'),
-        URI('https://json-schema.org/draft/2020-12/vocab/meta-data'),
-        format_assertion_uri,
-        URI('https://json-schema.org/draft/2020-12/vocab/content'),
-        URI(OAS31_EXTENSION_VOCAB),
+        *OAS31_VOCAB_LIST,
     )
     enable_formats(catalog)
 

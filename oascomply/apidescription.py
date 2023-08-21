@@ -13,6 +13,10 @@ import os
 import sys
 
 import jschon
+import jschon.exc
+from jschon.catalog import Source
+from jschon.jsonformat import JSONFormat
+from jschon.vocabulary import Metaschema
 
 import rdflib
 from rdflib.namespace import RDF
@@ -25,16 +29,31 @@ from oascomply.schemaparse import (
     Annotation, SchemaParser, JsonSchemaParseError,
 )
 from oascomply.oassource import (
-    DirectMapSource, FileMultiSuffixSource, HttpMultiSuffixSource,
+    OASSource, DirectMapSource, FileMultiSuffixSource, HttpMultiSuffixSource,
 )
-from oascomply.oas3dialect import OAS30_DIALECT_METASCHEMA
-import oascomply.resourceid as rid
+from oascomply.oas3dialect import (
+    OAS30_SCHEMA,
+    OAS30_DIALECT_METASCHEMA,
+    OAS31_SCHEMA,
+    OAS31_DIALECT_METASCHEMA,
+)
 
 __all__ = [
     'ApiDescription',
 ]
 
 logger = logging.getLogger(__name__)
+
+
+class OASJSONFormat(JSONFormat):
+    _default_metadocument_cls = Metaschema
+
+    def __init__(self, *args, catalog='oascomply', **kwargs):
+        self.oasversion = '3.0'
+        self.sourcemap = None
+        self.url = None
+        super().__init__(*args, catalog='oascomply', **kwargs)
+
 
 HELP_PROLOG = """
 Load and validate an API Description/Definition (APID).
@@ -75,6 +94,7 @@ See the README for further information on:
 
 ANNOT_ORDER = (
     'oasType',
+    'oasTypeGroup',
     'oasReferences',
     'oasChildren',
     'oasLiterals',
@@ -218,22 +238,18 @@ class ThingToUri:
     def set_iri(
         self,
         iri_str: str,
-        iri_class: Type[rid.Iri] = rid.Iri,
         attrname: str = 'uri',
     ) -> None:
+        iri = jschon.URI(iri_str)
         try:
-            setattr(self, attrname, iri_class(iri_str))
-        except ValueError as e1:
-            try:
-                rid.IriReference(iri_str)
-                raise ValueError(f'{iri_class.__name__} cannot be relative')
-            except ValueError as e2:
-                logger.debug(
-                    f'got exception from IriReference({iri_str}):'
-                    f'\n\t{e2}'
-                )
-                # propagate the original error as it will be more informative
-                raise e1
+            iri.validate(require_scheme=True)
+            setattr(self, attrname, (iri))
+        except jschon.exc.URIError:
+            logger.debug(
+                f'got exception from IriReference({iri_str}):'
+                f'\n\t{e2}'
+            )
+            raise ValueError(f'{iri_class.__name__} cannot be relative')
 
     def iri_str_from_thing(self, stripped_thing_str: str) -> str:
         return stripped_thing_str
@@ -283,12 +299,12 @@ class UrlToUri(ThingToUri):
         return self.url
 
     @property
-    def url(self) -> rid.Iri:
+    def url(self) -> jschon.URI:
         """Accessor for ``url``, the "thing" of this ThingToUri subclass."""
         return self._url
 
     @url.setter
-    def url(self, u: rid.Iri) -> None:
+    def url(self, u: jschon.URI) -> None:
         self._url = u
 
     @property
@@ -363,6 +379,79 @@ class ActionAppendThingToUri(argparse.Action):
         )
 
 
+class OASResourceManager:
+    """
+    Proxy for the jschon.Catalog, adding OAS-specific handling.
+
+    This class manages the flow of extra information that
+    :class:`jshcon.catalog.Catalog` and :class:`jschon.catalog.Source` do not
+    directly support.  This includes recording the URL from which a resource
+    was loaded, as well as other metadata about its stored document form.
+    """
+    def __init__(self, catalog: jschon.Catalog):
+        self._catalog = catalog
+        self._uri_url_map = {}
+        self._uri_sourcemap_map = {}
+
+    def add_uri_source(
+        self,
+        base_uri: Optional[jschon.URI],
+        source: Source,
+    ) -> None:
+        self._catalog.add_uri_source(base_uri, source)
+        if isinstance(source, OASSource):
+            # This "base URI" is really treated as a prefix, which
+            # is why a value of '' works at all.
+            uri_prefix = jschon.URI('' if base_uri is None else str(base_uri))
+            source.set_uri_prefix(uri_prefix)
+            source.set_uri_url_map(self._uri_url_map)
+            source.set_uri_sourcemap_map(self._uri_sourcemap_map)
+
+    def _get_with_url_and_sourcemap(
+        self,
+        uri,
+        *,
+        oasversion,
+        metadocument_uri,
+        cls,
+    ):
+        base_uri = uri.copy(fragment=None)
+        r = self._catalog.get_resource(
+            uri,
+            cacheid=oasversion,
+            metadocument_uri=metadocument_uri,
+            cls=cls,
+        )
+
+        if r.document_root.url is None:
+            r.document_root.url = self._uri_url_map[str(base_uri)]
+            r.document_root.source_map = self._uri_sourcemap_map[str(base_uri)]
+
+        return r
+
+    def get_oas(
+        self,
+        uri: jschon.URI,
+        oasversion: str,
+        *,
+        resourceclass: Type[jschon.JSON] = OASJSONFormat,
+        oas_schema_uri: Optional[jschon.URI] = None,
+    ):
+        if oas_schema_uri is None:
+            oas_schema_uri = {
+                '3.0': OAS30_SCHEMA,
+                '3.1': OAS31_SCHEMA,
+            }[oasversion]
+
+        oas_doc = self._get_with_url_and_sourcemap(
+            uri,
+            oasversion=oasversion,
+            metadocument_uri=oas_schema_uri,
+            cls=resourceclass,
+        )
+        return oas_doc
+
+
 class ApiDescription:
     """
     Representation of a complete API description.
@@ -385,11 +474,15 @@ class ApiDescription:
 
     def __init__(
         self,
-        document: Any,
+        document,
         *,
+        resource_manager: OASResourceManager,
         test_mode: bool = False,
     ) -> None:
+
+        # TODO: "entry" vs "primary"
         self._primary_resource = document
+        self._manager = resource_manager
         self._test_mode = test_mode
 
         if 'openapi' not in document:
@@ -419,8 +512,9 @@ class ApiDescription:
 
         self._g = OasGraph(
             document.oasversion,
-            test_mode=test_mode,
+            test_mode=self._test_mode,
         )
+        self._g.add_resource(document.url, document.uri)
 
         self._validated = []
 
@@ -440,13 +534,15 @@ class ApiDescription:
         elif isinstance(resource_uri, str):
             # TODO: IRI vs URI
             # TODO: Non-JSON Pointer fragments in 3.1
-            resource_uri = rid.IriWithJsonPtr(resource_uri)
+            resource_uri = jschon.URI(str)
 
         # TODO: Don't hardcode 3.0
-        resource = oascomply.catalog.get_oas(resource_uri, '3.0')
+        resource = self._manager.get_oas(resource_uri, '3.0')
         assert resource is not None
         document = resource.document_root
         sourcemap = resource.sourcemap
+
+        self._g.add_resource(document.url, document.uri)
 
         try:
             output = sp.parse(resource, oastype)
@@ -460,7 +556,7 @@ class ApiDescription:
         to_validate = {}
         by_method = defaultdict(list)
         for unit in output['annotations']:
-            ann=Annotation(unit, instance_base=resource_uri.to_absolute())
+            ann=Annotation(unit, instance_base=resource_uri.copy(fragment=None))
             method = f'add_{ann.keyword.lower()}'
 
             # Using a try/except here can result in confusion if something
@@ -759,8 +855,10 @@ class ApiDescription:
             if hasattr(args, attr) and not check(getattr(args, attr)):
                 raise NotImplementedError(f'{opt} option not yet implemented!')
 
+        manager = OASResourceManager(oascomply.catalog)
+
         for dir_to_uri in args.directories:
-            oascomply.catalog.add_uri_source(
+            manager.add_uri_source(
                 dir_to_uri.uri,
                 FileMultiSuffixSource(
                     str(dir_to_uri.path), # TODO: fix type mismatch
@@ -769,7 +867,7 @@ class ApiDescription:
             )
 
         for url_to_uri in args.url_prefixes:
-            oascomply.catalog.add_uri_source(
+            manager.add_uri_source(
                 url_to_uri.uri,
                 HttpMultiSuffixSource(
                     str(url_to_uri.url), # TODO: fix type mismatch
@@ -785,7 +883,7 @@ class ApiDescription:
             u_to_u.uri: u_to_u.path
             for u_to_u in args.urls
         })
-        oascomply.catalog.add_uri_source(
+        manager.add_uri_source(
             None,
             DirectMapSource(
                 resource_map,
@@ -795,10 +893,14 @@ class ApiDescription:
 
         # TODO: Temporary hack, search lists properly
         # TODO: Don't hardcode 3.0
-        entry_resource = oascomply.catalog.get_oas(args.files[0].uri, '3.0')
+        entry_resource = manager.get_oas(args.files[0].uri, '3.0')
         assert entry_resource['openapi'], "First file must contain 'openapi'"
 
-        desc = ApiDescription(entry_resource, test_mode=args.test_mode)
+        desc = ApiDescription(
+            entry_resource,
+            resource_manager=manager,
+            test_mode=args.test_mode,
+        )
 
         errors = desc.validate(validate_examples=(args.examples == 'true'))
         errors.extend(desc.validate_graph())

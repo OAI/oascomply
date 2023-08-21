@@ -10,6 +10,7 @@ import logging
 
 import jschon
 import jschon.exc
+from jschon.jsonformat import JSONFormat
 import rdflib
 from rdflib.namespace import RDF, RDFS, XSD
 import toml
@@ -17,13 +18,11 @@ import dom_toml
 import yaml
 
 import oascomply
-import oascomply.resourceid as rid
 from oascomply.ptrtemplates import (
     RelJsonPtrTemplate,
     RelJsonPtrTemplateError,
 )
 from oascomply.oas3dialect import OAS30_DIALECT_METASCHEMA
-from oascomply.oasjson import OASJSON, OASJSONMixin, OASJSONSchema
 
 __all__ = [
     'OasGraph',
@@ -79,6 +78,8 @@ class OasGraph:
     :param version: The ``X.Y`` OAS version string for the description
     """
     def __init__(self, version: str, *, test_mode=False):
+
+        # TODO: This is better checked elsewhere
         if version not in ('3.0', '3.1'):
             raise ValueError(f'OAS v{version} is not supported.')
         if version == '3.1':
@@ -176,7 +177,6 @@ class OasGraph:
                 retval.append(self._pseudo_qname(obj.datatype))
             return retval
         return self._pseudo_qname(obj)
-
 
     def add_resource(self, url, uri, filename=None):
         rdf_node = rdflib.URIRef(str(uri))
@@ -301,6 +301,10 @@ class OasGraph:
             )
         return OasGraphResult(errors=[], refTargets=[])
 
+    def add_oastypegroup(self, annotation, document, data, sourcemap):
+        # TODO: Handle separately
+        return self.add_oastype(annotation, document, data, sourcemap)
+
     def add_sourcemap(self, instance_rdf_uri, instance_ptr, sourcemap):
             if len(instance_ptr):
                 map_key = '/' + '/'.join(instance_ptr)
@@ -329,7 +333,7 @@ class OasGraph:
         for child_template, rdf_name in annotation.value.items():
             relptr = None
             if re.match(r'\d', rdf_name):
-                relptr = rid.RelJsonPtr(rdf_name)
+                relptr = jschon.RelativeJSONPointer(rdf_name)
                 rdf_name = None
 
             yield from (
@@ -366,7 +370,7 @@ class OasGraph:
                 data,
         ):
                 child_obj = result.data
-                child_path = rid.JsonPtr(child_obj.path)
+                child_path = jschon.JSONPointer(child_obj.path)
                 iu = location.instance_uri
                 child_uri = rdflib.URIRef(str(iu.copy(
                     fragment=child_path.uri_fragment(),
@@ -405,7 +409,7 @@ class OasGraph:
                 data,
             ):
                 literal = result.data
-                literal_path = rid.JsonPtr(literal.path)
+                literal_path = jschon.JSONPointer(literal.path)
                 literal_node = (
                     rdflib.Literal(literal.value, datatype=RDF.JSON)
                     if literal.type in ('object', 'array')
@@ -447,7 +451,7 @@ class OasGraph:
                 data,
         ):
                 link_obj = result.data
-                link_path = rid.JsonPtr(link_obj.path)
+                link_path = jschon.JSONPointer(link_obj.path)
                 link_uri = rdflib.URIRef(str(link_obj.value))
                 self._g.add((
                     parent_uri,
@@ -478,11 +482,11 @@ class OasGraph:
             ):
                 ref_keyword = template_result.pointer.path[-1]
                 ref_source_uri = location.instance_uri.copy(
-                    fragment=rid.JsonPtr(
+                    fragment=jschon.JSONPointer(
                         template_result.data.path,
                     ).uri_fragment(),
                 )
-                ref_uri_ref = rid.UriReference(template_result.data.value)
+                ref_uri_ref = jschon.URI(template_result.data.value)
                 ref_target_uri = ref_uri_ref.resolve(location.instance_uri)
 
                 rdf_ref_source_uri = rdflib.URIRef(str(ref_source_uri))
@@ -521,7 +525,7 @@ class OasGraph:
                     self.oas['referenceBase'],
                     rdflib.Literal(
                         rdflib.URIRef(
-                            str(location.instance_uri.to_absolute())
+                            str(location.instance_uri.copy(fragment=None))
                         ),
                         datatype=XSD.anyURI,
                     ),
@@ -535,7 +539,7 @@ class OasGraph:
                 # TODO: elide the reference with a new edge w/correct predicate
 
                 # compare absolute forms
-                if ref_source_uri.to_absolute() != ref_target_uri.to_absolute():
+                if ref_source_uri.copy(fragment=None) != ref_target_uri.copy(fragment=None):
                     # TODO: Schema validation even if local?
                     #       Currently checking with semantic validation
                     logger.debug(
@@ -577,13 +581,12 @@ class OasGraph:
         else:
             schema_data = [parent_obj]
 
-        # TODO: Access OAS dialect metaschema through OASJSON document instance
+        # TODO: Access OAS dialect metaschema through JSONFormat document instance
         m_uri = jschon.URI(OAS30_DIALECT_METASCHEMA)
         for sd in schema_data:
-            assert isinstance(sd, OASJSONMixin)
-            if isinstance(sd, OASJSONSchema):
+            if isinstance(sd, jschon.JSONSchema):
                 schemas.append(sd)
-            elif isinstance(sd, OASJSON):
+            elif isinstance(sd, JSONFormat):
                 logger.error(f'URI AND M_URI: |{type(sd)}| <{sd.document_root.uri}> <{sd.uri}> <{m_uri}>')
                 schemas.append(
                     oascomply.catalog.get_schema(sd.uri, metaschema_uri=m_uri),
@@ -679,7 +682,18 @@ class OasGraph:
         oastype = self._g.value(node, RDF.type, None)
         logger.debug(f'...Initial type: <{oastype}>')
 
+        # TODO: This is due to the change in file:/ normalization because of the
+        #       limitations of jschon.uri.URI using the rfc3986 module.
+        if oastype is None and (u := jschon.URI(str(node))).fragment is None:
+            logger.debug('...search by absolute URI failed, adding empty fragment')
+            oastype = self._g.value(
+                rdflib.URIRef(str(u.copy(fragment=''))),
+                RDF.type,
+                None,
+            )
+
         if oastype == rdflib.URIRef('https://schema.org/DigitalDocument'):
+            logger.debug('...reference targeted entire document')
             root_node = self._g.value(node, self.oas.root, None)
             return self._extract_core_type(root_node)
 
@@ -702,7 +716,9 @@ class OasGraph:
             core_type = 'Parameter'
 
         if core_type == 'Reference':
-            path = rid.IriWithJsonPtr(node).fragment_ptr
+            path = jschon.JSONPointer.parse_uri_fragment(
+                jschon.URI(node).fragment
+            )
             if len(path) == 3 and path[0] == 'components':
                 core_type = path[1].title()
                 if core_type == 'Requestbodies':
@@ -773,6 +789,7 @@ class OasGraph:
             if context_node:
                 context['node'] = context_node
 
+            logger.debug(f'...reference target node: {target_node}')
             actual = self.oas_v[self._extract_core_type(target_node)]
             expected = self.oas_v[expected]
             if expected != actual:
