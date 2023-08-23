@@ -19,7 +19,7 @@ def normalize_file_url(url_str: str, append_slash=False) -> str:
     # has settled on file:/ over file:/// due to limitations of
     # the rfc3986 library used by jschon.uri.URI.
     u = jschon.URI(url_str).copy(authority=None)
-    return str(
+    return (
         u.copy(path=u.path + '/') if append_slash
         else u
     )
@@ -29,6 +29,11 @@ FOO_JSON_PATH = Path('foo.json').resolve()
 FOO_PATH = Path('foo').resolve()
 FOO_JSON_PATH_URL = normalize_file_url(FOO_JSON_PATH.as_uri())
 FOO_PATH_URL = normalize_file_url(FOO_PATH.as_uri())
+
+BAR_YAML_PATH = Path('bar.yaml').resolve()
+BAR_PATH = Path('bar').resolve()
+BAR_YAML_PATH_URL = normalize_file_url(BAR_YAML_PATH.as_uri())
+BAR_PATH_URL = normalize_file_url(BAR_PATH.as_uri())
 
 CURRENT_DIR = Path('.').resolve()
 CURRENT_DIR_URL = normalize_file_url(CURRENT_DIR.as_uri(), append_slash=True)

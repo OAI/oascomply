@@ -28,20 +28,16 @@ Load and validate an API Description/Definition (APID).
 The initial APID document is parsed immediately, with other documents parsed
 as they are referenced.  The initial document is the first of:
 
-1. The document from -i (--initial-document)
+1. The document from -i (--initial-resource), which takes a URI (like "$ref")
 2. The first document from a -f (--file) containing an "openapi" field
 3. The first document from a -u (--url) containing an "openapi" field
-
-All referenced documents MUST be provided in some form on the command line,
-either individually (with -f or -u) or as a document tree to search (with
--d or -p).  Documents are loaded from their URL and referenced by their URI.
 
 Each document's URL is the URL from which it was retrieved. If loaded from
 a local filesystem path, the URL is the corresponding "file:" URL.
 
 A document's URI is either determined from the URL (potentially as modified
 by the -x, -D, and -P options), or set directly on the command line
-(using additional arguments to -i, -f, -u, -d, or -p)..
+(using additional arguments to -f, -u, -d, or -p)..
 This allows reference resolution to work even if the documents are not named
 or deployed in the way the references expect.
 
@@ -60,6 +56,10 @@ See the README for further information on:
 """
 
 
+DEFAULT_SUFFIXES = ('.json', '.yaml', '.yml', '')  # TODO: not sure about ''
+"""Default suffixes stripped from -f paths and -u URLs"""
+
+
 def _add_verbose_option(parser):
     parser.add_argument(
         '-v',
@@ -75,7 +75,7 @@ def _add_strip_suffixes_option(parser):
         '-x',
         '--strip-suffixes',
         nargs='*',
-        default=('.json', '.yaml', '.yml', ''),  # TODO: not sure about ''
+        default=DEFAULT_SUFFIXES,
         help="For documents loaded with -f or -u without an explict URI "
             "assigned on the command line, assign a URI by stripping any "
             "of the given suffixes from the document's URL; passing this "
@@ -210,10 +210,13 @@ def parse_non_logging(remaining_args: Sequence[str]) -> argparse.Namespace:
         ),
         default=[],
         dest='files',
-        help="An APID document as a local file, optionally followed by "
-             "a URI to use for reference resolution in place of the "
-             "corresponding 'file:' URL; this option can be repeated; "
-             "see also -x",
+        help="An APID document as a local file, optionally followed by a URI "
+             "to use for reference resolution; if no URI is provided but the "
+             "file matches a directory passed with -d, its URI will be "
+             "determined based on the -d URI prefix (and -D if present); "
+             "if no -d matches, the corresponding 'file:' URL for the path "
+             "will be used as the URI; this option can be repeated; "
+             "see also -x, -d, -D",
     )
     parser.add_argument(
         '-u',
@@ -226,9 +229,12 @@ def parse_non_logging(remaining_args: Sequence[str]) -> argparse.Namespace:
         default=[],
         dest='urls',
         help="A URL for an APID document, optionally followed by a URI "
-             "to use for reference resolution; by default only 'http:' "
-             "and 'https:' URLs are supported; this option can be "
-             "repeated; see also -x",
+             "to use for reference resolution; if no URI is provided but the "
+             "url matches a prefix passed with -p, its URI will be determined "
+             "based on the -p URI prefix (and -P if present); if no -p "
+             "matches, the URL will also be used as the URI; currently only "
+             "'http:' and 'https:' URLs are supported; this option can be "
+             "repeated; see also -x, -p, -P",
     )
     # Already parsed, but add to include in usage message
     _add_strip_suffixes_option(parser)
@@ -367,12 +373,22 @@ def load():
 
     # TODO: Temporary hack, search lists properly
     # TODO: Don't hardcode 3.0
-    logger.debug(f'initial: <{args.initial}>')
-    entry_resource = manager.get_oas(
-        URI(args.initial) if args.initial else args.files[0].uri,
-        '3.0',
+    entry_resource = manager.get_entry_resource(
+        args.initial,
+        oasversion='3.0',
     )
-    assert entry_resource['openapi'], "First file must contain 'openapi'"
+    if entry_resource is None:
+        sys.stderr.write(
+            'ERROR: '
+            'oascomply requires either -i (--initial-resource) along with '
+            'at least one of -d (--directory) or -p (--url-prefix). OR at '
+            'least one of -f (--file) or -u (--url)\n',
+        )
+        sys.exit(-1)
+
+    if 'openapi' not in entry_resource:
+        sys.stderr.write('ERROR: The initial document must contain "openapi"\n')
+        sys.exit(-1)
 
     desc = ApiDescription(
         entry_resource,

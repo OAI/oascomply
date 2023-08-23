@@ -1,0 +1,7 @@
+"openapi": "3.0.3",
+"x-id": "https://example.com/apis/b/openapi",
+"info": {
+  "title": "test",
+  "version": "1.0"
+},
+"paths": {}

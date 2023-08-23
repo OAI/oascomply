@@ -12,6 +12,7 @@ import jschon
 import jschon.catalog
 from jschon.catalog import _2020_12
 from oascomply.oassource import DirectMapSource
+from oascomply.resource import OASResourceManager, URI
 from oascomply.oas3dialect import (
     # TODO: sort out vs oascomply.patch
     OAS30_SCHEMA,
@@ -85,19 +86,16 @@ catalog.add_uri_source(
     ),
     jschon.catalog.LocalSource(PATCHED_OAS30_SCHEMA_DIR, suffix='.json'),
 )
-catalog.add_uri_source(
-    None,
-    DirectMapSource(
-        {
-            jschon.URI(OAS30_SCHEMA): OAS30_SCHEMA_PATH,
-            jschon.URI(OAS31_SCHEMA): OAS31_SCHEMA_PATH,
-            jschon.URI(OAS31_DIALECT_METASCHEMA): PATCHED_OAS31_DIALECT_PATH,
-            jschon.URI(OAS31_EXTENSION_METASCHEMA): PATCHED_OAS31_META_PATH,
-        },
-        suffixes=('.json',)
-    ),
-)
 
+OASResourceManager.update_direct_mapping(
+    catalog,
+    {
+        URI(OAS30_SCHEMA): OAS30_SCHEMA_PATH,
+        URI(OAS31_SCHEMA): OAS31_SCHEMA_PATH,
+        URI(OAS31_DIALECT_METASCHEMA): PATCHED_OAS31_DIALECT_PATH,
+        URI(OAS31_EXTENSION_METASCHEMA): PATCHED_OAS31_META_PATH,
+    },
+)
 
 _2020_12.initialize(catalog)
 initialize_oas30_dialect(catalog)
