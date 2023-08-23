@@ -595,7 +595,7 @@ tests = ["pytest", "pytest-cov", "pytest-lazy-fixture"]
 name = "pygments"
 version = "2.16.1"
 description = "Pygments is a syntax highlighting package written in Python."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -1275,4 +1275,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "ae3ce4ff75f03f79351bda85d857ec7d2e624b0f1213bb5834c368d9468c6466"
+content-hash = "ba7e93c5a49231493cbe43970e782e5aa8faf4ae3cae7ec1d6e3309852fe5da6"

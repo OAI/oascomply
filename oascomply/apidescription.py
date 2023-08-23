@@ -64,7 +64,7 @@ class OASResourceManager:
     Proxy for the jschon.Catalog, adding OAS-specific handling.
 
     This class manages the flow of extra information that
-    :class:`jshcon.catalog.Catalog` and :class:`jschon.catalog.Source` do not
+    :class:`jschon.catalog.Catalog` and :class:`jschon.catalog.Source` do not
     directly support.  This includes recording the URL from which a resource
     was loaded, as well as other metadata about its stored document form.
     """
@@ -198,6 +198,24 @@ class ApiDescription:
 
         self._validated = []
 
+    @property
+    def oasversion(self) -> str:
+        return self._primary_resource.oasversion
+
+    @property
+    def base_uri(self) -> jschon.URI:
+        """
+        The base URI for the overal API document set.
+
+        This is used in some output serialization formats.
+        """
+        return self._base_uri
+
+    @property
+    def validated_resources(self) -> Tuple[jschon.URI]:
+        """Read-only list of validated resource URIs, in validation order."""
+        return tuple(self._validated)
+
     def validate(
         self,
         resource_uri=None,
@@ -227,12 +245,12 @@ class ApiDescription:
         try:
             output = sp.parse(resource, oastype)
         except JsonSchemaParseError as e:
-            # TODO: don't exit from within a library!
-            logger.critical(
-                f'JSON Schema validation of {resource_uri} failed!\n\n' +
-                json.dumps(e.error_detail, indent=2),
-            )
-            sys.exit(-1)
+            errors.append({
+                'location': str(resource.pointer_uri),
+                'stage': 'JSON Schema validation',
+                'error': e.error_detail,
+            })
+            return errors
 
         to_validate = {}
         by_method = defaultdict(list)
@@ -278,66 +296,5 @@ class ApiDescription:
         errors.extend(self._g.validate_json_references())
         return errors
 
-    def serialize(
-        self,
-        *args,
-        output_format='nt11',
-        destination=sys.stdout,
-        **kwargs
-    ) -> Optional[Union[str, Iterator[str]]]:
-        if self._test_mode:
-            if output_format and output_format != 'nt11':
-                sys.stderr.write('Only "nt11" supported in test mode!\n')
-                sys.exit(-1)
-            if destination not in (None, sys.stdout):
-                sys.stderr.write(
-                    'Only in-memory and stdout supported in test mode!\n',
-                )
-                sys.exit(-1)
-
-            # TODO: At least sometimes, there is a blank line in the output.
-            #       But there does not seem to be when serializeing directly
-            #       to stdout.  This might be an issue with split(), in which
-            #       case maybe use split()[:-1]?  Need to check performance
-            #       with large graphs.
-            filtered = filter(
-                lambda l: l != '',
-                sorted(self._g.serialize(output_format='nt11').split('\n')),
-            )
-            if destination is None:
-                return filtered
-            for line in filtered:
-                print(line)
-            return
-
-        # Note that only lowercase "utf-8" avoids an encoding
-        # warning with N-Triples output (and possibly other
-        # serializers).  rdflib doesn't understand "UTF-8", but
-        # confusingly uses "UTF-8" in the warning message.
-        new_kwargs = {
-            'encoding': 'utf-8',
-            'base': self._base_uri,
-            'output_format': output_format,
-            'order': self._validated,
-        }
-        new_kwargs.update(kwargs)
-
-        if destination in (sys.stdout, sys.stderr) and output_format != 'toml':
-            # rdflib serializers write bytes, not str if destination
-            # is not None, which doesn't work with sys.stdout / sys.stderr
-            destination.flush()
-            with os.fdopen(
-                sys.stdout.fileno(),
-                "wb",
-                closefd=False,  # Don't close stdout/err exiting the with
-            ) as dest:
-                self._g.serialize(*args, destination=dest, **new_kwargs)
-                dest.flush()
-                return
-
-        elif destination is None:
-            return self._g.serialize(
-                *args, destination=destination, **new_kwargs,
-            )
-
-        self._g.serialize(*args, destination=destination, **new_kwargs)
+    def get_oas_graph(self) -> OasGraph:
+        return self._g

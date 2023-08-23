@@ -34,6 +34,7 @@ tonyg-rfc3339 = "^0.1"
 toml = "^0.10.2"
 dom-toml = "^0.6.1"
 coloredlog = "^0.2.5"
+pygments = "^2.16.1"
 
 [tool.poetry.group.docs.dependencies]
 sphinx = "<7"

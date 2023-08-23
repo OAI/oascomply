@@ -1,3 +1,4 @@
+import sys
 import json
 import re
 from collections import namedtuple
@@ -16,6 +17,9 @@ from rdflib.namespace import RDF, RDFS, XSD
 import toml
 import dom_toml
 import yaml
+import pygments
+import pygments.lexers
+import pygments.formatters
 
 import oascomply
 from oascomply.ptrtemplates import (
@@ -67,6 +71,26 @@ OUTPUT_FORMATS_STRUCTURED = frozenset({
     'application/trix',         # Trix (RDF/XML for quads)
 })
 
+OUTPUT_FORMAT_LEXER_NAMES = {
+    'toml': 'toml',
+    'ttl': 'turtle',
+    'turtle': 'turtle',
+    'text/turtle': 'turtle',
+    'longturtle': 'turtle',
+    'ttl2': 'turtle',
+    'nt': 'turtle',
+    'nt11': 'turtle',
+    'ntriples': 'turtle',
+    'application/n-triples': 'turtle',
+    'json-ld': 'jsonld',
+    'application/ld+json': 'jsonld',
+    'xml': 'xml',
+    'application/rdf+xml': 'xml',
+    'pretty-xml': 'xml',
+    'trix': 'xml',
+    'application/trix': 'xml',
+}
+
 
 OasGraphResult = namedtuple('Graphresult', ['errors', 'refTargets'])
 Triple = namedtuple('Triple', ['subject', 'predicate', 'object'])
@@ -103,6 +127,10 @@ class OasGraph:
         self._g.bind('oas3.0', self._oas_versions['3.0'])
         self._g.bind('oas3.1', self._oas_versions['3.1'])
 
+    @property
+    def oasversion(self) -> str:
+        return self._version
+
     @cached_property
     def oas(self):
         return self._oas_unversioned
@@ -111,72 +139,8 @@ class OasGraph:
     def oas_v(self):
         return self._oas_versions[self._version]
 
-    def serialize(self, *args, base=None, output_format=None, **kwargs):
-        """Serialize the graph using the given output format."""
-        if output_format == 'toml':
-            return self.to_toml(*args, **kwargs)
-        kw = kwargs.copy()
-        if output_format not in OUTPUT_FORMATS_LINE and base is not None:
-            kw['base'] = base
-
-        return self._g.serialize(
-            *args,
-            format=output_format,
-            **kwargs,
-        )
-
-    def to_toml(self, *args, destination, order, **kwargs):
-        data = {
-            'namespaces': {
-                'rdf': str(RDF),
-                'rdfs': str(RDFS),
-                'xsd': str(XSD),
-                'schema': 'https://schema.org/',
-                'oas': str(self.oas),
-                f'oas{self._version}': str(self.oas_v),
-            },
-        }
-        nm = self._g.namespace_manager
-        for s in sorted(self._g.subjects(unique=True)):
-            s_name = self._pseudo_qname(s)
-
-            p_set = set(self._g.predicates(s, unique=True))
-            p_list = []
-            for term in (RDF.type, RDFS.label):
-                if term in p_set:
-                    p_list.append(term)
-                    p_set.remove(term)
-            p_list.extend(sorted(p_set))
-
-            for p in p_list:
-                p_name = self._pseudo_qname(p)
-                data.setdefault(s_name, {})[p_name] = \
-                    self._objects_to_toml(s, p)
-
-        toml.dump(data, destination, dom_toml.TomlEncoder())
-
-    def _pseudo_qname(self, term): #, namespaces):
-        try:
-            pn_prefix, _, pn_local = \
-                self._g.namespace_manager.compute_qname(term, generate=False)
-            return f'{pn_prefix}:{pn_local}'
-        except (ValueError, KeyError):
-            return str(term)
-
-    def _objects_to_toml(self, subject, predicate):
-        objects = list(self._g.objects(subject, predicate))
-        if len(objects) > 1:
-            return [self._object_to_toml(o) for o in objects]
-        return self._object_to_toml(objects[0])
-
-    def _object_to_toml(self, obj):
-        nm = self._g.namespace_manager
-        if isinstance(obj, rdflib.Literal):
-            retval = [str(obj)]
-            if obj.datatype:
-                retval.append(self._pseudo_qname(obj.datatype))
-            return retval
-        return self._pseudo_qname(obj)
+    def get_rdf_graph(self) -> rdflib.Graph:
+        return self._g
 
     def add_resource(self, url, uri, filename=None):
         rdf_node = rdflib.URIRef(str(uri))
@@ -641,6 +605,7 @@ class OasGraph:
                     if not schema_result.valid:
                         errors.append({
                             'location': location,
+                            'stage': 'Example and Default validation',
                             'error': schema_result.output('detailed'),
                         })
             return OasGraphResult(errors=errors, refTargets=[])
@@ -670,6 +635,7 @@ class OasGraph:
         if expected not in self._g:
             errors.append({
                 'location': 'TODO',
+                'stage': 'RDF Graph validation',
                 'error': {
                     'expected': [expected],
                     'actual': list(self._g.triples((subject, RDF.type, None))),
@@ -768,6 +734,7 @@ class OasGraph:
             else:
                 errors.append({
                     'location': 'TODO',
+                    'stage': 'RDF Graph validation',
                     'error': f'unexpected reference type for {json_ref_node}',
                 })
 
@@ -795,6 +762,7 @@ class OasGraph:
             if expected != actual:
                 errors.append({
                     'location': 'TODO',
+                    'stage': 'RDF Graph validation',
                     'error': {
                         'json_reference': json_ref_node,
                         'reference_context': context,

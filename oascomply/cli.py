@@ -15,6 +15,7 @@ from oascomply.oassource import (
     DirectMapSource, FileMultiSuffixSource, HttpMultiSuffixSource,
 )
 from oascomply.apidescription import OASResourceManager, ApiDescription
+from oascomply.serializer import OASSerializer
 
 
 logger = logging.getLogger(__name__)
@@ -355,6 +356,13 @@ class ActionAppendThingToURI(argparse.Action):
 
 
 def parse_logging() -> Sequence[str]:
+    """
+    Parse logging options and configure logging before parsing everything else.
+
+    Without doing this first, we lose valuable logging from the custom arg
+    handling classes.  Note that the options are re-added to the main parsing
+    pass so that they appear in the help output.
+    """
     verbosity_parser = argparse.ArgumentParser(add_help=False)
     _add_verbose_option(verbosity_parser)
     v_args, remaining_args = verbosity_parser.parse_known_args()
@@ -371,6 +379,12 @@ def parse_logging() -> Sequence[str]:
 
 
 def parse_non_logging(remaining_args: Sequence[str]) -> argparse.Namespace:
+    """
+    Parse everything except for logging and return the resulting namespace.
+    """
+
+    # First parse out the strip suffixes option because it is used
+    # to configure how other args are parsed.
     strip_suffixes_parser = argparse.ArgumentParser(add_help=False)
     _add_strip_suffixes_option(strip_suffixes_parser)
     ss_args, remaining_args = strip_suffixes_parser.parse_known_args(
@@ -519,6 +533,7 @@ def parse_non_logging(remaining_args: Sequence[str]) -> argparse.Namespace:
 
     logger.debug(f'Processed arguments:\n{args}')
 
+    # TODO: This does not seem to work at all - fix or toss?
     # Note that if -P or -D are actually passed with
     # the args matching the default, this check will
     # still work as they will be set as a list instead
@@ -537,6 +552,7 @@ def parse_non_logging(remaining_args: Sequence[str]) -> argparse.Namespace:
             raise NotImplementedError(f'{opt} option not yet implemented!')
 
     return args
+
 
 def configure_manager(
     catalog: jschon.Catalog,
@@ -599,6 +615,10 @@ def load():
         dir_suffixes=args.dir_suffixes,
         url_suffixes=args.url_suffixes,
     )
+    serializer = OASSerializer(
+        output_format=args.output_format,
+        test_mode=args.test_mode,
+    )
 
     # TODO: Temporary hack, search lists properly
     # TODO: Don't hardcode 3.0
@@ -616,15 +636,33 @@ def load():
     )
 
     errors = desc.validate(validate_examples=(args.examples == 'true'))
+    if errors:
+        return report_errors(errors)
     errors.extend(desc.validate_graph())
     if errors:
-        for err in errors:
-            logger.error(json.dumps(err['error'], indent=2))
-
-        sys.stderr.write('\nAPI description contains errors\n\n')
-        sys.exit(-1)
+        return report_errors(errors)
 
     if args.output_format is not None or args.test_mode is True:
-        desc.serialize(output_format=args.output_format)
+        serializer.serialize(
+            desc.get_oas_graph(),
+            base_uri=str(desc.base_uri),
+            resource_order=[str(v) for v in desc.validated_resources],
+        )
 
     sys.stderr.write('Your API description is valid!\n')
+
+
+def report_errors(errors):
+    for err in errors:
+        logger.critical(
+            f'Error during stage "{errors["stage"]}"' +
+            (
+                f', location <{errors["location"]}>:'
+                if errors.get('location', 'TODO') != 'TODO'
+                else ':'
+            )
+        )
+        logger.critical(json.dumps(err['error'], indent=2))
+
+    sys.stderr.write('\nAPI description contains errors\n\n')
+    sys.exit(-1)
