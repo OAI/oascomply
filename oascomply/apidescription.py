@@ -4,33 +4,16 @@ from typing import (
     Any, Iterator, Mapping, Optional, Sequence, Tuple, Type, Union
 )
 import logging
-import os
-import sys
-
-import jschon
-from jschon.catalog import Source
-from jschon.jsonformat import JSONFormat
-from jschon.vocabulary import Metaschema
-
-import rdflib
-from rdflib.namespace import RDF
 
 import oascomply
 from oascomply.oasgraph import OasGraph
 from oascomply.schemaparse import (
     Annotation, SchemaParser, JsonSchemaParseError,
 )
-from oascomply.oassource import OASSource
-from oascomply.oas3dialect import (
-    OAS30_SCHEMA,
-    OAS30_DIALECT_METASCHEMA,
-    OAS31_SCHEMA,
-    OAS31_DIALECT_METASCHEMA,
-)
+from oascomply.resource import OASResourceManager, URI
 
 __all__ = [
     'ApiDescription',
-    'OASResourceManager',
 ]
 
 logger = logging.getLogger(__name__)
@@ -47,89 +30,6 @@ ANNOT_ORDER = (
     'oasDescriptionLinks',
     'oasExamples',
 )
-
-
-class OASJSONFormat(JSONFormat):
-    _default_metadocument_cls = Metaschema
-
-    def __init__(self, *args, catalog='oascomply', **kwargs):
-        self.oasversion = '3.0'
-        self.sourcemap = None
-        self.url = None
-        super().__init__(*args, catalog='oascomply', **kwargs)
-
-
-class OASResourceManager:
-    """
-    Proxy for the jschon.Catalog, adding OAS-specific handling.
-
-    This class manages the flow of extra information that
-    :class:`jschon.catalog.Catalog` and :class:`jschon.catalog.Source` do not
-    directly support.  This includes recording the URL from which a resource
-    was loaded, as well as other metadata about its stored document form.
-    """
-    def __init__(self, catalog: jschon.Catalog):
-        self._catalog = catalog
-        self._uri_url_map = {}
-        self._uri_sourcemap_map = {}
-
-    def add_uri_source(
-        self,
-        base_uri: Optional[jschon.URI],
-        source: Source,
-    ) -> None:
-        self._catalog.add_uri_source(base_uri, source)
-        if isinstance(source, OASSource):
-            # This "base URI" is really treated as a prefix, which
-            # is why a value of '' works at all.
-            uri_prefix = jschon.URI('' if base_uri is None else str(base_uri))
-            source.set_uri_prefix(uri_prefix)
-            source.set_uri_url_map(self._uri_url_map)
-            source.set_uri_sourcemap_map(self._uri_sourcemap_map)
-
-    def _get_with_url_and_sourcemap(
-        self,
-        uri,
-        *,
-        oasversion,
-        metadocument_uri,
-        cls,
-    ):
-        base_uri = uri.copy(fragment=None)
-        r = self._catalog.get_resource(
-            uri,
-            cacheid=oasversion,
-            metadocument_uri=metadocument_uri,
-            cls=cls,
-        )
-
-        if r.document_root.url is None:
-            r.document_root.url = self._uri_url_map[str(base_uri)]
-            r.document_root.source_map = self._uri_sourcemap_map[str(base_uri)]
-
-        return r
-
-    def get_oas(
-        self,
-        uri: jschon.URI,
-        oasversion: str,
-        *,
-        resourceclass: Type[jschon.JSON] = OASJSONFormat,
-        oas_schema_uri: Optional[jschon.URI] = None,
-    ):
-        if oas_schema_uri is None:
-            oas_schema_uri = {
-                '3.0': OAS30_SCHEMA,
-                '3.1': OAS31_SCHEMA,
-            }[oasversion]
-
-        oas_doc = self._get_with_url_and_sourcemap(
-            uri,
-            oasversion=oasversion,
-            metadocument_uri=oas_schema_uri,
-            cls=resourceclass,
-        )
-        return oas_doc
 
 
 class ApiDescription:
@@ -203,7 +103,7 @@ class ApiDescription:
         return self._primary_resource.oasversion
 
     @property
-    def base_uri(self) -> jschon.URI:
+    def base_uri(self) -> URI:
         """
         The base URI for the overal API document set.
 
@@ -212,7 +112,7 @@ class ApiDescription:
         return self._base_uri
 
     @property
-    def validated_resources(self) -> Tuple[jschon.URI]:
+    def validated_resources(self) -> Tuple[URI]:
         """Read-only list of validated resource URIs, in validation order."""
         return tuple(self._validated)
 
@@ -232,7 +132,7 @@ class ApiDescription:
         elif isinstance(resource_uri, str):
             # TODO: IRI vs URI
             # TODO: Non-JSON Pointer fragments in 3.1
-            resource_uri = jschon.URI(str)
+            resource_uri = URI(str)
 
         # TODO: Don't hardcode 3.0
         resource = self._manager.get_oas(resource_uri, '3.0')
