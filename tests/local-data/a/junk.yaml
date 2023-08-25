@@ -9,9 +9,9 @@
 - type: object
   additionalProperties:
     type: string
-- openapi: 3.0.3
+- openapi: '3.0.3'
   x-id: https://example.com/apis/a/junk#/2
   info:
     title: test
-    version: 1.0
+    version: '1.0'
   paths: {}

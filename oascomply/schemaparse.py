@@ -218,20 +218,15 @@ class JschonSchemaParser(SchemaParser):
                 catalog='oascomply',
             )
 
-    def parse(self, data, oastype, output_format='basic'):
-        schema = self._v30_schema
-        if oastype != 'OpenAPI':
-            try:
-                # TODO: This probably won't work for 3.1
-                schema = schema['$defs'][oastype]
-            except KeyError:
-                logger.error("Can't find schema for oastype {oastype!r}")
-                # TODO: Better error handling
-                raise
+    def parse(self, document, oastype, output_format='basic'):
+        # auto-creating non-Metaschema metadocuments requires
+        # more work, so for now evaluate this as a "normal" schema
+        # result = document.validate()
 
-        # logger.error('\n\n\nDATA:\n' + str(data))
-        # logger.error('\n\nSCHEMA:\n' + str(schema.uri))
-        result = schema.evaluate(data)
+        # TODO: This will not work with OASContainers.
+        schema = document.catalog.get_schema(document.document_root.metadocument_uri)
+        schema.resolve_references()
+        result = schema.evaluate(document.document_root)
         if not result.valid:
             raise JsonSchemaParseError(result.output('basic'))
 

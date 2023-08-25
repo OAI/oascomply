@@ -8,11 +8,12 @@ import pytest
 
 from oascomply.resource import (
     OASNodeBase,
-    OASNode,
     OASContainer,
-    OASDocument,
+    OASInternalNode,
     OASFormat,
+    OASDocument,
     OASFragment,
+    OASJSONSchema,
     OASResourceManager,
     URI,
     ThingToURI,
@@ -419,7 +420,7 @@ def test_resource_loading(manager):
     assert apid.document_root is apid
 
     for key in apid:
-        assert isinstance(apid[key], OASNode), "key '{key}'"
+        assert isinstance(apid[key], OASInternalNode), "key '{key}'"
         assert apid[key].is_resource_root() is False
         assert apid[key].resource_root is apid
         assert apid[key].resource_parent == apid[key].parent
@@ -428,7 +429,10 @@ def test_resource_loading(manager):
         assert apid[key].pointer_uri == apid.uri.copy(fragment=f'/{key}')
         if key == 'info':
             for ikey in apid[key]:
-                assert isinstance(apid[key][ikey], OASNode), "key '{key}'"
+                assert isinstance(
+                    apid[key][ikey],
+                    OASInternalNode,
+                ), "key '{key}'"
 
 
 def test_oas_container(manager):

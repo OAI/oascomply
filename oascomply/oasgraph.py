@@ -11,7 +11,6 @@ import logging
 
 import jschon
 import jschon.exc
-from jschon.jsonformat import JSONFormat
 import rdflib
 from rdflib.namespace import RDF, RDFS, XSD
 import toml
@@ -27,6 +26,7 @@ from oascomply.ptrtemplates import (
     RelJsonPtrTemplateError,
 )
 from oascomply.oas3dialect import OAS30_DIALECT_METASCHEMA
+from oascomply.resource import OASNodeBase
 
 __all__ = [
     'OasGraph',
@@ -102,12 +102,6 @@ class OasGraph:
     :param version: The ``X.Y`` OAS version string for the description
     """
     def __init__(self, version: str, *, test_mode=False):
-
-        # TODO: This is better checked elsewhere
-        if version not in ('3.0', '3.1'):
-            raise ValueError(f'OAS v{version} is not supported.')
-        if version == '3.1':
-            raise ValueError(f'OAS v3.1 support TBD.')
         self._version = version
         self._test_mode = test_mode
 
@@ -143,7 +137,7 @@ class OasGraph:
         return self._g
 
     def add_resource(self, url, uri, filename=None):
-        logger.debug(f'Adding resource <{uri}> loaded from <{url}>')
+        logger.info(f'Adding resource <{uri}> loaded from <{url}> to graph')
         rdf_node = rdflib.URIRef(str(uri))
         if not self._test_mode:
             self._g.add((
@@ -508,7 +502,7 @@ class OasGraph:
                     # TODO: Schema validation even if local?
                     #       Currently checking with semantic validation
                     logger.debug(
-                        f'Reference target: <{ref_target_uri}> a {reftype} .',
+                        f'Reference from <{ref_source_uri}> to <{ref_target_uri}>, oastype={reftype} .',
                     )
                     remote_resources.append((ref_target_uri, reftype))
                 if sourcemap:
@@ -546,13 +540,19 @@ class OasGraph:
         else:
             schema_data = [parent_obj]
 
-        # TODO: Access OAS dialect metaschema through JSONFormat document instance
+        # TODO: where should this info live?  resource.OAS_SCHEMA_INFO?
         m_uri = jschon.URI(OAS30_DIALECT_METASCHEMA)
         for sd in schema_data:
             if isinstance(sd, jschon.JSONSchema):
+                logger.debug(
+                    f'Found example validation schema <{sd.pointer_uri}?',
+                )
                 schemas.append(sd)
-            elif isinstance(sd, JSONFormat):
-                logger.error(f'URI AND M_URI: |{type(sd)}| <{sd.document_root.uri}> <{sd.uri}> <{m_uri}>')
+            elif isinstance(sd, OASNodeBase):
+                logger.warning(
+                    f'Expected OASJSONSchema at <{sd.pointer_uri}>, '
+                    f'found {type(sd).__name__} instead!',
+                )
                 schemas.append(
                     oascomply.catalog.get_schema(sd.uri, metaschema_uri=m_uri),
                 )

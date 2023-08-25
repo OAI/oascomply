@@ -372,10 +372,8 @@ def load():
     )
 
     # TODO: Temporary hack, search lists properly
-    # TODO: Don't hardcode 3.0
     entry_resource = manager.get_entry_resource(
         args.initial,
-        oasversion='3.0',
     )
     if entry_resource is None:
         sys.stderr.write(
@@ -416,10 +414,10 @@ def load():
 def report_errors(errors):
     for err in errors:
         logger.critical(
-            f'Error during stage "{errors["stage"]}"' +
+            f'Error during stage "{err["stage"]}"' +
             (
-                f', location <{errors["location"]}>:'
-                if errors.get('location', 'TODO') != 'TODO'
+                f', location <{err["location"]}>:'
+                if err.get('location', 'TODO') != 'TODO'
                 else ':'
             )
         )

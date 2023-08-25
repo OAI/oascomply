@@ -70,10 +70,6 @@ class ApiDescription:
                 "Initial API description must include `openapi` field!"
                 f"{path} <{uri}>"
             )
-        if document.oasversion != '3.0':
-            if document.oasversion == '3.1':
-                raise NotImplementedError("OAS v3.1 support stil in progress")
-            raise ValueError(f"OAS v{self._version} not supported!")
 
         if (
             document.uri.path and '/' in document.uri.path and
@@ -170,6 +166,7 @@ class ApiDescription:
             else:
                 raise ValueError(f"Unexpected annotation {ann.keyword!r}")
         self._validated.append(resource_uri)
+        self._manager._catalog.resolve_references()
 
         for annot in ANNOT_ORDER:
             if annot == 'oasExamples':

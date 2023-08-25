@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import logging
 from collections import defaultdict
 from functools import cached_property
@@ -33,11 +34,12 @@ from oascomply.oas3dialect import (
 
 __all__ = [
     'OASNodeBase',
-    'OASNode',
     'OASContainer',
-    'OASDocument',
+    'OASInternalNode',
     'OASFormat',
+    'OASDocument',
     'OASFragment',
+    'OASJSONSchema',
     'OASResourceManager',
     'OASType',
     'OAS_SCHEMA_INFO',
@@ -136,28 +138,133 @@ class OASNodeBase:
     metaschema to something different from what the ``jsonSchemaDialect``
     defines.
 
-    In the following hierarchy diagram, classes marked with a "*" extend
-    this base as well as the appropriate base from the
-    :class:`~jschon.json.JSON` hierarchy, and can be instantiated by
-    :meth:`oas_factory` through a :class:`OASResourceManager`.
-
     ::
 
-        jschon.JSON
-        |- jschon.resource.JSONResource
-           |- OASNode*
-           |- OASContainer*
-           |- jschon.jsonformat.JSONFormat
-              |- OASFormat*
-                |- OASDocument
-                |- OASFragment
-              |- jschon.JSONSchema
-                |- OASSchema*
+        jschon.JSON                             OASNodeBase
+        |- jschon.resource.JSONResource         |
+           |- OASContainer ---------------------|
+           |- OASInternalNode ------------------|
+           |- jschon.jsonformat.JSONFormat      |
+              |- OASFormat ---------------------|
+                |- OASDocument                  |
+                |- OASFragment                  |
+              |- jschon.JSONSchema              |
+                |- OASSchema -------------------|
 
     Treating this class (:class:`OASNodeBase`) as a mixin rather than also
     extending :class:`~jschon.resource.JSONResource` avoids the confusion
     common with "diamond-shaped" mutiple inheritance.
     """
+    _SCHEMA_LOCATIONS: ClassVar[
+        Dict[
+            OASType,
+            Dict[
+                OASType,
+                Union[Dict, OASType, bool]
+            ]
+        ]
+    ] = defaultdict(dict, {
+        'OpenAPI': {
+            'paths': 'Paths',
+            'components': 'Components',
+            # TODO: 3.1 only
+            'webhooks': {
+                r'.*': 'PathItem',
+            },
+        },
+        'Components': {
+            'schemas': {
+                r'.*': True,
+            },
+            'responses': {
+                r'.*': 'Response',
+            },
+            'parameters': {
+                r'.*': 'Parameter',
+            },
+            'requestBodies': {
+                r'.*': 'RequestBody',
+            },
+            'headers': {
+                r'.*': 'Header',
+            },
+            'callbacks': {
+                r'.*': 'Callback',
+            },
+            # TODO: 3.1 only
+            'pathItems': {
+                r'.*': 'PathItem',
+            },
+        },
+        'Paths': {
+            r'^/.*$': 'PathItem',
+        },
+        'PathItem': {
+            'parameters': {
+                r'[0-9]+': 'Parameter',
+            },
+            r'(get)|(put)|(post)|(delete)|(options)|(head)|(patch)|(trace)':
+                'Operation',
+        },
+        'Operation': {
+            'parameters': {
+                r'[0-9]+': 'Parameter',
+            },
+            'requestBody': 'RequestBody',
+            'responses': {
+                r'(default)|([1-5](([0-9][0-9])|(XX)))':
+                    'Response',
+            },
+            'callbacks': {
+                r'.*': 'Callback',
+            },
+        },
+        'Parameter': {
+            'schema': True,
+            'content': {
+                r'.*': 'MediaType',
+            },
+        },
+        'Header': {
+            'schema': True,
+            'content': {
+                r'.*': 'MediaType',
+            },
+        },
+        'Parameter': {
+            'schema': True,
+            # Unclear if 'content' is relevant to headers, but doesn't hurt
+            'content': {
+                r'.*': 'MediaType',
+            },
+        },
+        'RequestBody': {
+            'content': {
+                r'.*': 'MedaiType',
+            },
+        },
+        'Response': {
+            'headers': {
+                r'.*': 'Header',
+            },
+            'content': {
+                r'.*': 'MediaType',
+            },
+        },
+        'MediaType': {
+            'schema': True,
+            'encoding': {
+                'headers': {
+                    r'.*': 'Header',
+                },
+            },
+        },
+        'Callback': {
+            # Runtime expressions start with "$", extensions start with "x-"
+            r'\$.*': 'PathItem',
+        },
+    })
+
     @classmethod
     def oas_factory(
         cls,
@@ -186,6 +293,15 @@ class OASNodeBase:
                 oas_document_pointers=oas_document_pointers,
                 oas_fragment_pointers=oas_fragment_pointers,
                 **kwwrgs,
+            )
+
+        if oastype == 'Schema':
+            return OASJSONSchema(
+                value,
+                uri=uri,
+                catalog=catalog,
+                oasversion=oasversion,
+                **kwargs,
             )
 
         if 'openapi' in value:
@@ -218,6 +334,57 @@ class OASNodeBase:
             **kwargs,
         )
 
+    def check_for_schema(
+        self,
+        field: str,
+    ) -> Union[bool, jschon.JSONPointer]:
+        logger.debug(
+            f'Checking <{self.pointer_uri}> field {field!r} for schemas '
+            f'with pointer "{self.schema_pointer}"'
+        )
+        if self.schema_pointer is None:
+            # TODO: whoops, this is not good OO!
+            if isinstance(self, OASInternalNode):
+                retval = False
+            else:
+                raise ValueError("TODO: code needs refactoring, found unexpected class.")
+        else:
+            retval = False
+            for k, v in self.schema_pointer.evaluate(
+                self._SCHEMA_LOCATIONS
+            ).items():
+                logger.debug(f'Checking field name {field!r} against ^{k}$')
+                if re.fullmatch(k, field):
+                    logger.debug(f'Check matched!')
+                    if v is True:
+                        retval = True
+                    elif isinstance(v, OASType):
+                        retval = jschon.JSONPointer([v])
+                    else:
+                        retval = self.schema_pointer / k
+                    break
+        logger.debug(f'Schema check yielded: "{retval!r}"')
+        return retval
+
+    @property
+    def oastype(self) -> Optional[OASType]:
+        try:
+            return self._oastype
+        except AttributeError:
+            self._oastype = None
+            return self._oastype
+
+    @property
+    def schema_pointer(self) -> Optional[jschon.JSONSchema]:
+        try:
+            return self._schema_pointer
+        except AttributeError:
+            self._schema_pointer = (
+                jschon.JSONPointer([self.oastype]) if self.oastype
+                else None
+            )
+            return self._schema_pointer
+
     @property
     def oasversion(self):
         return self._oasversion
@@ -231,9 +398,14 @@ class OASNodeBase:
         from_value=None,
     ):
         if (from_params, from_value) == (None, None):
-            if parent is not None and isinstance(parent, OASFormat):
-                self._oasversion = parent.oasversion
-                return
+            # This method is called too early in the init process for
+            # properties like resource_parent or format_parent to work.
+            ancestor = parent
+            while ancestor is not None:
+                if isinstance(ancestor, OASNodeBase):
+                    self._oasversion = ancestor.oasversion
+                    return
+                ancestor = ancestor.parent
 
             raise ValueError(
                 f"No OAS version provided or found for <{uri}>",
@@ -271,8 +443,64 @@ class OASNodeBase:
         if self._oasversion not in OAS_SCHEMA_INFO:
             raise ValueError(f"Unknown OAS version {self.oasversion!r}")
 
+    def instantiate_mapping_with_schema_check(self, value):
+        mapping = {}
+        for k, v in value.items():
+            s = self.check_for_schema(k)
+            if s is True:
+                mapping[k] = OASJSONSchema(
+                    v,
+                    parent=self,
+                    key=k,
+                    catalog=self.catalog,
+                    cacheid=self.cacheid,
+                    oasversion=self.oasversion,
+                )
+            else:
+                newkwargs = self.itemkwargs.copy()
+                if s is not False:
+                    newkwargs['schema_pointer'] = s
+                mapping[k] = OASInternalNode(
+                    v,
+                    parent=self,
+                    key=k,
+                    itemclass=self.itemclass,
+                    **newkwargs,
+                )
+        return mapping
 
-class OASNode(JSONResource, OASNodeBase):
+    def instantiate_sequence_with_schema_check(self, value):
+        sequence = []
+        for i, v in enumerate(value):
+            i_str = str(i)
+            s = self.check_for_schema(i_str)
+
+            # Currently there are no arrays of schemas where this
+            # happens, but it could be part of an extension keyword
+            if s is True:
+                sequence.append(OASJSONSchema(
+                    v,
+                    parent=self,
+                    key=i_str,
+                    catalog=self.catalog,
+                    cacheid=self.cacheid,
+                    oasversion=self.oasversion,
+                ))
+            else:
+                newkwargs = self.itemkwargs.copy()
+                if s is not False:
+                    newkwargs['schema_pointer'] = s
+                sequence.append(OASInternalNode(
+                    v,
+                    parent=self,
+                    key=i_str,
+                    itemclass=self.itemclass,
+                    **newkwargs,
+                ))
+        return sequence
+
+
+class OASInternalNode(JSONResource, OASNodeBase):
     """Node in an OAS doc that is not aware of its OAS type or metadocument"""
     def __init__(
         self,
@@ -281,16 +509,18 @@ class OASNode(JSONResource, OASNodeBase):
         uri: Optional[URI] = None,
         parent: Optional[jschon.JSON] = None,
         catalog: Union[str, jschon.Catalog] = 'oascomply',
+        schema_pointer: Optional[jschon.JSONPointer] = None,
         **kwargs,
     ):
         if parent is None:
             raise ValueError(
-                "Class OASNode cannot be a document root (without a parent)",
+                "Class OASInternalNode cannot be a document root (without a parent)",
             )
-        logger.info(
-            f'Creating new {type(self).__name__} ({id(self)}), '
-            f'provided uri <{kwargs.get("uri")}>',
-        )
+        logger.info(f'Creating new {type(self).__name__} ({id(self)})...')
+        logger.info(f'...provided node uri <{kwargs.get("uri")}>')
+        logger.info(f'...provided schema locator "{schema_pointer}"')
+
+        self._schema_pointer = schema_pointer
 
         # TODO: refactor some of this duplication
         self._set_oasversion(
@@ -310,7 +540,8 @@ class OASNode(JSONResource, OASNodeBase):
 
         logger.info(
             f'New {type(self).__name__} ({id(self)}) created: '
-            f'<{self.pointer_uri}>',
+            f'<{self.pointer_uri}> '
+            f'in {self.catalog}[{self.cacheid!r}]',
         )
 
     @cached_property
@@ -331,6 +562,12 @@ class OASNode(JSONResource, OASNodeBase):
         return self.resource_root.url.copy(
             fragment=self.pointer_uri.fragment,
         )
+
+    def instantiate_mapping(self, value):
+        return self.instantiate_mapping_with_schema_check(value)
+
+    def instantiate_sequence(self, value):
+        return self.instantiate_sequence_with_schema_check(value)
 
 
 class OASFormat(JSONFormat, OASNodeBase):
@@ -354,7 +591,7 @@ class OASFormat(JSONFormat, OASNodeBase):
         self._url = None
 
         if 'itemclass' not in kwargs:
-            kwargs['itemclass'] = OASNode
+            kwargs['itemclass'] = OASInternalNode
 
         super().__init__(
             *args,
@@ -366,7 +603,16 @@ class OASFormat(JSONFormat, OASNodeBase):
             f'New {type(self).__name__} ({id(self)}) created: '
             f'<{self.pointer_uri}>...',
         )
-        logger.info(f'...metadocument <{self.metadocument_uri}>')
+        logger.info(
+            f'...metadocument <{self.metadocument_uri}> '
+            f'in {self.catalog}[{self.cacheid!r}]',
+        )
+
+    def instantiate_mapping(self, value):
+        return self.instantiate_mapping_with_schema_check(value)
+
+    def instantiate_sequence(self, value):
+        return self.instantiate_sequence_with_schema_check(value)
 
     def is_format_root(self) -> bool:
         return self.parent is None or not isinstance(self.parent, OASFormat)
@@ -502,6 +748,112 @@ class OASDocument(OASFormat):
             **kwargs,
         )
 
+    @property
+    def oastype(self) -> Optional[OASType]:
+        return 'OpenAPI'
+
+
+class OASJSONSchema(jschon.JSONSchema, OASNodeBase):
+    def __init__(
+        self,
+        value,
+        *args,
+        oasversion: Optional[str] = None,
+        catalog: Union[str, jschon.Catalog] = 'oascomply',
+        uri: Optional[URI] = None,
+        parent: Optional[jschon.JSON] = None,
+        metadocument_uri: Optional[URI] = None,
+        **kwargs,
+    ):
+        logger.info(f'Creating new {type(self).__name__} ({id(self)})...')
+        logger.info(f'...provided node uri <{kwargs.get("uri")}>')
+        logger.info(f'...provided meta uri <{kwargs.get("metadocument_uri")}>')
+        logger.debug(f'...contents:\n\t{value}')
+
+        self._set_oasversion(
+            uri=uri,
+            parent=parent,
+            from_params=oasversion,
+        )
+        metaschema_uri = kwargs.get('metaschema_uri')
+        if (
+            None not in (metaschema_uri, metadocument_uri) and
+            metaschema_uri != metadocument_uri
+        ):
+            raise ValueError(
+                f'Conflicting metadocument <{metadocument_uri}> and '
+                f'metaschema <{metaschema_uri}>'
+            )
+
+        if metadocument_uri is None:
+            # TODO: handle 3.1 properly
+            metadocument_uri = (
+                URI(OAS_SCHEMA_INFO[self.oasversion]['dialect']['uri'])
+                if metaschema_uri is None
+                else metaschema_uri
+            )
+        kwargs['metaschema_uri'] = metadocument_uri
+
+        self._url = None
+        self._sourcemap = None
+
+        super().__init__(
+            value,
+            *args,
+            uri=uri,
+            parent=parent,
+            catalog=catalog,
+            **kwargs,
+        )
+
+        logger.info(
+            f'New {type(self).__name__} ({id(self)}) created: '
+            f'<{self.pointer_uri}>...',
+        )
+        logger.info(
+            f'...metaschema <{self.metadocument_uri}> '
+            f'in {self.catalog}[{self.cacheid!r}]',
+        )
+
+    def _oas_schema_factory(self, *args, **kwargs) -> OASJSONSchema:
+        newkwargs = kwargs.copy()
+        newkwargs.setdefault('oasversion', self.oasversion)
+        newkwargs.setdefault('oastype', self.oastype)
+        return OASNodeBase.oas_factory(*args, **newkwargs)
+
+    def get_schema_factory(self):
+        return OASJSONSchema, self._oas_schema_factory
+
+    def is_format_root(self):
+        return (
+            self.parent is None or
+            not isinstance(self.parent, OASJSONSchema) or
+            self.is_resource_root() and '$schema' in self.data
+        )
+
+    @property
+    def oastype(self):
+        return 'Schema'
+
+    # TODO: should URLs only be document-scope? resource-scope?
+    #       URLs for embedded resources would be document root-relative...
+    #       Should the document root URL have an empty fragment or no fragment?
+    @property
+    def url(self):
+        return self._url
+
+    @url.setter
+    def url(self, url):
+        self._url = url
+
+    @property
+    def sourcemap(self):
+        return self._sourcemap
+
+    @sourcemap.setter
+    def sourcemap(self, sourcemap):
+        self._sourcemap = sourcemap
+
 
 class OASFragment(OASFormat):
     def __init__(
@@ -520,6 +872,7 @@ class OASFragment(OASFormat):
                 'that are overall document root nodes (without a parent)',
             )
 
+        self._oastype = oastype
         self._set_oasversion(
             uri=uri,
             parent=parent,
@@ -614,7 +967,8 @@ class OASContainer(JSONResource, OASNodeBase):
 
         logger.info(
             f'New {type(self).__name__} ({id(self)}) created: '
-            f'<{self.pointer_uri}>',
+            f'<{self.pointer_uri}> '
+            f'in {self.catalog}[{self.cacheid!r}]',
         )
 
     def instantiate_sequence(self, value):
@@ -859,7 +1213,6 @@ class OASResourceManager:
         base_uri = uri.copy(fragment=None)
         r = self._catalog.get_resource(
             uri,
-            cacheid=oasversion,
             cls=OASNodeBase,
             factory=lambda *args, **kwargs: OASNodeBase.oas_factory(
                 *args, oastype=oastype, oasversion=oasversion, **kwargs
@@ -867,10 +1220,11 @@ class OASResourceManager:
         )
 
         if r.document_root.url is None:
-            logger.debug(f'No URL for <{r.document_root.pointer_uri}>')
-            logger.debug(f'URI <{uri}>; BASE URI <{base_uri}>')
+            logger.debug(f'No URL for document <{r.document_root.pointer_uri}>')
+            logger.debug(f'...URI <{uri}>; BASE URI <{base_uri}>')
             r.document_root.url = self.get_url(base_uri)
             r.document_root.source_map = self.get_sourcemap(base_uri)
+            logger.debug(f'...set document URL <{r.document_root.url}>')
 
         return r
 
