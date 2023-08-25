@@ -6,7 +6,7 @@ import jschon
 
 import pytest
 
-from oascomply.resource import (
+from oascomply.urimapping import (
     URI,
     ThingToURI,
     PathToURI,
@@ -175,3 +175,8 @@ def test_url_must_be_prefix(caplog):
         with pytest.raises(ValueError, match=error):
             URLToURI(['about:blank', str(BASE_URI)], [], True)
     assert error in caplog.text
+
+
+def test_uri_to_uri_str():
+    u = URLToURI([str(FOO_YAML_URI), str(OTHER_URI)])
+    assert str(u) == f'(url: <{FOO_YAML_URI}>, uri: <{OTHER_URI}>)'

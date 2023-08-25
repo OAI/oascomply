@@ -13,10 +13,10 @@ from oascomply.oassource import (
 )
 from oascomply.apidescription import ApiDescription
 from oascomply.serializer import OASSerializer
-from oascomply.resource import (
-    OASResourceManager, URI, URIError,
-    ThingToURI, PathToURI, URLToURI,
+from oascomply.urimapping import (
+    URI, URIError, ThingToURI, PathToURI, URLToURI,
 )
+from oascomply.resource import OASResourceManager
 
 
 logger = logging.getLogger(__name__)
