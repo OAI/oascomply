@@ -1,0 +1,17 @@
+---
+# This is a non-OpenAPI file with random OAS fragments
+# in it, including a complete OAS document.  Apparently
+# this is a thing people do.
+- post:
+    responses:
+      "201":
+        description: Created
+- type: object
+  additionalProperties:
+    type: string
+- openapi: 3.0.3
+  x-id: https://example.com/apis/a/junk#/2
+  info:
+    title: test
+    version: 1.0
+  paths: {}

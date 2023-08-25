@@ -64,27 +64,16 @@ class FileLoader(ResourceLoader):
     def load(cls, full_path: PathString) -> LoadedContent:
         """Load a file, returning the contents and the retrieval URL"""
         path = pathlib.Path(full_path)
-        try:
-            content = path.read_text(encoding='utf-8')
-            parse_type = None
-            if path.suffix in ContentParser.SUPPORTED_SUFFIXES:
-                parse_type = path.suffix
+        content = path.read_text(encoding='utf-8')
+        parse_type = None
+        if path.suffix in ContentParser.SUPPORTED_SUFFIXES:
+            parse_type = path.suffix
 
-            return LoadedContent(
-                content=content,
-                url=path.as_uri(),
-                parse_type=parse_type,
-            )
-
-        except OSError as e:
-            msg = f'Could not load {full_path!r}: '
-            if e.filename is not None:
-                # The filename for OSError is not included in
-                # the exception args, apparently for historical reasons.
-                raise CatalogError(
-                    msg + f'{e.strerror}: {e.filename!r}',
-                ) from e
-            raise CatalogError(msg) from e
+        return LoadedContent(
+            content=content,
+            url=path.as_uri(),
+            parse_type=parse_type,
+        )
 
 
 class HttpLoader(ResourceLoader):
@@ -362,10 +351,15 @@ class MultiSuffixSource(OASSource):
         """
         no_suffix_path = self.prefix + relative_path
 
+        logger.debug(
+            f'Checking "{no_suffix_path}" with suffixes {self._suffixes}',
+        )
         for suffix in self._suffixes:
             full_path = no_suffix_path + suffix
             try:
                 return self._parser.parse(full_path, suffix)
+            except FileNotFoundError:
+                pass
             except KeyError as e:
                 logger.warning(
                     f'Unsupported suffix {suffix!r} while loading '

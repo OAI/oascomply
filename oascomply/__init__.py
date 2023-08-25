@@ -12,7 +12,7 @@ import jschon
 import jschon.catalog
 from jschon.catalog import _2020_12
 from oascomply.oassource import DirectMapSource
-from oascomply.resource import OASResourceManager, URI
+from oascomply.resource import OASResourceManager, URI, OAS_SCHEMA_INFO
 from oascomply.oas3dialect import (
     # TODO: sort out vs oascomply.patch
     OAS30_SCHEMA,
@@ -25,7 +25,6 @@ from oascomply.oas3dialect import (
     initialize_oas31_dialect,
 )
 from oascomply.schemaparse import (
-    OAS_SCHEMA_INFO,
     initialize_oas_specification_schemas,
 )
 from oascomply.patch import (

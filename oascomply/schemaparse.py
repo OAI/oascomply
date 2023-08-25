@@ -10,58 +10,15 @@ import rdflib
 from rdflib.namespace import RDF
 import yaml
 
-from oascomply.oasgraph import OasGraph
-from oascomply.oas3dialect import (
-    OAS30_DIALECT_METASCHEMA,
-    OAS30_VOCAB_LIST,
-    OAS30_SUBSET_VOCAB,
-    OAS30_SCHEMA,
-    OAS30_SCHEMA_PATH,
-    OAS31_DIALECT_METASCHEMA,
-    OAS31_VOCAB_LIST,
-    OAS31_SCHEMA,
-    OAS31_SCHEMA_PATH,
-)
+from oascomply.resource import OAS_SCHEMA_INFO
 
 __all__ = [
-    'OAS_SCHEMA_INFO',
     'initialize_oas_specification_schemas',
     'Annotation',
     'SchemaParser',
 ]
 
 logger = logging.getLogger(__name__)
-
-
-# TODO: Sort out vs oascomply.oas3dialect and oascomply.patch
-OAS_SCHEMA_INFO = {
-    '3.0':  {
-        'schema': {
-            'uri': OAS30_SCHEMA,
-            'path': OAS30_SCHEMA_PATH,
-            'vocabs': OAS30_VOCAB_LIST,
-        },
-        'dialect': {
-            # We don't need a path as loading this dialect is managed by
-            # the oascomply.oas3dialect module.
-            'uri': OAS30_DIALECT_METASCHEMA,
-            'vocab-meta': {},
-        },
-    },
-    '3.1': {
-        'schema': {
-            'uri': OAS31_SCHEMA,
-            'path': OAS31_SCHEMA_PATH,
-            'vocabs': OAS31_VOCAB_LIST,
-        },
-        'dialect': {
-            # We don't need a path as loading this dialect is managed by
-            # the oascomply.oas3dialect module.
-            'uri': OAS31_DIALECT_METASCHEMA,
-            'vocab-meta': {},
-        },
-    },
-}
 
 
 def initialize_oas_specification_schemas(catalog: jschon.Catalog):

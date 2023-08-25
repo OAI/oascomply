@@ -129,13 +129,18 @@ class ApiDescription:
         if resource_uri is None:
             assert oastype == 'OpenAPI'
             resource_uri = self._primary_resource.uri
-        elif isinstance(resource_uri, str):
-            # TODO: IRI vs URI
-            # TODO: Non-JSON Pointer fragments in 3.1
-            resource_uri = URI(str)
+            resource = self._manager.get_oas(resource_uri)
+        else:
+            if isinstance(resource_uri, str):
+                # TODO: IRI vs URI
+                # TODO: Non-JSON Pointer fragments in 3.1
+                resource_uri = URI(str)
+            resource = self._manager.get_oas(
+                resource_uri,
+                oasversion=self._primary_resource.oasversion,
+                oastype=oastype,
+            )
 
-        # TODO: Don't hardcode 3.0
-        resource = self._manager.get_oas(resource_uri, '3.0')
         assert resource is not None
         document = resource.document_root
         sourcemap = resource.sourcemap

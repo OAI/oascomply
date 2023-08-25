@@ -29,9 +29,6 @@ from . import (
 )
 
 
-logging.getLogger('oascomply').setLevel(logging.DEBUG)
-
-
 DEFAULT_ARG_NAMESPACE = {
     'initial': None,
     'files': [],
@@ -216,16 +213,20 @@ def test_uri_to_uri_str():
     (['oascomply', '-v', '-v'], logging.DEBUG, []),
 ))
 def test_parse_logging(argv, level, remaining):
-    try:
-        old_argv = sys.argv
-        sys.argv = argv
+    old_argv = sys.argv
+    sys.argv = argv
 
+    logger = logging.getLogger('oascomply')
+    old_level = logger.getEffectiveLevel()
+
+    try:
         remaining_args = parse_logging()
 
-        assert logging.getLogger('oascomply').getEffectiveLevel() == level
+        assert logger.getEffectiveLevel() == level
         assert remaining_args == remaining
 
     finally:
+        logger.setLevel(old_level)
         sys.argv = old_argv
 
 
