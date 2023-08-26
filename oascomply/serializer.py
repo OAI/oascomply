@@ -236,7 +236,7 @@ class OASSerializer:
         graph = oas_graph.get_rdf_graph()
         if (
             self._dest in (sys.stdout, sys.stderr) and
-            not self._dest.isatty() and
+            not (self._dest.isatty() or os.getenv('OASCOMPLY_COLOR') == '1') and
             self._format != 'toml'
         ):
             return self.stream_to_std_fd(graph, **new_kwargs)
@@ -249,7 +249,7 @@ class OASSerializer:
                 destination=self._dest, **new_kwargs,
             )
 
-        elif self._dest.isatty():
+        elif self._dest.isatty() or os.getenv('OASCOMPLY_COLOR') == '1':
             return self.colorize(graph.serialize(
                 destination=None, **new_kwargs,
             ))
@@ -289,7 +289,7 @@ class OASSerializer:
                 data.setdefault(s_name, {})[p_name] = \
                     self._objects_to_toml(s, p, graph)
 
-        if self._dest.isatty():
+        if self._dest.isatty() or os.getenv('OASCOMPLY_COLOR') == '1':
             self.colorize(toml.dumps(data))
         else:
             toml.dump(data, self._dest, dom_toml.TomlEncoder())

@@ -4,6 +4,7 @@
 Resources with no clear point of first use for initialization
 are initialized here.
 """
+import os
 import sys
 import pathlib
 import logging
@@ -43,7 +44,8 @@ _log_formatter = logging.Formatter(
     '%(asctime)s %(filename)s:%(lineno)d [%(levelname)s] %(message)s',
 )
 _log_handler = (
-    coloredlog.ConsoleHandler(stream=sys.stderr) if sys.stderr.isatty()
+    coloredlog.ConsoleHandler(stream=sys.stderr)
+    if sys.stderr.isatty() or os.getenv('OASCOMPLY_COLOR') == '1'
     else logging.StreamHandler()
 )
 _log_handler.setFormatter(_log_formatter)
