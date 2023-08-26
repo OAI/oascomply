@@ -204,33 +204,35 @@ class JschonSchemaParser(SchemaParser):
     def __init__(self, config, annotations=()):
         super().__init__(config, annotations)
         self._filtered = True
-        with open(
-            Path(__file__).parent /
-                '..' /
-                'schemas' /
-                'oas' /
-                'v3.0' /
-                'schema.json',
-            encoding='utf-8',
-        ) as schema_fp:
-            self._v30_schema = jschon.JSONSchema(
-                json.load(schema_fp),
-                catalog='oascomply',
-            )
 
     def parse(self, document, oastype, output_format='basic'):
+        if document.oas_root is None:
+            raise ValueError(
+                f"Cannot validate non-OAS node <{document.pointer_uri}>",
+            )
+
+        if document.oas_root.pointer_uri in self._result_cache:
+            logger.warning(
+                f'Requested re-validation of <{document.oas_root.pointer_uri}> '
+                f'for <{document.pointer_uri}>, returning from cache',
+            )
+            return self._result_cache[document.oas_root.pointer_uri]
+
         # auto-creating non-Metaschema metadocuments requires
         # more work, so for now evaluate this as a "normal" schema
         # result = document.validate()
-
-        # TODO: This will not work with OASContainers.
-        schema = document.catalog.get_schema(document.document_root.metadocument_uri)
+        schema = document.catalog.get_schema(document.oas_root.metadocument_uri)
+        logger.info(
+            f'Validating <{document.oas_root.pointer_uri}> '
+            f'against <{schema.pointer_uri}>',
+        )
         schema.resolve_references()
-        result = schema.evaluate(document.document_root)
+        result = schema.evaluate(document.oas_root)
         if not result.valid:
             raise JsonSchemaParseError(result.output('basic'))
 
-        return result.output(
+        output = result.output(
             output_format,
             annotations=self._annotations,
         )
+        return output

@@ -6,9 +6,11 @@
     responses:
       "201":
         description: Created
+  x-id: https://example.com/apis/a/junk#/0
 - type: object
   additionalProperties:
     type: string
+  x-id: https://example.com/apis/a/junk#/1
 - openapi: '3.0.3'
   x-id: https://example.com/apis/a/junk#/2
   info:

@@ -407,12 +407,18 @@ def test_resource_loading(manager):
     assert apid.sourcemap is None
     assert apid['x-id'] == str(A_URI)
 
-    assert apid.is_format_root()
+    assert apid.is_oas_root() is True
+    assert apid.oas_root is apid
+    assert apid.oas_parent is None
+    assert apid.parent_in_oas is None
+    assert apid.is_in_oas_document() is True
+
+    assert apid.is_format_root() is True
     assert apid.format_root is apid
     assert apid.format_parent is None
     assert apid.parent_in_format is None
 
-    assert apid.is_resource_root()
+    assert apid.is_resource_root() is True
     assert apid.resource_root is apid
     assert apid.resource_parent is None
     assert apid.parent_in_resource is None
@@ -421,24 +427,57 @@ def test_resource_loading(manager):
 
     for key in apid:
         assert isinstance(apid[key], OASInternalNode), "key '{key}'"
+
+        assert apid[key].is_oas_root() is False
+        assert apid[key].oas_root is apid
+        assert apid[key].oas_parent is apid
+        assert apid[key].parent_in_oas is apid
+        assert apid[key].is_in_oas_document() is True
+
         assert apid[key].is_resource_root() is False
         assert apid[key].resource_root is apid
         assert apid[key].resource_parent == apid[key].parent
         assert apid[key].parent_in_resource == apid[key].parent
+
         assert apid[key].document_root is apid
+
         assert apid[key].pointer_uri == apid.uri.copy(fragment=f'/{key}')
         if key == 'info':
             for ikey in apid[key]:
-                assert isinstance(
-                    apid[key][ikey],
-                    OASInternalNode,
-                ), "key '{key}'"
+                node = apid[key][ikey]
+                assert isinstance(node, OASInternalNode), "key '{key}'"
+                assert node.is_oas_root() is False
+                assert node.oas_root is apid
+                assert node.oas_parent is apid[key]
+                assert node.parent_in_oas is apid[key]
+                assert node.is_in_oas_document() is True
 
 
 def test_oas_container(manager):
-    p = manager.get_oas(A_JUNK_URI, oasversion='3.0', oastype='PathItem')
+    path_item_uri = A_JUNK_URI.copy(fragment='/0')
+    p = manager.get_oas(path_item_uri, oasversion='3.0', oastype='PathItem')
     assert isinstance(p, OASFragment)
+    assert URI(p['x-id'].value) == path_item_uri
+
     assert p.oasversion == '3.0'
     assert p.metadocument_uri == URI(
         OAS_SCHEMA_INFO['3.0']['schema']['uri'],
     ).copy(fragment=f'/$defs/PathItem')
+
+    assert p.is_in_oas_document() is True
+    assert p.is_oas_root() is True
+    assert p.oas_root is p
+    assert p.parent_in_oas is None
+    assert p.oas_parent is p.parent
+
+    assert p.is_format_root() is True
+    assert p.format_root is p
+    assert p.parent_in_format is None
+    assert p.format_parent is None
+
+    assert p.document_root is p.parent
+    assert isinstance(p.document_root, OASContainer)
+    assert p.document_root.is_in_oas_document() is False
+    assert p.document_root.oas_root is None
+    assert p.document_root.oas_parent is None
+    assert p.document_root.parent_in_oas is None

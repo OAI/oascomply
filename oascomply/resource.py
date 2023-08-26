@@ -272,30 +272,34 @@ class OASNodeBase:
         *args,
         catalog: Union[str, jschon.Catalog] = 'oascomply',
         uri: Optional[URI] = None,
+        request_uri: Optional[URI] = None,
         oasversion: Optional[OASVersion] = None,
         oastype: OASType = 'OpenAPI',
         **kwargs,
     ) -> OASNodeBase:
-
-        if uri is not None and uri.fragment and uri.fragment.startswith('/'):
-            pointer = jschon.JSONPointer.parse_uri_fragment(uri.fragment)
+        logger.info(f'Requested instantation of <{request_uri}>, base <{uri}>, oasversion {oasversion}, oastype {oastype}')
+        if (
+            request_uri is not None and request_uri.fragment and
+            request_uri.fragment.startswith('/')
+        ):
+            pointer = jschon.JSONPointer.parse_uri_fragment(request_uri.fragment)
             if oastype == 'OpenAPI':
                 kwargs['oas_document_pointers'] = [pointer]
             else:
                 kwargs['oas_fragment_pointers'] = {pointer: oastype}
 
+            logger.info(f'instantiating OASContainer for <{uri}> ({oastype})')
             return OASContainer(
                 value,
                 *args,
                 uri=uri,
                 catalog=catalog,
                 oasversion=oasversion,
-                oas_document_pointers=oas_document_pointers,
-                oas_fragment_pointers=oas_fragment_pointers,
-                **kwwrgs,
+                **kwargs,
             )
 
         if oastype == 'Schema':
+            logger.info(f'instantiating OASJSONSchema for <{uri}> ({oastype})')
             return OASJSONSchema(
                 value,
                 uri=uri,
@@ -310,6 +314,7 @@ class OASNodeBase:
                     f"OAS type {oastype!r} requested for full "
                     f"OAS document <{uri}>",
                 )
+            logger.info(f'instantiating OASDocument for <{uri}> ({oastype})')
             return OASDocument(
                 value,
                 *args,
@@ -324,6 +329,7 @@ class OASNodeBase:
                 "no 'openapi' field present.",
             )
 
+        logger.info(f'instantiating OASFragment for <{uri}> ({oastype})')
         return OASFragment(
             value,
             *args,
@@ -365,6 +371,43 @@ class OASNodeBase:
                     break
         logger.debug(f'Schema check yielded: "{retval!r}"')
         return retval
+
+    @cached_property
+    def oas_parent(self) -> Optional[OASNodeBase]:
+        candidate = None
+        current = self
+
+        while (candidate := current.parent) is not None:
+            if isinstance(candidate, OASNodeBase):
+                return candidate
+            current = candidate
+        return candidate
+
+    @cached_property
+    def oas_root(self) -> Optional[OASNodeBase]:
+        candidate = self
+        while candidate is not None:
+            if candidate.is_oas_root():
+                return candidate
+            candidate = candidate.parent_in_oas
+        return candidate
+
+    @cached_property
+    def parent_in_oas(self) -> Optional[OASNodeBase]:
+        if (
+            (not self.is_in_oas_document()) or
+            self.oas_parent is None or
+            not self.oas_parent.is_in_oas_document()
+        ):
+            return None
+        return self.oas_parent
+
+    def is_in_oas_document(self) -> bool:
+        """True if node is part of an OAS document, false if just a container"""
+        raise NotImplementedError
+
+    def is_oas_root(self) -> bool:
+        raise NotImplementedError
 
     @property
     def oastype(self) -> Optional[OASType]:
@@ -455,6 +498,7 @@ class OASNodeBase:
                     catalog=self.catalog,
                     cacheid=self.cacheid,
                     oasversion=self.oasversion,
+                    resolve_references=False,
                 )
             else:
                 newkwargs = self.itemkwargs.copy()
@@ -485,6 +529,7 @@ class OASNodeBase:
                     catalog=self.catalog,
                     cacheid=self.cacheid,
                     oasversion=self.oasversion,
+                    resolve_references=False,
                 ))
             else:
                 newkwargs = self.itemkwargs.copy()
@@ -569,6 +614,12 @@ class OASInternalNode(JSONResource, OASNodeBase):
     def instantiate_sequence(self, value):
         return self.instantiate_sequence_with_schema_check(value)
 
+    def is_in_oas_document(self) -> bool:
+        return True
+
+    def is_oas_root(self) -> bool:
+        return False
+
 
 class OASFormat(JSONFormat, OASNodeBase):
     """Base for all OAS document nodes."""
@@ -616,6 +667,12 @@ class OASFormat(JSONFormat, OASNodeBase):
 
     def is_format_root(self) -> bool:
         return self.parent is None or not isinstance(self.parent, OASFormat)
+
+    def is_in_oas_document(self) -> bool:
+        return True
+
+    def is_oas_root(self) -> bool:
+        return True
 
     @cached_property
     def format_parent(self) -> Optional[OASFormat]:
@@ -831,6 +888,15 @@ class OASJSONSchema(jschon.JSONSchema, OASNodeBase):
             self.is_resource_root() and '$schema' in self.data
         )
 
+    def is_in_oas_document(self) -> bool:
+        return True
+
+    def is_oas_root(self) -> bool:
+        return (
+            self.oas_parent is None or
+            not self.oas_parent.is_in_oas_document()
+        )
+
     @property
     def oastype(self):
         return 'Schema'
@@ -930,6 +996,9 @@ class OASContainer(JSONResource, OASNodeBase):
             f'provided uri <{kwargs.get("uri")}>',
         )
 
+        self._url = None
+        self._sourcemap = None
+
         if oas_fragment_pointers is None:
             oas_fragment_pointers = {}
 
@@ -963,7 +1032,7 @@ class OASContainer(JSONResource, OASNodeBase):
         kwargs['oas_document_pointers'] = child_document_pointers
         kwargs['oas_fragment_pointers'] = child_fragment_pointers
 
-        super.__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         logger.info(
             f'New {type(self).__name__} ({id(self)}) created: '
@@ -973,6 +1042,9 @@ class OASContainer(JSONResource, OASNodeBase):
 
     def instantiate_sequence(self, value):
         seq = []
+        # TODO: Hack
+        self.itemkwargs.setdefault('catalog', self.catalog)
+        self.itemkwargs.setdefault('cacheid', self.cacheid)
         newkwargs = {
             k: v for k, v in self.itemkwargs.items()
             if k not in ('child_document_pointers', 'child_fragment_pointers')
@@ -980,45 +1052,106 @@ class OASContainer(JSONResource, OASNodeBase):
         for i, v in enumerate(value):
             si = str(i)
             if si in self._fragment_fields:
-                seq.append(OASFragment(
+                if self._fragment_fields[si] == 'Schema':
+                    seq.append(OASJSONSchema(
+                        v,
+                        parent=self,
+                        key=si,
+                        **newkwargs,
+                    ))
+                else:
+                    seq.append(OASFragment(
+                        v,
+                        oastype=self._fragment_fields[si],
+                        parent=self,
+                        key=si,
+                        **newkwargs,
+                    ))
+            elif si in self._document_fields:
+                seq.append(OASDocument(
                     v,
-                    oastype=self._fragment_fields[si],
                     parent=self,
                     key=si,
                     **newkwargs,
                 ))
-            elif si in self._document_fields:
-                seq.append(OASDocument(v, parent=self, key=si, **newkwargs))
             else:
-                seq.append(
-                    self.itemclass(v, parent=self, key=si, **self.itemkwargs),
-                )
+                seq.append(self.itemclass(
+                    v,
+                    parent=self,
+                    key=si,
+                    **self.itemkwargs,
+                ))
 
         return seq
 
     def instantiate_mapping(self, value):
         mapping = {}
+        # TODO: Hack
+        self.itemkwargs.setdefault('catalog', self.catalog)
+        self.itemkwargs.setdefault('cacheid', self.cacheid)
         newkwargs = {
             k: v for k, v in self.itemkwargs.items()
             if k not in ('child_document_pointers', 'child_fragment_pointers')
         }
         for k, v in value.items():
             if k in self._fragment_fields:
-                mapping[k] = OASFragment(
+                if self._fragment_fields[k] == 'Schema':
+                    mapping[k] = OASJSONSchema(
+                        v,
+                        parent=self,
+                        key=k,
+                        **newkwargs,
+                    )
+                else:
+                    mapping[k] = OASFragment(
+                        v,
+                        oastype=self._fragment_fields[k],
+                        parent=self,
+                        key=k,
+                        **newkwargs,
+                    )
+            elif k in self._document_fields:
+                mapping[k] = OASDocument(
                     v,
-                    oastype=self._fragment_fields[k],
                     parent=self,
                     key=k,
                     **newkwargs,
                 )
-            elif k in self._document_fields:
-                mapping[k] = OASDocument(v, parent=self, key=k, **newkwargs)
             else:
                 mapping[k] = self.itemclass(
-                    v, parent=self, key=k, **self.itemkwargs,
+                    v,
+                    parent=self,
+                    key=k,
+                    **self.itemkwargs,
                 )
 
         return mapping
+
+    def is_in_oas_document(self) -> bool:
+        return False
+
+    def is_oas_root(self) -> bool:
+        return False
+
+    # TODO: should URLs only be document-scope? resource-scope?
+    #       URLs for embedded resources would be document root-relative...
+    #       Should the document root URL have an empty fragment or no fragment?
+    # TODO: also, should this be pushed up to OASNodeBase?
+    @property
+    def url(self):
+        return self._url
+
+    @url.setter
+    def url(self, url):
+        self._url = url
+
+    @property
+    def sourcemap(self):
+        return self._sourcemap
+
+    @sourcemap.setter
+    def sourcemap(self, sourcemap):
+        self._sourcemap = sourcemap
 
 
 class OASResourceManager:
