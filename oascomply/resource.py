@@ -275,18 +275,36 @@ class OASNodeBase:
         request_uri: Optional[URI] = None,
         oasversion: Optional[OASVersion] = None,
         oastype: OASType = 'OpenAPI',
+        oas_document_pointers: Sequences[jschon.JSONPointer] = frozenset(),
+        oas_fragment_pointers: Optional[
+            Mapping[jschon.JSONPointer, OASType]
+        ] = None,
         **kwargs,
     ) -> OASNodeBase:
-        logger.info(f'Requested instantation of <{request_uri}>, base <{uri}>, oasversion {oasversion}, oastype {oastype}')
+        logger.info(
+            f'Requested instantation of <{request_uri}>, base <{uri}>, '
+            f'oasversion {oasversion}, oastype {oastype}',
+        )
         if (
             request_uri is not None and request_uri.fragment and
             request_uri.fragment.startswith('/')
         ):
-            pointer = jschon.JSONPointer.parse_uri_fragment(request_uri.fragment)
+            if oas_fragment_pointers is None:
+                oas_fragment_pointers = {}
+
+            pointer = jschon.JSONPointer.parse_uri_fragment(
+                request_uri.fragment,
+            )
             if oastype == 'OpenAPI':
-                kwargs['oas_document_pointers'] = [pointer]
+                kwargs['oas_document_pointers'] = {pointer}
+                kwargs['oas_fragment_pointers'] = {}
             else:
+                kwargs['oas_document_pointers'] = set()
                 kwargs['oas_fragment_pointers'] = {pointer: oastype}
+
+            # TODO: possibility of overwriting previous oastype of a fragment?
+            kwargs['oas_document_pointers'].update(oas_document_pointers)
+            kwargs['oas_fragment_pointers'].update(oas_fragment_pointers)
 
             logger.info(f'instantiating OASContainer for <{uri}> ({oastype})')
             return OASContainer(
@@ -353,7 +371,9 @@ class OASNodeBase:
             if isinstance(self, OASInternalNode):
                 retval = False
             else:
-                raise ValueError("TODO: code needs refactoring, found unexpected class.")
+                raise ValueError(
+                    "TODO: code needs refactoring, found unexpected class.",
+                )
         else:
             retval = False
             for k, v in self.schema_pointer.evaluate(
@@ -1002,6 +1022,11 @@ class OASContainer(JSONResource, OASNodeBase):
         if oas_fragment_pointers is None:
             oas_fragment_pointers = {}
 
+        # These are used if we need to re-instantiate the document
+        # with more pointers as more references are discovered
+        self.oas_fragment_pointers = oas_fragment_pointers.copy()
+        self.oas_document_pointers = frozenset(oas_document_pointers)
+
         self._fragment_fields = {}
         child_fragment_pointers = {}
 
@@ -1342,13 +1367,23 @@ class OASResourceManager:
         *,
         oasversion,
         oastype,
+        oas_fragment_pointers=None,
+        oas_document_pointers=frozenset(),
     ):
+        if oas_fragment_pointers is None:
+            oas_fragment_pointers = {}
+
         base_uri = uri.copy(fragment=None)
         r = self._catalog.get_resource(
             uri,
             cls=OASNodeBase,
             factory=lambda *args, **kwargs: OASNodeBase.oas_factory(
-                *args, oastype=oastype, oasversion=oasversion, **kwargs
+                *args,
+                oastype=oastype,
+                oasversion=oasversion,
+                oas_fragment_pointers=oas_fragment_pointers,
+                oas_document_pointers=oas_document_pointers,
+                **kwargs,
             ),
         )
 
@@ -1389,6 +1424,20 @@ class OASResourceManager:
             oasversion=oasversion,
             oastype=oastype,
         )
+        if not oas_doc.is_in_oas_document():
+            assert isinstance(oas_doc, OASContainer), \
+                f"Unexpected non-OASContainer node <{uri}>, " \
+                f"actual type '{type(oas_doc).__name__}'"
+
+            self._catalog.del_resource(uri.copy(fragment=None))
+            return self._get_with_url_and_sourcemap(
+                uri,
+                oasversion=oasversion,
+                oastype=oastype,
+                oas_fragment_pointers=oas_doc.oas_fragment_pointers,
+                oas_document_pointers=oas_doc.oas_document_pointers,
+            )
+
         return oas_doc
 
     def get_url(self, uri):

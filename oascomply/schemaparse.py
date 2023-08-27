@@ -208,7 +208,8 @@ class JschonSchemaParser(SchemaParser):
     def parse(self, document, oastype, output_format='basic'):
         if document.oas_root is None:
             raise ValueError(
-                f"Cannot validate non-OAS node <{document.pointer_uri}>",
+                f"Cannot validate non-OAS node <{document.pointer_uri}>, "
+                f"type {type(document).__name__}"
             )
 
         if document.oas_root.pointer_uri in self._result_cache:
