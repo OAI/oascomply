@@ -60,7 +60,7 @@ OAS31_SCHEMA_PATH = (
 ).resolve()
 OAS31_EXTENSION_VOCAB = "https://spec.openapis.org/oas/3.1/vocab/base"
 OAS31_EXTENSION_METASCHEMA = "https://spec.openapis.org/oas/3.1/meta/base"
-OAS31_DIALECT_METASCHEMA = "https://spec.openapis.org/oas/3.1/dialect/strict"
+OAS31_DIALECT_METASCHEMA = "https://spec.openapis.org/oas/3.1/dialect/mandatory-vocabularies"
 
 
 FORMAT_ASSERTION_VOCAB_URI = URI(

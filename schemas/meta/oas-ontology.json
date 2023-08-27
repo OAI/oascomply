@@ -11,7 +11,13 @@
     "properties": {
         "oasApiLinks": {"$ref": "#/$defs/templatedPointerRelationObject"},
         "oasChildren": {"$ref": "#/$defs/templatedPointerRelationObject"},
-        "oasIntermediate": {"$ref": "#"},
+        "oasIntermediate": {
+            "$ref": "#",
+            "properties": {
+                "intermediateRelation": {"$ref": "#/$defs/semanticRelation"}
+            },
+            "unevaluatedProperties": false
+        },
         "oasDescriptionLinks": {
             "$ref": "#/$defs/templatedPointerRelationObject"
         },

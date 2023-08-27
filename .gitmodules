@@ -2,3 +2,6 @@
 	path = submodules/OpenAPI-Specification
 	url = https://github.com/OAI/OpenAPI-Specification.git
 	branch = main
+[submodule "submodules/json-schema-spec"]
+	path = submodules/json-schema-spec
+	url = https://github.com/json-schema-org/json-schema-spec.git

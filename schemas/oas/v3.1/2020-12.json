@@ -1,27 +1,56 @@
 {
-  "$id": "https://spec.openapis.org/oas/3.1/dialect/strict",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "OpenAPI 3.1 Schema Object Dialect",
-  "description": "A JSON Schema dialect describing schemas found in OpenAPI documents",
+  "$id": "https://json-schema.org/draft/2020-12/schema",
   "$vocabulary": {
     "https://json-schema.org/draft/2020-12/vocab/core": true,
     "https://json-schema.org/draft/2020-12/vocab/applicator": true,
     "https://json-schema.org/draft/2020-12/vocab/unevaluated": true,
     "https://json-schema.org/draft/2020-12/vocab/validation": true,
     "https://json-schema.org/draft/2020-12/vocab/meta-data": true,
-    "https://json-schema.org/draft/2020-12/vocab/content": true,
-    "https://spec.openapis.org/oas/3.1/vocab/base": true,
-    "https://json-schema.org/draft/2020-12/vocab/format-assertion": true
+    "https://json-schema.org/draft/2020-12/vocab/format-annotation": true,
+    "https://json-schema.org/draft/2020-12/vocab/content": true
   },
   "$dynamicAnchor": "meta",
+  "title": "Core and Validation specifications meta-schema",
   "allOf": [
     {
-      "$ref": "https://json-schema.org/draft/2020-12/schema"
+      "$ref": "meta/core"
     },
     {
-      "$ref": "https://spec.openapis.org/oas/3.1/meta/base"
+      "$ref": "meta/applicator"
+    },
+    {
+      "$ref": "meta/unevaluated"
+    },
+    {
+      "$ref": "meta/validation"
+    },
+    {
+      "$ref": "meta/meta-data"
+    },
+    {
+      "$ref": "meta/format-annotation"
+    },
+    {
+      "$ref": "meta/content"
     }
   ],
+  "type": [
+    "object",
+    "boolean"
+  ],
+  "$comment": "This meta-schema also defines keywords that have appeared in previous drafts in order to prevent incompatible extensions as they remain in common use.",
+  "properties": {
+    "definitions": {
+      "$comment": "\"definitions\" has been replaced by \"$defs\".",
+      "type": "object",
+      "additionalProperties": {
+        "$dynamicRef": "#meta"
+      },
+      "deprecated": true,
+      "default": {}
+    }
+  },
   "if": {
     "anyOf": [
       {
@@ -46,6 +75,7 @@
   },
   "oasChildren": {
     "0/$defs/{name}": "schemaDefs",
+    "0/definitions/{name}": "schemaDefs",
     "0/allOf/{index}": "schemaAllOf",
     "0/anyOf/{index}": "schemaAnyOf",
     "0/oneOf/{index}": "schemaOneOf",
@@ -64,10 +94,7 @@
     "0/additionalItems": "schemaAdditionalItems",
     "0/unevaluatedItems": "schemaUnevaluatedItems",
     "0/contains": "schemaContains",
-    "0/contentSchema": "schemaContentSchema",
-    "0/xml": "xmlSerialization",
-    "0/discriminator": "discriminator",
-    "0/externalDocs": "externalDocs"
+    "0/contentSchema": "schemaContentSchema"
   },
   "oasLiterals": {
     "0/$id": "schemaId",

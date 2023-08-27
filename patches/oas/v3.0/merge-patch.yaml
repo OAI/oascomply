@@ -428,6 +428,7 @@ $defs:
       0/parameters: 0#
       0/servers: 0#
     oasIntermediate:
+      intermediateRelation: operations
       oasTypeGroup: Operations
       oasChildren:
         0/delete: operation

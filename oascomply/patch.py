@@ -33,6 +33,10 @@ OAS_V31_SCHEMA = OAS_SCHEMA_DIR / 'v3.1' / 'schema.json'
 OAS_V31_SCHEMA_OBJ_DEFAULT_DIALECT = OAS_SCHEMA_DIR / 'v3.1' / 'dialect' / 'base.schema.json'
 OAS_V31_SCHEMA_OBJ_EXTENSION_META  = OAS_SCHEMA_DIR / 'v3.1' / 'meta' / 'base.schema.json'
 
+STANDARD_SCHEMA_DIR = \
+    REPO_ROOT / 'submodules' / 'json-schema-spec'
+STANDARD_2020_12_DIALECT = STANDARD_SCHEMA_DIR / 'schema.json'
+
 COMPLIANCE_SCHEMA_DIR = REPO_ROOT / 'schemas'
 COMPLIANCE_DIALECT_METASCHEMA = \
     COMPLIANCE_SCHEMA_DIR / 'dialect' / 'oas-ontology.json'
@@ -47,6 +51,8 @@ PATCHED_OAS31_SCHEMA_PATH = PATCHED_OAS31_SCHEMA_DIR / 'schema.json'
 PATCHED_OAS31_DIALECT_PATH = PATCHED_OAS31_SCHEMA_DIR / 'dialect.json'
 PATCHED_OAS31_META_PATH = PATCHED_OAS31_SCHEMA_DIR / 'meta.json'
 
+PATCHED_2020_12_DIALECT_PATH = PATCHED_OAS31_SCHEMA_DIR / '2020-12.json'
+
 OAS_PATCH_DIR = REPO_ROOT / 'patches' / 'oas'
 PATCHES = {
     '3.0': {
@@ -60,14 +66,15 @@ PATCHES = {
         },
     },
     '3.1': {
-        OAS_V31_SCHEMA: {
+        # Patched standard schema for when people use it as an option
+        STANDARD_2020_12_DIALECT: {
             'patches': [
-                OAS_PATCH_DIR / 'v3.1' / 'preliminary-patch.json',
-                OAS_PATCH_DIR / 'v3.1' / 'merge-patch.yaml',
+                OAS_PATCH_DIR / 'v3.1' / '2020-12.yaml',
             ],
-            'outfile': PATCHED_OAS31_SCHEMA_PATH,
+            'outfile': PATCHED_2020_12_DIALECT_PATH,
         },
         # META (the vocabulary metaschema) must be patched before DIALECT
+        # which must be patched before the OAS schema itself.
         OAS_V31_SCHEMA_OBJ_EXTENSION_META: {
             'patches': [
                 OAS_PATCH_DIR / 'v3.1' / 'extension-meta.yaml',
@@ -79,6 +86,13 @@ PATCHES = {
                 OAS_PATCH_DIR / 'v3.1' / 'dialect-meta.yaml',
             ],
             'outfile': PATCHED_OAS31_DIALECT_PATH,
+        },
+        OAS_V31_SCHEMA: {
+            'patches': [
+                OAS_PATCH_DIR / 'v3.1' / 'preliminary-patch.json',
+                OAS_PATCH_DIR / 'v3.1' / 'merge-patch.yaml',
+            ],
+            'outfile': PATCHED_OAS31_SCHEMA_PATH,
         },
     },
 }

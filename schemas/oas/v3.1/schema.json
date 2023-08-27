@@ -302,9 +302,8 @@
       "type": "object",
       "properties": {
         "schemas": {
-          "type": "object",
           "additionalProperties": {
-            "$dynamicRef": "#meta"
+            "$ref": "#/$defs/schema"
           },
           "oasType": "SchemaComponents",
           "oasChildren": {
@@ -520,6 +519,7 @@
         "0/servers": "0#"
       },
       "oasIntermediate": {
+        "intermediateRelation": "operations",
         "oasTypeGroup": "Operations",
         "oasChildren": {
           "0/delete": "operation",
@@ -705,7 +705,7 @@
           "type": "boolean"
         },
         "schema": {
-          "$dynamicRef": "#meta"
+          "$ref": "#/$defs/schema"
         },
         "content": {
           "$ref": "#/$defs/content",
@@ -1048,7 +1048,7 @@
       "type": "object",
       "properties": {
         "schema": {
-          "$dynamicRef": "#meta"
+          "$ref": "#/$defs/schema"
         },
         "encoding": {
           "type": "object",
@@ -1426,7 +1426,7 @@
           "type": "boolean"
         },
         "schema": {
-          "$dynamicRef": "#meta"
+          "$ref": "#/$defs/schema"
         },
         "content": {
           "$ref": "#/$defs/content",
@@ -1558,12 +1558,10 @@
     },
     "schema": {
       "$comment": "https://spec.openapis.org/oas/v3.1.0#schema-object",
-      "$dynamicAnchor": "meta",
       "type": [
         "object",
         "boolean"
-      ],
-      "oasType": "Schema"
+      ]
     },
     "security-scheme": {
       "$comment": "https://spec.openapis.org/oas/v3.1.0#security-scheme-object",

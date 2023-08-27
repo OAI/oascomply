@@ -1,9 +1,12 @@
----
-$id: "https://spec.openapis.org/oas/3.1/dialect/strict"
-$vocabulary:
-    https://json-schema.org/draft/2020-12/vocab/format-annotation: null
-    https://json-schema.org/draft/2020-12/vocab/format-assertion: true
-    https://spec.openapis.org/oas/3.1/vocab/base: true
+# Remove $recursive* and dependencies but not definitions
+# as the vocabularies do not support actually using them
+# TODO: jschon will treat "definitions" as an annotation
+#       by default.  Should it be configured as a location?
+#       Opt-in only?  Opt-out? What are the expectations?
+properties:
+  $recursiveAnchor: null
+  $recursiveRef: null
+  dependencies: null
 
 if:
   anyOf:
@@ -20,6 +23,7 @@ oasReferences:
   0/$dynamicRef: Schema
 oasChildren:
   0/$defs/{name}: schemaDefs
+  0/definitions/{name}: schemaDefs
   0/allOf/{index}: schemaAllOf
   0/anyOf/{index}: schemaAnyOf
   0/oneOf/{index}: schemaOneOf
@@ -39,9 +43,6 @@ oasChildren:
   0/unevaluatedItems: schemaUnevaluatedItems
   0/contains: schemaContains
   0/contentSchema: schemaContentSchema
-  0/xml: xmlSerialization
-  0/discriminator: discriminator
-  0/externalDocs: externalDocs
 oasLiterals:
   0/$id: schemaId
   0/$schema: schemaSchema
