@@ -176,7 +176,7 @@ class ActionAppendThingToURI(argparse.Action):
         )
 
 
-def parse_logging() -> Sequence[str]:
+def parse_logging(args) -> Sequence[str]:
     """
     Parse logging options and configure logging before parsing everything else.
 
@@ -186,7 +186,7 @@ def parse_logging() -> Sequence[str]:
     """
     verbosity_parser = argparse.ArgumentParser(add_help=False)
     _add_verbose_option(verbosity_parser)
-    v_args, remaining_args = verbosity_parser.parse_known_args()
+    v_args, remaining_args = verbosity_parser.parse_known_args(args)
 
     oascomply_logger = logging.getLogger('oascomply')
     if v_args.verbose:
@@ -388,8 +388,8 @@ def parse_non_logging(remaining_args: Sequence[str]) -> argparse.Namespace:
     return args
 
 
-def load():
-    remaining_args = parse_logging()
+def load(initial_args=sys.argv[1:]):
+    remaining_args = parse_logging(initial_args)
     args = parse_non_logging(remaining_args)
     manager = OASResourceManager(
         oascomply.catalog,
@@ -400,26 +400,30 @@ def load():
         dir_suffixes=args.dir_suffixes,
         url_suffixes=args.url_suffixes,
     )
-    serializer = OASSerializer(
-        output_format=args.output_format,
-        test_mode=args.test_mode,
-    )
 
     entry_resource = manager.get_entry_resource(
         args.initial,
     )
+
+    desc = None
+    errors = []
+
     if entry_resource is None:
-        sys.stderr.write(
-            'ERROR: '
-            'oascomply requires either -i (--initial-resource) along with '
-            'at least one of -d (--directory) or -p (--url-prefix). OR at '
-            'least one of -f (--file) or -u (--url)\n',
-        )
-        sys.exit(-1)
+        errors.append({
+            'error': 'ERROR: '
+                'oascomply requires either -i (--initial-resource) along with '
+                'at least one of -d (--directory) or -p (--url-prefix). OR at '
+                'least one of -f (--file) or -u (--url)\n',
+            'stage': 'configuration',
+        })
+        return desc, errors, args
 
     if 'openapi' not in entry_resource:
-        sys.stderr.write('ERROR: The initial document must contain "openapi"\n')
-        sys.exit(-1)
+        errors.append({
+            'error': 'ERROR: The initial document must contain "openapi"\n',
+            'stage': 'configuration',
+        })
+        return desc, errors, args
 
     desc = ApiDescription(
         entry_resource,
@@ -427,23 +431,14 @@ def load():
         test_mode=args.test_mode,
     )
 
-    errors = desc.validate(
+    errors.extend(desc.validate(
         validate_examples=(args.examples == 'true'),
-    )
+    ))
     if errors:
-        return report_errors(errors)
+        return desc, errors, args
+
     errors.extend(desc.validate_graph())
-    if errors:
-        return report_errors(errors)
-
-    if args.output_format is not None or args.test_mode is True:
-        serializer.serialize(
-            desc.get_oas_graph(),
-            base_uri=str(desc.base_uri),
-            resource_order=[str(v) for v in desc.validated_resources],
-        )
-
-    sys.stderr.write('Your API description is valid!\n')
+    return desc, errors, args
 
 
 def report_errors(errors):
@@ -458,5 +453,23 @@ def report_errors(errors):
         )
         logger.critical(json.dumps(err['error'], indent=2))
 
-    sys.stderr.write('\nAPI description contains errors\n\n')
-    sys.exit(-1)
+def run():
+    desc, errors, args = load()
+
+    if errors:
+        report_errors(errors)
+        sys.stderr.write('\nAPI description contains errors\n\n')
+        sys.exit(-1)
+
+    if args.output_format is not None or args.test_mode is True:
+        serializer = OASSerializer(
+            output_format=args.output_format,
+            test_mode=args.test_mode,
+        )
+        serializer.serialize(
+            desc.get_oas_graph(),
+            base_uri=str(desc.base_uri),
+            resource_order=[str(v) for v in desc.validated_resources],
+        )
+
+    sys.stderr.write('Your API description is valid!\n')

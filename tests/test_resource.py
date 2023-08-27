@@ -402,7 +402,7 @@ def test_manager_init(kwargs, sources, catalog):
 def test_resource_loading(manager):
     apid = manager.get_oas(A_URI)
     assert isinstance(apid, OASDocument)
-    assert apid.oasversion == '3.0'
+    assert apid.oasversion == '3.1'
     assert apid.url == A_PATH_URL
     assert apid.sourcemap is None
     assert apid['x-id'] == str(A_URI)
@@ -455,14 +455,14 @@ def test_resource_loading(manager):
 
 def test_oas_container(manager):
     path_item_uri = A_JUNK_URI.copy(fragment='/0')
-    p = manager.get_oas(path_item_uri, oasversion='3.0', oastype='PathItem')
+    p = manager.get_oas(path_item_uri, oasversion='3.1', oastype='PathItem')
     assert isinstance(p, OASFragment)
     assert URI(p['x-id'].value) == path_item_uri
 
-    assert p.oasversion == '3.0'
+    assert p.oasversion == '3.1'
     assert p.metadocument_uri == URI(
-        OAS_SCHEMA_INFO['3.0']['schema']['uri'],
-    ).copy(fragment=f'/$defs/PathItem')
+        OAS_SCHEMA_INFO['3.1']['schema']['uri'],
+    ).copy(fragment=f'/$defs/path-item')
 
     assert p.is_in_oas_document() is True
     assert p.is_oas_root() is True

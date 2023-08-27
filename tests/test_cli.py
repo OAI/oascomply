@@ -54,27 +54,23 @@ def _override_args(**kwargs):
 
 
 @pytest.mark.parametrize('argv,level,remaining', (
-    (['oascomply', '--file'], logging.WARNING, ['--file']),
-    (['oascomply', '-v', '--v1', '--v2'], logging.INFO, ['--v1', '--v2']),
-    (['oascomply', '-vv'], logging.DEBUG, []),
-    (['oascomply', '-v', '-v'], logging.DEBUG, []),
+    (['--file'], logging.WARNING, ['--file']),
+    (['-v', '--v1', '--v2'], logging.INFO, ['--v1', '--v2']),
+    (['-vv'], logging.DEBUG, []),
+    (['-v', '-v'], logging.DEBUG, []),
 ))
 def test_parse_logging(argv, level, remaining):
-    old_argv = sys.argv
-    sys.argv = argv
-
-    logger = logging.getLogger('oascomply')
-    old_level = logger.getEffectiveLevel()
-
     try:
-        remaining_args = parse_logging()
+        logger = logging.getLogger('oascomply')
+        old_level = logger.getEffectiveLevel()
+
+        remaining_args = parse_logging(argv)
 
         assert logger.getEffectiveLevel() == level
         assert remaining_args == remaining
 
     finally:
         logger.setLevel(old_level)
-        sys.argv = old_argv
 
 
 @pytest.mark.parametrize('argv,namespace', (

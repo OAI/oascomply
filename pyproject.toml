@@ -6,7 +6,7 @@ authors = ["Henry H. Andrews <handews@modern-json-schema.com>"]
 readme = "README.md"
 
 [tool.poetry.scripts]
-oascomply = 'oascomply.cli:load'
+oascomply = 'oascomply.cli:run'
 patch-oas-schemas = 'oascomply.patch:patch'
 yaml-to-json = 'oascomply.patch:yaml_to_json'
 oas-reparse = 'oascomply.reparse:regex_parse'
