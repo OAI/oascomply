@@ -211,23 +211,20 @@ class JschonSchemaParser(SchemaParser):
                 f"type {type(document).__name__}"
             )
 
-        if document.oas_root.pointer_uri in self._result_cache:
-            logger.warning(
-                f'Requested re-validation of <{document.oas_root.pointer_uri}> '
-                f'for <{document.pointer_uri}>, returning from cache',
+        if document.oas_root.metadocument_uri.fragment is not None:
+            # Ensure that the full metadocument is loaded, as
+            # auto-loading metadocument URIs with fragments confuses
+            # jschon as metaschemas cannot do that.
+            document.oas_root.catalog.get_metadocument(
+                document.oas_root.metadocument_uri.copy(fragment=None),
             )
-            return self._result_cache[document.oas_root.pointer_uri]
 
-        # auto-creating non-Metaschema metadocuments requires
-        # more work, so for now evaluate this as a "normal" schema
-        # result = document.validate()
-        schema = document.catalog.get_schema(document.oas_root.metadocument_uri)
         logger.info(
             f'Validating <{document.oas_root.pointer_uri}> '
-            f'against <{schema.pointer_uri}>',
+            f'against <{document.oas_root.metadocument_uri}>',
         )
-        schema.resolve_references()
-        result = schema.evaluate(document.oas_root)
+
+        result = document.oas_root.validate()
         if not result.valid:
             raise JsonSchemaParseError(result.output('basic'))
 

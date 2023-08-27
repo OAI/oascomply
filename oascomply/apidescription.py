@@ -1,7 +1,7 @@
 import json
 from collections import defaultdict
 from typing import (
-    Any, Iterator, Mapping, Optional, Sequence, Tuple, Type, Union
+    Any, ClassVar, Iterator, Mapping, Optional, Sequence, Tuple, Type, Union
 )
 import logging
 
@@ -53,6 +53,10 @@ class ApiDescription:
         testing by removing environment-specific information such as file names
     """
 
+    # TODO: Remove this egregious hack, and re-read
+    #       Yegge's "Singleton Considered Stupid" for pennance/entertainment.
+    singleton_m2_hack: ClassVar = None
+
     def __init__(
         self,
         document,
@@ -60,7 +64,6 @@ class ApiDescription:
         resource_manager: OASResourceManager,
         test_mode: bool = False,
     ) -> None:
-
         # TODO: "entry" vs "primary"
         self._primary_resource = document
         self._manager = resource_manager
@@ -71,6 +74,9 @@ class ApiDescription:
                 "Initial API description must include `openapi` field!"
                 f"{path} <{uri}>"
             )
+
+        if document['openapi'].value.startswith('3.1.'):
+            type(self).singleton_m2_hack = document.get('jsonSchemaDialect')
 
         if (
             document.uri.path and '/' in document.uri.path and
@@ -144,13 +150,19 @@ class ApiDescription:
 
         self._manager.preload_resources(self._primary_resource.oasversion)
         try:
+            logger.info(f'Parsing <{resource.pointer_uri}> ({oastype})')
             output = sp.parse(resource, oastype)
+            if 'error' in output:
+                logger.error(f'Error in <{resource.pointer_uri}> ({oastype}) schema validation:\n{output}')
+            else:
+                logger.info(f'Parsed <{resource.pointer_uri}> ({oastype})')
         except JsonSchemaParseError as e:
             errors.append({
                 'location': str(resource.pointer_uri),
                 'stage': 'JSON Schema validation',
                 'error': e.error_detail,
             })
+            logger.error(f'ERROR parsing <{resource.pointer_uri}> ({oastype})\n{errors[-1]}')
             return errors
 
         to_validate = {}
@@ -165,7 +177,9 @@ class ApiDescription:
             # Using a try/except here can result in confusion if something
             # else produces an AttributeError, so use hasattr()
             if hasattr(self._g, method):
-                by_method[method].append((ann.value, ann.location, document, resource, sourcemap))
+                by_method[method].append(
+                    (ann.value, ann.location, document, resource, sourcemap),
+                )
             else:
                 raise ValueError(f"Unexpected annotation {ann.keyword!r}")
         self._validated.append(resource_uri)
