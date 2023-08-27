@@ -27,6 +27,7 @@ from oascomply.ptrtemplates import (
 )
 from oascomply.oas3dialect import OAS30_DIALECT_METASCHEMA
 from oascomply.resource import OASNodeBase
+from oascomply.schemaparse import Location
 
 __all__ = [
     'OasGraph',
@@ -233,19 +234,19 @@ class OasGraph:
                 label,
             ))
 
-    def add_oastype(self, annotation, document, data, sourcemap):
-        instance_uri = rdflib.URIRef(str(annotation.location.instance_uri))
+    def add_oastype(self, value, location, document, data, sourcemap):
+        instance_uri = rdflib.URIRef(str(location.instance_uri))
         self._g.add((
             instance_uri,
             RDF.type,
-            self.oas_v[annotation.value],
+            self.oas_v[value],
         ))
         self._create_label(
-            annotation.location,
+            location,
             document,
             data,
             instance_uri,
-            annotation.value,
+            value,
         )
         if sourcemap:
             self._g.add((
@@ -255,14 +256,66 @@ class OasGraph:
             ))
             self.add_sourcemap(
                 instance_uri,
-                annotation.location.instance_ptr,
+                location.instance_ptr,
                 sourcemap,
             )
         return OasGraphResult(errors=[], refTargets=[])
 
-    def add_oastypegroup(self, annotation, document, data, sourcemap):
+    def add_oastypegroup(self, value, location, document, data, sourcemap):
         # TODO: Handle separately
-        return self.add_oastype(annotation, document, data, sourcemap)
+        return self.add_oastype(value, location, document, data, sourcemap)
+
+    def add_oasintermediate(self, value, location, *args):
+        # TODO: don't reference internal field.
+        int_base = location._given_base.copy(query='nodetype=intermediate')
+        int_location = Location.get(location._unit, int_base)
+        errors = []
+        refTargets = []
+        for annotation in value:
+            logger.debug(f'oasIntermediate: {annotation!r}={value[annotation]!r}')
+            if annotation == 'intermediateRelation':
+                result = self.add_oaschildren(
+                    {'0': 'operations'},
+                    int_location,
+                    *args,
+                )
+            elif annotation == 'oasTypeGroup':
+                result = self.add_oastypegroup(
+                    value[annotation],
+                    int_location,
+                    *args,
+                )
+            elif annotation == 'oasChildren':
+                result = self.add_oaschildren(
+                    value[annotation],
+                    int_location,
+                    *args,
+                )
+            elif annotation == 'oasLiterals':
+                result = self.add_oasliterals(
+                    value[annotation],
+                    int_location,
+                    *args,
+                )
+            elif annotation == 'oasReferences':
+                result = self.add_oasreferences(
+                    value[annotation],
+                    int_location,
+                    *args,
+                )
+            elif annotation == 'oasIntermediate':
+                result = self.add_oasintermediate(
+                    value[annotation],
+                    int_location,
+                    *args,
+                )
+            else:
+                raise ValueError(
+                    f"Unexpected oasIntermediate annotation {annotation!r}",
+                )
+            errors.extend(result.errors)
+            refTargets.extend(result.refTargets)
+        return OasGraphResult(errors=errors, refTargets=refTargets)
 
     def add_sourcemap(self, instance_rdf_uri, instance_ptr, sourcemap):
             if len(instance_ptr):
@@ -283,13 +336,15 @@ class OasGraph:
 
     def _resolve_child_template(
         self,
-        annotation,
+        value, location,
         document,
         data,
         value_processor=None,
     ):
-        parent_obj = annotation.location.instance_ptr.evaluate(document)
-        for child_template, rdf_name in annotation.value.items():
+        logger.debug(f'Resolving templates {list(value.items())}...')
+        parent_obj = location.instance_ptr.evaluate(document)
+        logger.debug(f'...parent object {parent_obj.pointer_uri}')
+        for child_template, rdf_name in value.items():
             relptr = None
             if re.match(r'\d', rdf_name):
                 relptr = jschon.RelativeJSONPointer(rdf_name)
@@ -319,12 +374,11 @@ class OasGraph:
             for t in template_array
         ))
 
-    def add_oaschildren(self, annotation, document, data, sourcemap):
-        location = annotation.location
+    def add_oaschildren(self, value, location, document, data, sourcemap):
         parent_uri = rdflib.URIRef(str(location.instance_uri))
         try:
             for result, relname in self._resolve_child_template(
-                annotation,
+                value, location,
                 document,
                 data,
         ):
@@ -358,12 +412,11 @@ class OasGraph:
             # TODO: actual error handling
             raise
 
-    def add_oasliterals(self, annotation, document, data, sourcemap):
-        location = annotation.location
+    def add_oasliterals(self, value, location, document, data, sourcemap):
         parent_uri = rdflib.URIRef(str(location.instance_uri))
         try:
             for result, relname in self._resolve_child_template(
-                annotation,
+                value, location,
                 document,
                 data,
             ):
@@ -390,22 +443,21 @@ class OasGraph:
             # TODO: actual error handling
             raise
 
-    def add_oasapilinks(self, annotation, document, data, sourcemap):
+    def add_oasapilinks(self, value, location, document, data, sourcemap):
         return self._add_links(
-            annotation, document, data, sourcemap, 'Endpoint',
+            value, location, document, data, sourcemap, 'Endpoint',
         )
 
-    def add_oasdescriptionlinks(self, annotation, document, data, sourcemap):
+    def add_oasdescriptionlinks(self, value, location, document, data, sourcemap):
         return self._add_links(
-            annotation, document, data, sourcemap, 'ExternalResource',
+            value, location, document, data, sourcemap, 'ExternalResource',
         )
 
-    def _add_links(self, annotation, document, data, sourcemap, entity):
-        location = annotation.location
+    def _add_links(self, value, location, document, data, sourcemap, entity):
         parent_uri = rdflib.URIRef(str(location.instance_uri))
         try:
             for result, relname in self._resolve_child_template(
-                annotation,
+                value, location,
                 document,
                 data,
         ):
@@ -430,12 +482,11 @@ class OasGraph:
             # TODO: actual error handling
             raise
 
-    def add_oasreferences(self, annotation, document, data, sourcemap):
-        location = annotation.location
+    def add_oasreferences(self, value, location, document, data, sourcemap):
         remote_resources = []
         try:
             for template_result, reftype in self._resolve_child_template(
-                annotation,
+                value, location,
                 document,
                 data,
             ):
@@ -522,18 +573,17 @@ class OasGraph:
             # TODO: Actual error handling
             raise
 
-    def add_oasexamples(self, annotation, document, data, sourcemap):
+    def add_oasexamples(self, value, location, document, data, sourcemap):
         errors = []
-        location = annotation.location
         parent_obj = location.instance_ptr.evaluate(document)
         parent_uri = rdflib.URIRef(str(location.instance_uri))
 
         schemas = []
-        if 'schemas' in annotation.value:
+        if 'schemas' in value:
             schema_data = [
                 result.data for result in self._flatten_template_array(
                     location,
-                    annotation.value['schemas'],
+                    value['schemas'],
                     parent_obj,
                 )
             ]
@@ -567,9 +617,9 @@ class OasGraph:
                 )
 
         # TODO: Handle encoding objects
-        if 'encodings' in annotation.value and len(list(
+        if 'encodings' in value and len(list(
             self._flatten_template_array(
-                location, annotation.value['encodings'], parent_obj,
+                location, value['encodings'], parent_obj,
             )
         )):
             logger.warning(
@@ -581,7 +631,7 @@ class OasGraph:
         try:
             for result in self._flatten_template_array(
                 location,
-                annotation.value['examples'],
+                value['examples'],
                 parent_obj,
             ):
                 example = result.data
@@ -619,10 +669,10 @@ class OasGraph:
             # TODO: actual error handling
             raise
 
-    def add_oasextensible(self, annotation, document, data, sourcemap):
-        if annotation.value is True:
-            parent_uri = rdflib.URIRef(str(annotation.location.instance_uri))
-            parent_obj = annotation.location.instance_ptr.evaluate(document)
+    def add_oasextensible(self, value, location, document, data, sourcemap):
+        if value is True:
+            parent_uri = rdflib.URIRef(str(location.instance_uri))
+            parent_obj = location.instance_ptr.evaluate(document)
             self._g.add((
                 parent_uri,
                 self.oas['allowsExtensions'],

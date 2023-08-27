@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 ANNOT_ORDER = (
     'oasType',
     'oasTypeGroup',
+    'oasIntermediate',
     'oasReferences',
     'oasChildren',
     'oasLiterals',
@@ -164,7 +165,7 @@ class ApiDescription:
             # Using a try/except here can result in confusion if something
             # else produces an AttributeError, so use hasattr()
             if hasattr(self._g, method):
-                by_method[method].append((ann, document, resource, sourcemap))
+                by_method[method].append((ann.value, ann.location, document, resource, sourcemap))
             else:
                 raise ValueError(f"Unexpected annotation {ann.keyword!r}")
         self._validated.append(resource_uri)
