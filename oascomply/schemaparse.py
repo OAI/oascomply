@@ -126,11 +126,10 @@ class Location:
         return hash((self._instance_uri, self._eval_ptr))
 
     def __repr__(self):
-        return 'Location(' + repr({
-            'instance': str(self.instance_uri),
-            'schema': str(self.schema_uri),
-            'evaluationPath': str(self.evaluation_path_ptr),
-        }) + ')'
+        return (
+            f'{type(self).__name__}({self._unit!r}, '
+            f'instance_base={self._given_base!r}, eval_ptr={self._eval_ptr!r})'
+        )
 
     @cached_property
     def instance_resource_uri(self) -> jschon.URI:
