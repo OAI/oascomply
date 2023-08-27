@@ -94,8 +94,15 @@ def test_thing_to_uri_repr(args):
         args[1] if len(args) > 1 else (),
         args[2] if len(args) > 2 else False,
     ]
-    assert repr(t) == \
-        f'ThingToURI({repr_args[0]}, {repr_args[1]}, {repr_args[2]})'
+    # TODO: Test oastype correctly
+    assert repr(t) == (
+        f'ThingToURI('
+            f'{repr_args[0]!r}, '
+            f'{repr_args[1]!r}, '
+            f'{repr_args[2]!r}, '
+            f'{None!r}'
+        f')'
+    )
 
 
 @pytest.mark.parametrize('left,right,equal', (

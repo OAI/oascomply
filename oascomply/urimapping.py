@@ -109,8 +109,8 @@ class ThingToURI:
     def __repr__(self):
         return (
             f'{self.__class__.__name__}('
-            f'{self._values!r}, {self._to_strip!r}, {self._uri_is_prefix}), '
-            f'{self._oastype!r}'
+            f'{self._values!r}, {self._to_strip!r}, {self._uri_is_prefix}, '
+            f'{self._oastype!r})'
         )
 
     def __eq__(self, other):
@@ -180,7 +180,7 @@ class PathToURI(ThingToURI):
 
     def __str__(self):
         return (
-            f'(path: {self.path}, uri: <{self.uri}>)' +
+            f'(path: {self.path}, uri: <{self.uri}>' +
             (')' if self.oastype is None else ', oastype: "{self.oastype}")')
         )
 
@@ -224,7 +224,10 @@ class PathToURI(ThingToURI):
 class URLToURI(ThingToURI):
     """URL to URI utility class; does not check URL scheme or usability."""
     def __str__(self):
-        return f'(url: <{self.url}>, uri: <{self.uri}>)'
+        return (
+            f'(url: <{self.url}>, uri: <{self.uri}>' +
+            (')' if self.oastype is None else ', oastype: "{self.oastype}")')
+        )
 
     def _set_thing(self, thing_str: str) -> None:
         self.set_uri(thing_str, attrname='url')
