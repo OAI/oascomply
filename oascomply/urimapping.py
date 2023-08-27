@@ -47,10 +47,11 @@ class ThingToURI:
         values: Union[str, Sequence[str]],
         strip_suffixes: Sequence[str] = (),
         uri_is_prefix: bool = False,
+        oastype: Optional[str] = None,
     ) -> None:
         logger.debug(
             f'Parsing location+uri option with argument {values!r}, '
-            f'stripping suffixes: {strip_suffixes}',
+            f'stripping suffixes: {strip_suffixes}, oastype: {oastype!r}',
         )
         try:
             if isinstance(values, str):
@@ -62,6 +63,7 @@ class ThingToURI:
             self._values = values
             self._to_strip = strip_suffixes
             self._uri_is_prefix = uri_is_prefix
+            self._oastype = oastype
 
             thing = self._set_thing(values[0])
             if len(values) == 2:
@@ -107,7 +109,8 @@ class ThingToURI:
     def __repr__(self):
         return (
             f'{self.__class__.__name__}('
-            f'{self._values!r}, {self._to_strip!r}, {self._uri_is_prefix})'
+            f'{self._values!r}, {self._to_strip!r}, {self._uri_is_prefix}), '
+            f'{self._oastype!r}'
         )
 
     def __eq__(self, other):
@@ -125,6 +128,10 @@ class ThingToURI:
         return self._thing
 
     @property
+    def oastype(self) -> Optional[str]:
+        return self._oastype
+
+    @property
     def auto_uri(self) -> bool:
         """
         True if this class generated a URI rather than receivingit as a param.
@@ -132,7 +139,10 @@ class ThingToURI:
         return self._auto_uri
 
     def __str__(self):
-        return f'(thing: {self._values[0]}, uri: <{self.uri}>)'
+        return (
+            f'(thing: {self._values[0]}, uri: <{self.uri}>' +
+            (')' if self.oastype is None else ', oastype: "{self.oastype}")')
+        )
 
     def _strip_suffixes(self, thing: Any) -> str:
         thing_string = str(thing)
@@ -169,7 +179,10 @@ class PathToURI(ThingToURI):
     """Local filesystem path to URI utility class."""
 
     def __str__(self):
-        return f'(path: {self.path}, uri: <{self.uri}>)'
+        return (
+            f'(path: {self.path}, uri: <{self.uri}>)' +
+            (')' if self.oastype is None else ', oastype: "{self.oastype}")')
+        )
 
     def _set_thing(self, thing_str: str) -> None:
         self.path = Path(thing_str).resolve()

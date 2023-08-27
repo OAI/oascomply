@@ -545,7 +545,7 @@ class OasGraph:
         for sd in schema_data:
             if isinstance(sd, jschon.JSONSchema):
                 logger.debug(
-                    f'Found example validation schema <{sd.pointer_uri}?',
+                    f'Found example validation schema <{sd.pointer_uri}>',
                 )
                 schemas.append(sd)
             elif isinstance(sd, OASNodeBase):

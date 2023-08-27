@@ -4,6 +4,7 @@ import re
 import logging
 from collections import defaultdict
 from functools import cached_property
+from itertools import chain
 from typing import (
     Any, ClassVar, Dict, Literal, Mapping, Optional,
     Sequence, Tuple, Type, Union,
@@ -1355,7 +1356,11 @@ class OASResourceManager:
                         f'Re-assinging URI <{a_str}> to "{a_thing.thing}"',
                     )
                     return (
-                        type(a_thing)([str(a_thing.thing), a_str], suffixes),
+                        type(a_thing)(
+                            [str(a_thing.thing), a_str],
+                            suffixes,
+                            oastype=a_thing.oastype,
+                        ),
                         True,
                     )
 
@@ -1411,6 +1416,18 @@ class OASResourceManager:
             uri = self._adjusted_urls[0].uri
 
         return None if uri is None else self.get_oas(uri, oasversion=oasversion)
+
+    def preload_resources(self, oasversion):
+        for resource in chain(self._adjusted_files, self._adjusted_urls):
+            if resource.oastype is not None:
+                oas_doc = self.get_oas(
+                    resource.uri,
+                    oasversion=oasversion,
+                    oastype=resource.oastype,
+                )
+                logger.debug(
+                    f'Pre-loaded <{oas_doc.uri}>, type {resource.oastype!r}',
+                )
 
     def get_oas(
         self,

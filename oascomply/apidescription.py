@@ -128,8 +128,6 @@ class ApiDescription:
             resource = self._manager.get_oas(resource_uri)
         else:
             if isinstance(resource_uri, str):
-                # TODO: IRI vs URI
-                # TODO: Non-JSON Pointer fragments in 3.1
                 resource_uri = URI(str)
             resource = self._manager.get_oas(
                 resource_uri,
@@ -143,6 +141,7 @@ class ApiDescription:
 
         self._g.add_resource(document.url, document.uri)
 
+        self._manager.preload_resources(self._primary_resource.oasversion)
         try:
             output = sp.parse(resource, oastype)
         except JsonSchemaParseError as e:
@@ -156,7 +155,10 @@ class ApiDescription:
         to_validate = {}
         by_method = defaultdict(list)
         for unit in output['annotations']:
-            ann=Annotation(unit, instance_base=resource_uri.copy(fragment=None))
+            ann=Annotation(
+                unit,
+                instance_base=resource_uri.copy(fragment=None),
+            )
             method = f'add_{ann.keyword.lower()}'
 
             # Using a try/except here can result in confusion if something

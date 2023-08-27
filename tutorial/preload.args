@@ -1,0 +1,12 @@
+-d
+tutorial/references
+https://example.com/
+-f
+tutorial/references/openapi.json
+-f
+tutorial/references/pathitems/foo.json
+https://example.com/pathitems/foo
+PathItem
+-f
+tutorial/references/schemas/bar.json
+Schema

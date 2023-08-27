@@ -46,6 +46,21 @@ See the "Loading APIDs and Schemas" tutorial for full documentation.
 
 
 HELP_EPILOG = """
+The -u and -f options can take an "OpenAPI type", which is a
+CamelCased name of one of the "Objects" used as section titles
+in the OpenAPI Specification, e.g. "PathItem" for the Path Item Object.
+
+By default, only the initial document and portions of documents
+referenced in the course of parsing that document are loaded.
+If you have a document that is the target of many references, pointing
+to differen parts of that document, it may be faster to load the
+document up front and avoid repeatedly reloading it.
+
+In OpenAPI 3.1, Schema Objects can use "$id"s, including in subschemas,
+to defined reference target URIs.  Schema Objects using "$id" in
+a subschema MUST be loaded and parsed up front in order for references
+to and from such subschemas to be correctly resolved.
+
 See the README for further information on:
 
 * How API description data appears in the output
@@ -143,9 +158,21 @@ class ActionAppendThingToURI(argparse.Action):
         super().__init__(option_strings, dest, nargs=nargs, **kwargs)
 
     def __call__(self, parser, namespace, values, option_string=None):
+        logger.debug(f'Examining {values!r} for {self._arg_cls.__name__}')
         arg_list = getattr(namespace, self.dest)
+        oastype = None
+        if len(values) == 3:
+            oastype = values[2]
+            values = values[:2]
+        elif len(values) == 2 and ':' not in values[1]:
+            oastype = values[1]
+            values = values[:1]
         arg_list.append(
-            self._arg_cls(values, strip_suffixes=self._strip_suffixes),
+            self._arg_cls(
+                values,
+                strip_suffixes=self._strip_suffixes,
+                oastype=oastype,
+            ),
         )
 
 
@@ -215,8 +242,11 @@ def parse_non_logging(remaining_args: Sequence[str]) -> argparse.Namespace:
              "file matches a directory passed with -d, its URI will be "
              "determined based on the -d URI prefix (and -D if present); "
              "if no -d matches, the corresponding 'file:' URL for the path "
-             "will be used as the URI; this option can be repeated; "
-             "see also -x, -d, -D",
+             "will be used as the URI; an OpenAPI type can follow the path "
+             "alone or path and URI, which will cause the document to be "
+             "loaded and parsed immediately (see end notes below for "
+             "an explanations of types and use cases for this option)"
+             "This option can be repeated; see also -x, -d, -D",
     )
     parser.add_argument(
         '-u',
@@ -233,8 +263,12 @@ def parse_non_logging(remaining_args: Sequence[str]) -> argparse.Namespace:
              "url matches a prefix passed with -p, its URI will be determined "
              "based on the -p URI prefix (and -P if present); if no -p "
              "matches, the URL will also be used as the URI; currently only "
-             "'http:' and 'https:' URLs are supported; this option can be "
-             "repeated; see also -x, -p, -P",
+             "'http:' and 'https:' URLs are supported; "
+             "an OpenAPI type can follow the path "
+             "alone or path and URI, which will cause the document to be "
+             "loaded and parsed immediately (see end notes below for "
+             "an explanations of types and use cases for this option)"
+             "This option can be repeated; see also -x, -p, -P",
     )
     # Already parsed, but add to include in usage message
     _add_strip_suffixes_option(parser)
@@ -371,7 +405,6 @@ def load():
         test_mode=args.test_mode,
     )
 
-    # TODO: Temporary hack, search lists properly
     entry_resource = manager.get_entry_resource(
         args.initial,
     )
@@ -394,7 +427,9 @@ def load():
         test_mode=args.test_mode,
     )
 
-    errors = desc.validate(validate_examples=(args.examples == 'true'))
+    errors = desc.validate(
+        validate_examples=(args.examples == 'true'),
+    )
     if errors:
         return report_errors(errors)
     errors.extend(desc.validate_graph())
