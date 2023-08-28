@@ -1,0 +1,37 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Basic referencing",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/foo": {
+            "$ref": "pathitems/foo"
+        }
+    },
+    "components": {
+        "responses": {
+            "foo": {
+                "description": "OK",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/bar"
+                        },
+                        "example": "one"
+                    }
+                },
+                "links": {
+                    "self": {
+                        "operationRef": "pathitems/foo#/get"
+                    }
+                }
+            }
+        },
+        "schemas": {
+            "bar": {
+                "$ref": "schemas/bar#"
+            }
+        }
+    }
+}

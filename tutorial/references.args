@@ -1,9 +1,0 @@
--d
-tutorial/references
-https://example.com/
--f
-tutorial/references/openapi.json
--f
-tutorial/references/pathitems/foo.json
--f
-tutorial/references/schemas/bar.json

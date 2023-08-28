@@ -1,0 +1,5 @@
+{
+    "type": ["string", "null"],
+    "example": null,
+    "default": "four"
+}

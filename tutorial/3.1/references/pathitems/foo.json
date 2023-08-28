@@ -1,0 +1,9 @@
+{
+    "get": {
+        "responses": {
+            "200": {
+                "$ref": "../openapi#/components/responses/foo"
+            }
+        }
+    }
+}
