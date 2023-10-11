@@ -2,7 +2,7 @@
 
 **Key Points:**
 
-* Compliance tools and conformance test suites require well-defined, verifiable requirements
+* Compliance tools and conformance test suites need well-defined, verifiable requirements
 * The OAS lacks normative requirements for processing OpenAPI Descriptions
 * The approach strongly implied by OAS/Swagger 2.0 conflicts with the normative requirements of JSON Schema in OAS 3.1
 * The conflicts arise from reasonable, good-faith decisions spread out over time
