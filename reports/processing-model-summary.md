@@ -2,7 +2,7 @@
 
 **Key Points:**
 
-* Compliance tools and conformance test suites require well-defined, verifiable requirments
+* Compliance tools and conformance test suites require well-defined, verifiable requirements
 * The OAS lacks normative requirements for processing OpenAPI Descriptions
 * The approach strongly implied by OAS/Swagger 2.0 conflicts with the normative requirements of JSON Schema in OAS 3.1
 * The conflicts arise from reasonable, good-faith decisions spread out over time
@@ -15,7 +15,7 @@ All implementations of the OpenAPI Specification (OAS) have a **processing model
 
 Changes in the OAS from 2.0 to 3.0 to 3.1 produced requirements that conflict with common processing implementations.  Addressing those conflicts requires at least partially changing the processing model, which could be burdensome to implementers if not done carefully and with buy-in.
 
-A compliance tool can only verify well-defined rules.  Ambiguity regarding referencing is also contributes to incosistent referencing support.  A clarified, consistent processing model will support compliance tools and test suites, and make it easier for to support more referencing scenarios.
+A compliance tool can only verify well-defined rules.  Ambiguity regarding referencing is a likely cause of inconsistent referencing support.  A clarified, consistent processing model will enable compliance tools, test suites, and better referencing support in general.
 
 ## Processing each OAS version
 
@@ -67,7 +67,7 @@ JSON Schema within Moonwalk would continue to use `"$ref"`, but already requires
 
 The `application/openapi+json` and `application/openapi+yaml` media type registrations should be clarified to only apply to OpenAPI Description documents that consist of an OpenAPI Object at the document's root.
 
-If documents consisting of other Objects from the OAS, or consisting of JSON or YAML that includes OAS Objects but is not overall in OAS format, are expected to be in the document ecosystem, then additional media types will be required.  These media types would need to be parametrized to inform parsers what syntax to expect.
+If documents consisting of other Objects from the OAS, or consisting of JSON or YAML that includes OAS Objects but is not overall in OAS format, are expected to be in the document ecosystem, then additional media types will be required.  These media types would need to be parameterized to inform parsers what syntax to expect.
 
 ### Workflows
 
@@ -81,4 +81,4 @@ The OpenAPI Initiative now has an opportunity to provide guidance to implementer
 
 The reference-driven approach of OAS 2.0 could be clarified for 3.0, and for non-Schema Object aspects of 3.1, but cannot serve as a model for 3.1 overall.  At least some incorporation of a document-driven processing model is required.
 
-The OpenAPI Initiative needs to determine the degree to which document-driven processing can or should be adopted throughout OAS 3.1, and whether it should ever be recommended for OAS 3.0.  The OAI also needs to make decisions regarding the Workflows specificaiton and OAS-related media types.
+The OpenAPI Initiative needs to determine the degree to which document-driven processing can or should be adopted throughout OAS 3.1, and whether it should ever be recommended for OAS 3.0.  The OAI also needs to make decisions regarding the Workflows specification and OAS-related media types.
