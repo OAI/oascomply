@@ -45,7 +45,7 @@ paths:
                 $ref: "#/components/schemas/foo"
 ```
 
-For the entry point context (at location `#/`), we might either pass this whole document to a tool to process, or it might be encountered as an HTTP response with `Content-Type` set to `application/openapi+yaml`.
+For the entry point context (at location `#`), we might either pass this whole document to a tool to process, or it might be encountered as an HTTP response with `Content-Type` set to `application/openapi+yaml`.
 
 Here are all of the parent contexts within the document (Recall that in OAS 3.1, the Schema Object directly supports references, and is never replaced by a Reference Object):
 
@@ -245,7 +245,7 @@ components:
         in: header
 paths:
   /x:
-    $ref: ./components#/components/pathItems/x
+    $ref: ./components#/components/pathItems/anItem
 ```
 
 ...and our components document, `https://example.com/openapi/components`
@@ -259,7 +259,7 @@ components:
       name: X-API-Key
       in: query
   pathItems:
-    x:
+    anItem:
       get:
         security:
         - key: []
@@ -616,7 +616,7 @@ If full document-driven processing is to be defined for any OAS version, conflic
 Document-driven processing is substantially simplified if all documents MUST be proper OpenAPI documents (with an OpenAPI Object at the root) or JSON Schemas.  If documents consisting of some other Object, or consisting of several Objects embedded in generic JSON or YAML are supported, certain things need to be addressed:
 
 * Expectations should be set about how MAY, SHOULD, or MUST support loading such documents
-* It should be clarified whether an entry point document MUST be a document, or can be an OpenAPI Object embededd in some other file
+* It should be clarified whether an entry point document MUST be a document, or can be an OpenAPI Object embeded in some other file
 * Embedding an OpenAPI Object has two potential cases: arbitrary file structures, and formal embedding in another format, just as JSON Schema is embedded within the OAS
 
 ### Hybrid processing for OAS 3.1
