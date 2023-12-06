@@ -1,0 +1,6 @@
+input:
+  paths.yaml#/paths/~endpoint/get/security/foo:
+    openapi.yaml#/components/securitySchemes/foo
+output:
+  openapi.yaml#/paths/~endpoint/get/security/foo:
+    openapi.yaml#/components/securitySchemes/foo

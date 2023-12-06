@@ -1,0 +1,10 @@
+- target:
+    other.yaml#/2: null
+  sources:
+    openapi.yaml#/paths/~1foos: Path Item
+- target:
+    other.yaml#/2/get/responses/200/content/application~1json/schema: null
+  fromParents:
+    openapi.yaml#/paths/~1foos: Schema
+  sources:
+    openapi.yaml#/paths/~1bars: Path Item

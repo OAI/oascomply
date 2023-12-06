@@ -1,0 +1,4 @@
+- target:
+    components.yaml#/components/schemas/foos: Schema
+  sources:
+    openapi.yaml#/paths/~1foos: Path Item

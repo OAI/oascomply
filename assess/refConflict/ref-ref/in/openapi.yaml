@@ -1,0 +1,17 @@
+---
+openapi: "3.0.3"
+info:
+  version: "0.0.1"
+  title: Conflicting refs to standalone object: input entry document
+paths:
+  /foos:
+    $ref: empty.yaml
+  /bars:
+    get:
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: empty.yaml

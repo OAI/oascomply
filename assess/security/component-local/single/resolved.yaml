@@ -1,0 +1,4 @@
+input:
+  paths.yaml#/paths/~endpoint/get/security/foo: null
+output:
+  openapi.yaml#/paths/~endpoint/get/security/foo: null

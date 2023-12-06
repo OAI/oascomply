@@ -1,0 +1,10 @@
+---
+openapi: "3.0.3"
+info:
+  version: "0.0.1"
+  title: "External reference assessment case: {case}"
+components:
+  schemas:
+    foos:
+      {}
+paths: {}
