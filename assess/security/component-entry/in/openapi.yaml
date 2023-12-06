@@ -4,7 +4,8 @@ info:
 security:
   foo: []
 paths:
-  $ref: "paths.yaml#/paths/~1endpoint"
+  /endpoint:
+    $ref: "paths.yaml#/paths/~1endpoint"
 components:
   securitySchemes:
     foo:

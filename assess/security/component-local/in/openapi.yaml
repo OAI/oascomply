@@ -2,4 +2,5 @@ openapi: 3.0.3
 info:
   title: OASComply assessment entry: security scheme, component to entry
 paths:
-  $ref: "paths.yaml#/paths/~1endpoint"
+  /endpoint
+    $ref: "paths.yaml#/paths/~1endpoint"
