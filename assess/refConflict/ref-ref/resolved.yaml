@@ -1,0 +1,5 @@
+- target:
+    empty.yaml: null
+  sources:
+    openapi.yaml#/paths/~1foos: Path Item
+    openapi.yaml#/paths/~1bars/get/200/content/application~1json/schema: Schema

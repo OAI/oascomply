@@ -1,0 +1,17 @@
+openapi: 3.0.3
+info:
+  title: OASComply assessment output: security scheme, component to entry
+security:
+  foo: []
+paths:
+  /endpoint:
+    get:
+      security: foo
+      responses:
+        "200":
+          description: Ok
+components:
+  securitySchemes:
+    foo:
+      type: http
+      scheme: basic

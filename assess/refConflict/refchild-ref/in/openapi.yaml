@@ -1,0 +1,10 @@
+---
+openapi: "3.0.3"
+info:
+  version: "0.0.1"
+  title: Refs to data in non-OAS file, conflicting parent vs child
+paths:
+  /foos:
+    $ref: other.yaml#/2
+  /bars:
+    $ref: other.yaml#/2/get/responses/200/content/application~1json/schema

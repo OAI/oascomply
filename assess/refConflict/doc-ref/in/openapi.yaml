@@ -1,0 +1,8 @@
+---
+openapi: "3.0.3"
+info:
+  version: "0.0.1"
+  title: "External reference assessment case: {case}"
+paths:
+  /foos:
+    $ref: components.yaml#/components/schemas/foos
