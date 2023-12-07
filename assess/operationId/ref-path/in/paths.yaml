@@ -1,0 +1,13 @@
+openapi: 3.0.3
+info:
+  title: OASComply assessment paths: operationId from $ref'd Path Item
+paths:
+  /foos:
+    get:
+      operationId: getFoos
+      responses:
+        "200":
+          description: Ok
+          links:
+            linkToBars:
+              operationId: getBars

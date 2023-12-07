@@ -1,0 +1,18 @@
+openapi: 3.0.3
+info:
+  title: OASComply assessment paths: operationId to a non-$ref'd operation
+paths:
+  /foos:
+    get:
+      responses:
+        "200":
+          description: Ok
+          links:
+            linkToBars:
+              operationRef: "#/paths/~1bars/get"
+  /bars:
+    get:
+      operationId: getBars
+      responses:
+        "200":
+          description: Ok

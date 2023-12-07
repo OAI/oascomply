@@ -1,0 +1,12 @@
+openapi: 3.0.3
+info:
+  title: OASComply assessment paths: operationId from 3rd $ref'd document
+paths:
+  /foos:
+    get:
+      responses:
+        "200":
+          description: Ok
+          links:
+            linkToOthers:
+              operationId: getOthers
