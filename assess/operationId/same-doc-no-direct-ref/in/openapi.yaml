@@ -1,0 +1,6 @@
+openapi: 3.0.3
+info:
+  title: OASComply assessment entry: `operationId` from non-$ref'd operation
+paths:
+  /foos:
+    $ref: "paths.yaml#/paths/~1foos"
