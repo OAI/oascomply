@@ -1,7 +1,8 @@
 ---
 openapi: 3.1.0
 info:
-  title: OASComply assessment entry: schema document root $id and base URI
+  title: "OASComply assessment entry: schema document root $id and base URI"
+  version: "0.1.1"
 paths:
   /endpoint:
     get:

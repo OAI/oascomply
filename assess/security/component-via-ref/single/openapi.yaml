@@ -1,6 +1,7 @@
 openapi: 3.0.3
 info:
-  title: OASComply assessment output: security scheme, component to entry
+  title: "OASComply assessment output: security scheme, component to entry"
+  version: "0.0.1"
 paths:
   /endpoint:
     get:

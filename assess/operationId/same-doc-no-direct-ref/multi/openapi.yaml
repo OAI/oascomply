@@ -1,6 +1,7 @@
 openapi: 3.0.3
 info:
-  title: OASComply assessment entry: `operationId` from non-$ref'd operation
+  title: "OASComply assessment entry: `operationId` from non-$ref'd operation"
+  version: "0.0.1"
 paths:
   /foos:
     $ref: "paths.yaml#/paths/~1foos"

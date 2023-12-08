@@ -1,12 +1,14 @@
 openapi: 3.0.3
 info:
-  title: OASComply assessment entry: operationId from $ref'd Path Item
+  title: "OASComply assessment entry: operationId from $ref'd Path Item"
+  version: "0.0.1"
 paths:
   /bars:
     get:
       responses:
         "200":
           description: Ok
+          links:
             linkViaRef:
               operationRef: "paths.yaml#/paths/~1foos/get"
             linkViaId:
