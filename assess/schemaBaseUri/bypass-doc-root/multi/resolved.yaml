@@ -1,0 +1,28 @@
+# file://path/to/case represents your local file URL for the
+# directory containing this assessment case
+- source:
+    openapi.yaml#/paths/~1endpoint/get/200/content/application~1json/schema/$ref
+  uriReference: schema.json#/$defs/foo
+  baseUriSources:
+    rfc3986_5.1.1_inContent:           null
+    rfc3986_5.1.2_encapsulatingEntity: null
+    rfc3986_5.1.3_retrievalUri:        file:/path/to/case/in/openapi.yaml
+    rfc3986_5.1.4_applicationDefault:  null
+  baseUri:
+    expected:  file:/path/to/case/in/openapi.yaml
+    processed: file:/path/to/case/in/openapi.yaml
+  resolvedUri: file:/path/to/case/in/schema.json#/$defs/foo
+  valid: true
+- source: schema.json#/$defs/foo/$ref
+  uriReference: other.json
+  baseUriSources:
+    rfc3986_5.1.1_inContent:           file:/path/to/case/in/subdir/schema.json
+    rfc3986_5.1.2_encapsulatingEntity: null
+    rfc3986_5.1.3_retrievalUri:        file:/path/to/case/in/schema.json
+    rfc3986_5.1.4_applicationDefault:  null
+  baseUri:
+    expected:  file:/path/to/case/in/subdir/schema.json
+    processed: file:/path/to/case/in/subdir/schema.json
+  resolvedUri: file:/path/to/case/in/subdir/other.json
+  valid: true
+   

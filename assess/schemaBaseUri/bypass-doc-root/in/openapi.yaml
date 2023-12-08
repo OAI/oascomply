@@ -1,0 +1,13 @@
+---
+openapi: 3.1.0
+info:
+  title: OASComply assessment entry: schema document root $id and base URI
+paths:
+  /endpoint:
+    get:
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema: schema.json#/$defs/foo
