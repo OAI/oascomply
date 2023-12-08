@@ -1,0 +1,2 @@
+openapi.yaml#/paths/~bars/get/responses/200/links/linkViaRef/operationRef: null
+openapi.yaml#/paths/~bars/get/responses/200/links/linkViaId/operationId: null
