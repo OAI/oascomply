@@ -11,4 +11,5 @@ paths:
           description: Ok
           content:
             application/json:
-              schema: schema.json#/$defs/foo/$defs/bar
+              schema:
+                $ref: schema.json#/$defs/foo/$defs/bar

@@ -6,4 +6,4 @@ paths:
   /foos:
     $ref: "paths.yaml#/paths/~1foos"
   /bars:
-    $ref: "others.yaml#/paths/~1/bars"
+    $ref: "others.yaml#/paths/~1bars"

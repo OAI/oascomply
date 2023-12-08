@@ -3,7 +3,8 @@ info:
   title: "OASComply assessment entry: security scheme, component to entry"
   version: "0.0.1"
 paths:
-  $ref: "paths.yaml#/paths/~1endpoint"
+  /endpoint:
+    $ref: "paths.yaml#/paths/~1endpoint"
 components:
   securitySchemes:
     foo:

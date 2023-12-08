@@ -2,12 +2,11 @@ openapi: 3.0.3
 info:
   title: "OASComply assessment output: security scheme, component to entry"
   version: "0.0.1"
-security:
-  foo: []
+security: [{foo: []}]
 paths:
   /endpoint:
     get:
-      security: foo
+      security: [{foo: []}]
       responses:
         "200":
           description: Ok
