@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "subdir1/schema.json",
+  "$defs": {
+    "foo": {
+      "$id": "../subdir2/foo.json",
+      "$defs": {
+        "bar": {
+          "$ref": "other.json"
+        }
+      }
+    }
+  }
+}
