@@ -1,0 +1,41 @@
+---
+openapi: "3.0.3"
+info:
+  version: "0.0.1"
+  title: "allOf discriminator with entry document schemas (Single File)"
+components:
+  schemas:
+    bar:
+      allOf:
+      - $ref: "#/paths/~1foo/get/responses/200/content/application~1json/schema"
+      properties:
+        fooType:
+          enum: [bar]
+    baz:
+      allOf:
+      - $ref: "#/paths/~1foo/get/responses/200/content/application~1json/schema"
+      properties:
+        fooType:
+          enum: [baz]
+paths:
+  /foo:
+    get:
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [fooType]
+                properties:
+                  fooType:
+                    type: string
+                    enum:
+                    - bar
+                    - baz
+                discriminator:
+                  propertyName: fooType
+                  mapping:
+                    bar: "#/components/schemas/bar"
+                    baz: "#/components/schemas/baz"

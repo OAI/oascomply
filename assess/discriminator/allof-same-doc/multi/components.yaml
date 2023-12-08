@@ -1,0 +1,34 @@
+---
+openapi: "3.0.3"
+info:
+  version: "0.0.1"
+  title: "allOf discriminator with same-document components (components file)"
+components:
+  schemas:
+    foo:
+      type: object
+      required: [fooType]
+      properties:
+        fooType:
+          type: string
+          enum:
+          - bar
+          - baz
+      discriminator:
+        propertyName: fooType
+        mapping:
+          bar: "#/components/schemas/bar"
+          baz: "#/components/schemas/baz"
+    bar:
+      allOf:
+      - $ref: "#/components/schemas/foo"
+      properties:
+        fooType:
+          enum: [bar]
+    baz:
+      allOf:
+      - $ref: "#/components/schemas/foo"
+      properties:
+        fooType:
+          enum: [baz]
+paths: {}

@@ -1,0 +1,19 @@
+---
+openapi: "3.0.3"
+info:
+  version: "0.0.1"
+  title: "allOf discriminator with entry document schemas (components file)"
+components:
+  schemas:
+    foo:
+      type: object
+      required: [fooType]
+      properties:
+        fooType:
+          type: string
+          enum:
+          - bar
+          - baz
+      discriminator:
+        propertyName: fooType
+paths: {}

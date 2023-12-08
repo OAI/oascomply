@@ -1,0 +1,9 @@
+components.yaml#/components/schemas/foo/discriminator:
+  components.yaml#/components/schemas/foo/properties/fooType/enum/0:
+    value: bar
+    resolution: null
+    expected: openapi.yaml#/components/schemas/bar
+  components.yaml#/components/schemas/foo/properties/fooType/enum/1:
+    value: baz
+    resolution: null
+    expected: openapi.yaml#/components/schemas/baz

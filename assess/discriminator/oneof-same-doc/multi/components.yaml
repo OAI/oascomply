@@ -1,0 +1,33 @@
+---
+openapi: "3.0.3"
+info:
+  version: "0.0.1"
+  title: "oneOf discriminator with local components (components file)"
+components:
+  schemas:
+    foo:
+      type: object
+      required: [fooType]
+      properties:
+        fooType:
+          type: string
+          enum:
+          - bar
+          - baz
+      discriminator:
+        propertyName: fooType
+        mapping:
+          bar: "#/components/schemas/bar"
+          baz: "#/components/schemas/baz"
+      oneOf:
+      - $ref: "#/components/schemas/bar"
+      - $ref: "#/components/schemas/baz"
+    bar:
+      properties:
+        fooType:
+          enum: [bar]
+    baz:
+      properties:
+        fooType:
+          enum: [baz]
+paths: {}
