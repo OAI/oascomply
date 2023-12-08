@@ -4,17 +4,23 @@ This directory contains a set of test cases that can be used to assess
 the behavior of an implementation for various referencing cases that
 are arguably not clearly defined in the OpenAPI Specification (OAS).
 
+While this documentation uses the phrase "test case", these cases
+are not passed or failed.  Instead, they are intended to help the
+OpenAPI Initiative understand how implementors have handled these
+scenarios.  Most cases have multiple possible outcomes depending on
+implementation choices.  Not all of these outcomes are necessarily
+desirable, and some tools may consider them errors.  This is part
+of what this suite is trying to discover.
+
 The suite is divided into several functional groups, each of which
-gets a directory.  Each group contains a README explainig how to
+gets a directory.  Each group contains a README explaining how to
 understand its test cases, and a set of directories, each of which
 contains one test case.
 
 Each case has an `in` directory, containing a multi-document OpenAPI
-Description (OAD), one output directory for each relevant processing model
-(as defined below) showing whether and how the references and related
-behaviors are resolved under that processing model.  The exact contents
-of the output directories, including whether and how the processing
-model impacts the outcomes, are explained by each group's README.
+Description (OAD), and one or more outcome directories, named `out`
+if there is only one, or named according to the corresponding processing
+model defined below.
 
 ## Processing models
 
@@ -32,18 +38,20 @@ improvements to the clarity and interoperability of the OAS.
 
 ### Common assumptions
 
-All OAS implementations are assumed to parse and process the entry document
-in full.  Processing models differ in how they handle references involving
-additional documents.
+All OAS implementations are assumed to parse and process the entry document,
+starting with its root OpenAPI Object, in full.  Processing models differ
+in how they handle references involving additional documents.
 
 All processing models assume two logically distinct resolution passes that
 take place in the following order:
 
-1. _Primary resolution_ handles `$ref` and `operationRef` (which we will
-   call _primary references_), which determine the set of documents and/or
-   objects that are part of the OAD
-1. _Secondary resolution_ looks up names and identifiers within the set
-   of documents and/or objects determined by the primary resolution pass
+1. _Primary resolution_ handles `$ref` and (in most processing models)
+   `operationRef` (which we will call _primary references_), which determine
+   the set of documents and/or objects that are part of the OAD
+
+1. _Secondary resolution_ looks up names and identifiers within the set of
+   documents and/or objects determined by the primary resolution pass; the
+   `single-strict` model also treats `operationRef` as a secondary resolution.
 
 Without this ordering, secondary resultion can become non-deterministic
 when it relies on a particular external reference having already been resolved.
@@ -56,17 +64,23 @@ Swagger/OAS 2.0 states that the OAD is logically a single document, regardless
 of the use of references.  It is assumed that older tools likely carried this
 approach forward to OAS 3.x.
 
-This suite interprets this approach as follows:
+This approach is interpreted by this suite as follows:
 
 * Only the specific primary reference target becomes part of the OAD; the
   other contents of the containing document are completely ignored and need
   not conform to the OAS
+* Each reference target is (logically or actually) inlined where it is
+  referenced, each time it is referenced, except when cyclic references
+  prevent doing so
 * The only way to include an Object under the OAD's Components Object is to
   `$ref` it from the entry document's Components Object
+* Since an `operationRef` cannot be inlined, it must be resolved after all
+  `$ref`s, and can only be resolved within the entry document or the objects
+  included by `$ref`
 
 ### Multi-document processing (a.k.a. JSON Schema-like processing)
 
-Output directory: `multi`
+Output directory: `multi` (or `multi-strict` and `multi-loose`)
 
 Some OAS tools have been written by developers who came from the JSON Schema
 world.  These follow the JSON Schema pattern in which complete documents
@@ -78,6 +92,19 @@ Applying this processing model to OADs has the following implications:
 * The tool maintains an awareness of the origin document of each object
 * Secondary resolution happens within a single document, rather than a
   logical aggregate "document" rooted at the entry document
+
+When dealing with names looked up in the Components Object, the OAS is vague
+about exactly what that means (in contrast with looking up `operationId`,
+for which it explicitly states that the lookup is across the entire aggregate
+document).
+
+For a few cases, it makes a difference how we handle this:
+
+* `multi-strict` looks only in the current document's Components Object
+* `multi-loose` looks in all documents' Components Objects
+
+For most cases, there will only be a single `multi` outcome directory, but
+a few will have `multi-strict` and `multi-loose` instead.
 
 ### Mixing models
 
