@@ -1,0 +1,29 @@
+---
+openapi: "3.0.3"
+info:
+  version: "0.0.1"
+  title: "allOf discriminator with entry document schemas (OpenAPI Entry File)"
+components:
+  schemas:
+    bar:
+      allOf:
+      - $ref: "components.yaml#/components/schemas/foo"
+      properties:
+        fooType:
+          enum: [bar]
+    baz:
+      allOf:
+      - $ref: "components.yaml#/components/schemas/foo"
+      properties:
+        fooType:
+          enum: [baz]
+paths:
+  /foo:
+    get:
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: components.yaml#/components/schemas/foo
