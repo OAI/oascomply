@@ -1,6 +1,7 @@
 openapi: 3.0.3
 info:
-  title: OASComply assessment 3rd doc: operationId from 3rd $ref'd document
+  title: "OASComply assessment 3rd doc: operationId from 3rd $ref'd document"
+  version: "0.0.1"
 paths:
   /bars:
     get:

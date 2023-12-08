@@ -2,7 +2,7 @@
 openapi: "3.0.3"
 info:
   version: "0.0.1"
-  title: Conflicting refs to standalone object: input entry document
+  title: "Conflicting refs to standalone object: input entry document"
 paths:
   /foos:
     $ref: empty.yaml

@@ -1,8 +1,8 @@
 ---
 openapi: "3.0.3"
 info:
-  version: "0.0.1"
   title: "oneOf discriminator with local components (OpenAPI Entry File)"
+  version: "0.0.1"
 components:
   schemas:
     bar:

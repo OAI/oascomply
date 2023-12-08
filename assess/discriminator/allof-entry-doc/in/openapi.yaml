@@ -1,8 +1,8 @@
 ---
 openapi: "3.0.3"
 info:
-  version: "0.0.1"
   title: "allOf discriminator with entry document schemas (OpenAPI Entry File)"
+  version: "0.0.1"
 components:
   schemas:
     bar:

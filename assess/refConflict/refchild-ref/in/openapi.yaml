@@ -1,8 +1,8 @@
 ---
 openapi: "3.0.3"
 info:
+  title: "Refs to data in non-OAS file, conflicting parent vs child"
   version: "0.0.1"
-  title: Refs to data in non-OAS file, conflicting parent vs child
 paths:
   /foos:
     $ref: other.yaml#/2

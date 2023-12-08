@@ -1,8 +1,8 @@
 ---
 openapi: "3.0.3"
 info:
-  version: "0.0.1"
   title: "allOf discriminator with same-document components (single doc)"
+  version: "0.0.1"
 paths:
   /foos:
     get:
