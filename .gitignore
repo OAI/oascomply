@@ -3,3 +3,4 @@ __pycache__
 poetry.toml
 .coverage
 htmlcov
+.DS_store
