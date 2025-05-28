@@ -44,7 +44,7 @@ using [`poetry`](https://python-poetry.org/docs/) (preferably)
 or alternatively with `pip -e`..
 
 ```ShellSession
-~/src % git clone https://github.com//OAI/oascomply.git
+~/src % git clone https://github.com/OAI/oascomply.git
 ~/src % cd oascomply
 ~/src/oascomply %
 ```
