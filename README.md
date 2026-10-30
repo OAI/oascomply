@@ -9,6 +9,12 @@ The `oas30-schema` command-line tool is an OAS 3.0-specific JSON Schema implemen
 
 ## Status
 
+***Please Note:*** *Work on Milestone 2 of this project surfaced enough
+ambiguities that OpenAPI's focus shifted to resolving them through the
+OAS 3.0.4 and 3.1.1 patch releases, followed by the 3.2.0 minor release.
+The OASComply project was put on hold indefinitely. The remainder of this
+README is preserved as a historical document.*
+
 The OAS Compliance Parser is expected to reach 1.0 status by
 late 2023.  The current status of the project is
 [pre-Milestone 1](https://tinyurl.com/4kth84k8).
